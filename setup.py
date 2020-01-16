@@ -13,7 +13,7 @@ from codecs import open
 import os
 
 here = os.path.abspath(os.path.dirname(__file__))
-bindir = os.path.join(here, "bin/")
+bindir = os.path.join(here, 'bin/')
 
 # Get the long description from the README file
 with open(os.path.join(here, 'README.md'), encoding='utf-8') as f:
@@ -48,11 +48,20 @@ setup(name='radiantkit',
 		'pandas==0.25.3',
 		'scikit-image==0.16.2',
 		'scipy==1.4.1',
-		'seaborn==0.9.0'
+		'seaborn==0.9.0',
 		'tifffile==2019.7.26.2',
 		'tqdm==4.41.1',
 	],
 	scripts=[],
-	test_suite="nose.collector",
-	tests_require=["nose"],
+	test_suite='nose.collector',
+	tests_require=['nose'],
+	entry_points={'console_scripts':[
+		'czi_to_tiff  = radiantkit.scripts.czi_to_tiff:main',
+		'nd2_to_tiff  = radiantkit.scripts.nd2_to_tiff:main',
+		'tiff_findoof = radiantkit.scripts.tiff_findoof:main',
+		'tiff_segment = radiantkit.scripts.tiff_segment:main',
+		'tiff_split   = radiantkit.scripts.tiff_split:main',
+		'tiff_desplit = radiantkit.scripts.tiff_desplit:main',
+		'tiffcu       = radiantkit.scripts.tiffcuf:main'
+	]}
 )
