@@ -1,2 +1,2 @@
-# RadIAnT-kit
+# radiantkit
 Python3 Radial Image Analysis Toolkit
