@@ -6,6 +6,7 @@
 import numpy as np
 import os
 from skimage.io import imread
+import tifffile
 from typing import List, Tuple
 import warnings
 
@@ -55,7 +56,7 @@ class Image(ImageSettings):
         assert os.path.isfile(path), f"file not found: '{path}'"
         try:
             with warnings.catch_warnings(record=True) as warning_list:
-                I = imread(impath)
+                I = imread(path)
                 warning_list = [str(e) for e in warning_list]
                 if any(["axes do not match shape" in e for e in warning_list]):
                     print(f"WARNING: "+
@@ -73,6 +74,35 @@ class Image(ImageSettings):
         while len(I.shape) > nd: I = I[0]
         if 0 in I.shape: print("WARNING: the image contains empty dimensions.")
         return I
+
+    @staticmethod
+    def save_tiff(path: str, I: np.ndarray, dtype: str, compressed: bool,
+        bundled_axes: str="CZYX", inMicrons: bool=False,
+        ResolutionZ: float=None, forImageJ: bool=False, **kwargs):
+        
+        if not "C" in bundled_axes: bundled_axes = f"C{bundled_axes}"
+        while len(bundled_axes) > len(I.shape):
+            new_shape = [1]
+            [new_shape.append(n) for n in I.shape]
+            I.shape = new_shape
+
+        assert_msg = "shape mismatch between bundled axes and image."
+        assert len(bundled_axes) == len(I.shape), assert_msg
+
+        metadata = {'axes' : bundled_axes}
+        if inMicrons: metadata['unit'] = "um"
+        if not type(None) == ResolutionZ: metadata['spacing'] = ResolutionZ
+
+        if compressed:
+            tifffile.imsave(path, I.astype(dtype),
+                shape = I.shape, compress = 9,
+                dtype = dtype, imagej = forImageJ,
+                metadata = metadata, **kwargs)
+        else:
+            tifffile.imsave(path, I.astype(dtype),
+                shape = I.shape, compress = 0,
+                dtype = dtype, imagej = forImageJ,
+                metadata = metadata, **kwargs)
 
     def clear_borders(self, dimensions: List[int]) -> None:
         pass
@@ -103,3 +133,10 @@ def get_huygens_rescaling_factor(path: str) -> float:
     if 0 == len(factor): return 1
     elif 1 == len(factor): return float(factor[0].strip().split(' ')[-1])
     else: return np.prod([float(f.strip().split(' ')[-1]) for f in factor])
+
+def get_dtype(imax):
+    depths = [8, 16]
+    for depth in depths:
+        if imax <= 2**depth-1:
+            return("uint%d" % (depth,))
+    return("uint")
