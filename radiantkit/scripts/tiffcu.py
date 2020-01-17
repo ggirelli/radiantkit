@@ -49,7 +49,7 @@ def parse_arguments() -> argparse.Namespace:
         help = 'Compress TIFF files.')
 
     parser.add_argument('--version', action = 'version',
-        version = '%s %s' % (sys.argv[0], "1.0.1",))
+        version = '%s %s' % (sys.argv[0], "0.0.1",))
 
     args = parser.parse_args()
     args.inreg = re.compile(args.inreg)
