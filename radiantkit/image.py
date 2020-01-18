@@ -3,6 +3,7 @@
 @contact: gigi.ga90@gmail.com
 '''
 
+import logging
 import numpy as np
 import os
 from skimage.io import imread
@@ -25,6 +26,7 @@ class ImageSettings(object):
 class Image(ImageSettings):
     """docstring for Image"""
 
+    __path_to_local: str = None
     __pixels: np.ndarray = None
 
     def __init__(self, *args, **kwargs):
@@ -36,10 +38,13 @@ class Image(ImageSettings):
     
     @property
     def pixels(self) -> np.ndarray:
+        if self.__pixels is None and self.__path_to_local is not None:
+            self.load_from_local()
         return self.__pixels
 
     def from_tiff(self, path: str) -> None:
         self.__pixels = self.read_tiff(path)
+        self.__path_to_local = path
         self.__update_axes_order_according_to_input()
 
     def from_matrix(self, m: np.ndarray) -> None:
@@ -106,6 +111,21 @@ class Image(ImageSettings):
 
     def clear_borders(self, dimensions: List[int]) -> None:
         pass
+
+    def load_from_local(self) -> None:
+        assert self.__path_to_local is not None
+        assert os.path.isfile(self.__path_to_local)
+        self.from_tiff(self.__path_to_local)
+
+    def unload(self) -> None:
+        if self.__path_to_local is None:
+            logging.error("cannot unload Image without path_to_local.")
+            return
+        if not os.path.isfile(self.__path_to_local):
+            logging.error("path_to_local not found, cannot unload: " +
+                self.__path_to_local)
+            return
+        self.__pixels = None
 
 class Image3D(Image):
     """docstring for Image3D"""
