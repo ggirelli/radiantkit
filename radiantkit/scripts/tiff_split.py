@@ -19,61 +19,60 @@ logging.basicConfig(level=logging.DEBUG,
 
 def parse_arguments() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description = '''
-    Split a TIFF image in smaller TIFF images of the specified side(s). If two
-    different sides are provided, the smaller images will be rectangular. The
-    first side corresponds to the X (columns) and the second to the Y (rows).
-    By default, only one side is required, which is used by the script for both
-    X and Y sides. In other words, square smaller images are produced.
+Split a TIFF image in smaller TIFF images of the specified side(s). If two
+different sides are provided, the smaller images will be rectangular. The first
+side corresponds to the X (columns) and the second to the Y (rows). By default,
+only one side is required, which is used by the script for both X and Y sides.
+In other words, square smaller images are produced.
 
-    If the original dimensions are not multiples of the specified side, a
-    portion of the image is lost, unless the --enlarge option is used. In that
-    case, the smaller images generated from the image border will contain empty
-    pixels.
+If the original dimensions are not multiples of the specified side, a portion of
+the image is lost, unless the --enlarge option is used. In that case, the
+smaller images generated from the image border will contain empty pixels.
 
-    If the input image is a 3D stack, it will be split only on XY and the output
-    images will have the same number of slices. Using the --slice option, it is
-    possible to specify which slice to split (i.e., the output will be in 2D).
-    Defaults to first slice (--slice 0).
+If the input image is a 3D stack, it will be split only on XY and the output
+images will have the same number of slices. Using the --slice option, it is
+possible to specify which slice to split (i.e., the output will be in 2D).
+Defaults to first slice (--slice 0).
 
-    It is also possible to generate overlapping split images. This can be
-    achieved by using either the -S or -O options (which cannot be used
-    together). With the -S option, you can specify the step used when splitting
-    the image, as a fraction of its sides or as an absolute number of pixels.
-    With the -O option, you can specify the overlapping region between
-    consecutive split images as a fraction of their sides or as absolute pixels.
-    In other words, the options -S 0.9 and -O 0.1 yield the same result. It is
-    possible to provide two values to -S and -O, to obtain different overlaps in
-    X and Y.
+It is also possible to generate overlapping split images. This can be achieved
+by using either the -S or -O options (which cannot be used together). With the
+-S option, you can specify the step used when splitting the image, as a fraction
+of its sides or as an absolute number of pixels. With the -O option, you can
+specify the overlapping region between consecutive split images as a fraction of
+their sides or as absolute pixels. In other words, the options -S 0.9 and -O 0.1
+yield the same result. It is possible to provide two values to -S and -O, to
+obtain different overlaps in
+X and Y.
 
-    By default, split images are generated left-to-right, top-to-bottom, e.g.,
-    1 2 3
-    4 5 6
-    7 8 9
+By default, split images are generated left-to-right, top-to-bottom, e.g.,
+1 2 3
+4 5 6
+7 8 9
 
-    Use the option -I to generate them top-to-bottom, left-to-right, e.g.,
-    1 4 7
-    2 5 8
-    3 6 9
+Use the option -I to generate them top-to-bottom, left-to-right, e.g.,
+1 4 7
+2 5 8
+3 6 9
 
-    Examples:
+Examples:
 
-    - Square images of 100x100 px
-    tiff_split big_image.tif split_out_dir 100 -e
+- Square images of 100x100 px
+tiff_split big_image.tif split_out_dir 100 -e
 
-    - Rectangular images of 125x100 px
-    tiff_split big_image.tif split_out_dir 100 125 -e
+- Rectangular images of 125x100 px
+tiff_split big_image.tif split_out_dir 100 125 -e
 
-    - Square images of 100x100 px, overlapping for 10 px in X and Y
-    tiff_split big_image.tif split_out_dir 100 -e -S 0.9
-    tiff_split big_image.tif split_out_dir 100 -e -S 90
-    tiff_split big_image.tif split_out_dir 100 -e -O 0.1
-    tiff_split big_image.tif split_out_dir 100 -e -O 10
+- Square images of 100x100 px, overlapping for 10 px in X and Y
+tiff_split big_image.tif split_out_dir 100 -e -S 0.9
+tiff_split big_image.tif split_out_dir 100 -e -S 90
+tiff_split big_image.tif split_out_dir 100 -e -O 0.1
+tiff_split big_image.tif split_out_dir 100 -e -O 10
 
-    - Square images of 100x100 px, overlapping for 10 px in X and 20 px in Y
-    tiff_split big_image.tif split_out_dir 100 -e -S 0.9 0.8
-    tiff_split big_image.tif split_out_dir 100 -e -S 90 80
-    tiff_split big_image.tif split_out_dir 100 -e -O 0.1 0.2
-    tiff_split big_image.tif split_out_dir 100 -e -O 10 20
+- Square images of 100x100 px, overlapping for 10 px in X and 20 px in Y
+tiff_split big_image.tif split_out_dir 100 -e -S 0.9 0.8
+tiff_split big_image.tif split_out_dir 100 -e -S 90 80
+tiff_split big_image.tif split_out_dir 100 -e -O 0.1 0.2
+tiff_split big_image.tif split_out_dir 100 -e -O 10 20
     ''', formatter_class = argparse.RawDescriptionHelpFormatter)
 
     parser.add_argument('input', type = str,
