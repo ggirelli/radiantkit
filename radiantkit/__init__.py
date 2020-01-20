@@ -5,3 +5,4 @@
 
 from radiantkit import scripts
 from radiantkit import conversion, image, particle, segmentation, series
+from radiantkit import path, plot, stat
