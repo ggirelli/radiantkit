@@ -12,17 +12,17 @@ import radiantkit.image as imt
 import re
 import sys
 
-logging.basicConfig(level=logging.DEBUG,
+logging.basicConfig(level=logging.INFO,
     format='%(asctime)s - %(message)s', datefmt='%m/%d/%Y %I:%M:%S')
 
 def parse_arguments() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description = '''
-    (Un)compress TIFF images. Provide either a single input/output image paths,
-    or  input/output folder paths. In case of folder input/output, all tiff
-    files in the input folder with file name matching the specified pattern are
-    (un)compressed and saved to the output folder. When (un)compressing multiple
-    files, the --threads option allows to parallelize on multiple threads. Disk
-    read/write operations become the bottleneck when parallelizing.
+(Un)compress TIFF images. Provide either a single input/output image paths, or
+input/output folder paths. In case of folder input/output, all tiff files in the
+input folder with file name matching the specified pattern are (un)compressed
+and saved to the output folder. When (un)compressing multiple files, the
+--threads option allows to parallelize on multiple threads. Disk read/write
+operations become the bottleneck when parallelizing.
     ''', formatter_class = argparse.RawDescriptionHelpFormatter)
 
     parser.add_argument('input', type = str,
