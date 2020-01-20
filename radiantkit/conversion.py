@@ -28,7 +28,7 @@ class ND2Reader2(ND2Reader):
         return 'z' in self.axes
 
     def hasMultiChannels(self) -> bool:
-        if "c" in self.axes: return 1 < self.sizes['c']
+        if "c" in self.axes: return 1 < self.channel_count()
         return False
 
     def channel_count(self) -> int:

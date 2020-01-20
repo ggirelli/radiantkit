@@ -35,11 +35,12 @@ ${dimensions}   : the number of dimensions in the image, followed by a "D".
 ${axes_order}   : the order of the axes in the image (e.g., "TZYX").
 The default template is "${channel_name}_${series_id}". Hence, when writing the
 3rd series of the "a488" channel, the output file name would be:"a488_003.tiff".
-Please, remember to escape the "$" when running from command line, i.e., "\\$".
+Please, remember to escape the "$" when running from command line if using
+double quotes, i.e., "\\$". Alternatively, use single quotes, i.e., '$'.
     ''', formatter_class = argparse.RawDescriptionHelpFormatter)
 
     parser.add_argument('input', type = str,
-        help = '''Path to the czi file to convert.''')
+        help = '''Path to the nd2 file to convert.''')
 
     parser.add_argument('-o', '--outdir', metavar = "outdir", type = str,
         help = """Path to output TIFF folder, created if missing. Default to a
