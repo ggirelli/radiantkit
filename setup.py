@@ -50,7 +50,7 @@ setup(name='radiantkit',
 		'scipy==1.4.1',
 		'seaborn==0.9.0',
 		'tifffile==2019.7.26.2',
-		'tqdm==4.41.1',
+		'tqdm==4.41.1'
 	],
 	scripts=[],
 	test_suite='nose.collector',
