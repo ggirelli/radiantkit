@@ -4,6 +4,7 @@
 '''
 
 import argparse
+from ggc.args import check_threads
 from joblib import Parallel, delayed
 import logging
 import multiprocessing
@@ -60,10 +61,7 @@ operations become the bottleneck when parallelizing.
     if args.doCompress and args.doUncompress:
         logging.error("please, use either -c (compress) or -u (uncompress).")
         sys.exit()
-    maxncores = multiprocessing.cpu_count()
-    if maxncores < args.threads:
-        logging.info(f"Lowered thread number to maximum available: {maxncores}")
-        args.threads = maxncores
+    args.threads = check_threads(args.threads)
 
     args.process_multiple_files = False
     if os.path.isdir(args.input):
@@ -75,7 +73,7 @@ operations become the bottleneck when parallelizing.
 
     return args
 
-def segment_image(ipath: str, opath: str, compress: bool=None) -> str:
+def exprot_image(ipath: str, opath: str, compress: bool=None) -> str:
     idir = os.path.dirname(ipath)
     ipath = os.path.basename(ipath)
     odir = os.path.dirname(opath)
@@ -111,11 +109,11 @@ def run(args: argparse.Namespace) -> None:
             and not type(None) == type(re.match(args.inreg, f))]
 
         outlist = Parallel(n_jobs = args.threads)(
-            delayed(segment_image)(os.path.join(args.input, ipath),
+            delayed(exprot_image)(os.path.join(args.input, ipath),
                 os.path.join(args.output, ipath),
                 compress=args.doCompress) for ipath in imglist)
     else:
-        segment_image(args.input, args.output, args.doCompress)
+        exprot_image(args.input, args.output, args.doCompress)
 
 def main() -> None:
     run(parse_arguments())
