@@ -203,6 +203,10 @@ class Image(ImageSettings):
                 f"{len(mask.shape)} dimensions.")
         return mask
 
+    def binarize(self, mask2d: np.ndarray,
+        binarizer: segmentation.Binarizer) -> np.ndarray:
+        return Binarizer.run(self.pixels, mask2d)
+
     def load_from_local(self) -> None:
         assert self.__path_to_local is not None
         assert os.path.isfile(self.__path_to_local)
