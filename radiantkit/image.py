@@ -9,8 +9,10 @@ import os
 from radiantkit import const
 from skimage import filters
 from skimage.io import imread
+from skimage.measure import label
 from skimage.morphology import closing
 from skimage.morphology import square, cube
+from skimage.segmentation import clear_border
 import tifffile
 from typing import List, Tuple
 import warnings
@@ -154,8 +156,40 @@ class Image(ImageSettings):
                 f"{len(I.shape)} dimensions.")
         return mask
 
-    def clear_borders(self, dimensions: List[int]) -> None:
-        pass
+    @staticmethod
+    def clear_XY_borders(self, I: np.ndarray) -> np.ndarray:
+        if 2 == len(I.shape):
+            return clear_border(I)
+        elif 3 == len(I.shape):
+            border_labels = []
+            border_labels.extend(np.unique(I[:, 0, :]).tolist())
+            border_labels.extend(np.unique(I[:, -1, :]).tolist())
+            border_labels.extend(np.unique(I[:, :, 0]).tolist())
+            border_labels.extend(np.unique(I[:, :, -1]).tolist())
+            border_labels = set(border_labels)
+            for lab in border_labels: I[I == lab] = 0
+            if 1 != I.max(): I = label(I)
+            return I
+        else:
+            logging.warning("XY border clearing not implemented for images " +
+                f"with {len(I.shape)} dimensions.")
+            return I
+
+    @staticmethod
+    def clear_Z_borders(self, I: np.ndarray) -> np.ndarray:
+        if 2 == len(I.shape): return I
+        elif 3 == len(I.shape):
+            border_labels = []
+            border_labels.extend(np.unique(I[0, :, :]).tolist())
+            border_labels.extend(np.unique(I[-1, :, :]).tolist())
+            border_labels = set(border_labels)
+            for lab in border_labels: I[I == lab] = 0
+            if 1 != I.max(): I = label(I)
+            return I
+        else:
+            logging.warning("Z border clearing not implemented for images " +
+                f"with {len(I.shape)} dimensions.")
+            return I
 
     def load_from_local(self) -> None:
         assert self.__path_to_local is not None

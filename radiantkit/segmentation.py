@@ -74,12 +74,8 @@ class Binarizer(BinarizerSettings):
 		mask = mask[0]
 
 		if mask2 is not None: mask = np.logical_and(mask, mask2>0)
-
-		if self.do_clear_XY_borders:
-			pass
-
-		if self.do_clear_Z_borders:
-			pass
+		if self.do_clear_XY_borders: mask = imt.Image.do_clear_XY_borders(mask)
+		if self.do_clear_Z_borders: mask = imt.Image.do_clear_Z_borders(mask)
 
 		if self.do_fill_holes:
 			pass
