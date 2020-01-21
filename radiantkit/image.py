@@ -30,6 +30,7 @@ class ImageSettings(object):
 class Image(ImageSettings):
     __path_to_local: str = None
     __pixels: np.ndarray = None
+    __rescale_factor: float = 1.
 
     def __init__(self, *args, **kwargs):
         super(Image, self).__init__(*args, **kwargs)
@@ -43,6 +44,16 @@ class Image(ImageSettings):
         if self.__pixels is None and self.__path_to_local is not None:
             self.load_from_local()
         return self.__pixels
+
+    @property
+    def rescale_factor(self) -> float:
+        return self._rescale_factor
+    
+    @rescale_factor.setter
+    def rescale_factor(self, new_factor: float) -> None:
+        self.__pixels = self.pixels*self.rescale_factor
+        self.__rescale_factor = new_factor
+        self.__pixels = self.pixels/self.rescale_factor
 
     def from_tiff(self, path: str) -> None:
         self.__pixels = self.read_tiff(path)
