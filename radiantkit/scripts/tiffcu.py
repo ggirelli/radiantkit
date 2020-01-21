@@ -73,7 +73,7 @@ operations become the bottleneck when parallelizing.
 
     return args
 
-def exprot_image(ipath: str, opath: str, compress: bool=None) -> str:
+def export_image(ipath: str, opath: str, compress: bool=None) -> str:
     idir = os.path.dirname(ipath)
     ipath = os.path.basename(ipath)
     odir = os.path.dirname(opath)
@@ -108,12 +108,12 @@ def run(args: argparse.Namespace) -> None:
             if os.path.isfile(os.path.join(args.input, f))
             and not type(None) == type(re.match(args.inreg, f))]
 
-        outlist = Parallel(n_jobs = args.threads)(
-            delayed(exprot_image)(os.path.join(args.input, ipath),
+        Parallel(n_jobs = args.threads)(
+            delayed(export_image)(os.path.join(args.input, ipath),
                 os.path.join(args.output, ipath),
                 compress=args.doCompress) for ipath in imglist)
     else:
-        exprot_image(args.input, args.output, args.doCompress)
+        export_image(args.input, args.output, args.doCompress)
 
 def main() -> None:
     run(parse_arguments())
