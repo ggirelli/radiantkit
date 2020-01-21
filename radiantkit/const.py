@@ -7,19 +7,19 @@ from enum import auto, Enum
 
 class ProjectionType(Enum):
     SUM_PROJECTION = 'SUM_PROJECTION'
-    MAX_PROJECTION = 'MAX_PROJECTION'    
-
-class SegmentationType(ProjectionType):
-    SUM_PROJECTION = 'SUM_PROJECTION'
     MAX_PROJECTION = 'MAX_PROJECTION'
+
+class SegmentationType(Enum):
+    SUM_PROJECTION = ProjectionType.SUM_PROJECTION
+    MAX_PROJECTION = ProjectionType.MAX_PROJECTION
     THREED = '3D'
     @staticmethod
     def get_default():
         return SegmentationType.THREED
 
-class AnalysisType(ProjectionType):
-    SUM_PROJECTION = 'SUM_PROJECTION'
-    MAX_PROJECTION = 'MAX_PROJECTION'
+class AnalysisType(Enum):
+    SUM_PROJECTION = ProjectionType.SUM_PROJECTION
+    MAX_PROJECTION = ProjectionType.MAX_PROJECTION
     THREED = '3D'
     MIDSECTION = 'MIDSECTION'
     @staticmethod
