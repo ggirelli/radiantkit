@@ -6,14 +6,13 @@
 import logging
 import numpy as np
 import os
+from radiantkit import const
 from skimage.io import imread
 import tifffile
 from typing import List, Tuple
 import warnings
 
 class ImageSettings(object):
-    """docstring for ImageSettings"""
-
     _axes_order: str = "TZYX"
 
     def __init__(self):
@@ -24,8 +23,6 @@ class ImageSettings(object):
         return len(self._axes_order)
 
 class Image(ImageSettings):
-    """docstring for Image"""
-
     __path_to_local: str = None
     __pixels: np.ndarray = None
 
@@ -108,6 +105,14 @@ class Image(ImageSettings):
                 shape = I.shape, compress = 0,
                 dtype = dtype, imagej = forImageJ,
                 metadata = metadata, **kwargs)
+
+    @staticmethod
+    def z_project(I: np.ndarray, projection_type: const.ProjectionType):
+        if projection_type == const.ProjectionType.SUM_PROJECTION:
+            I = I.sum(0).astype(I.dtype)
+        elif projection_type == const.ProjectionType.MAX_PROJECTION:
+            I = I.max(0).astype(I.dtype)
+        return I
 
     def clear_borders(self, dimensions: List[int]) -> None:
         pass
