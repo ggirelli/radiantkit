@@ -158,6 +158,7 @@ class Image(ImageSettings):
 
     @staticmethod
     def clear_XY_borders(self, I: np.ndarray) -> np.ndarray:
+        I = label(I > 0)
         if 2 == len(I.shape):
             return clear_border(I)
         elif 3 == len(I.shape):
@@ -168,8 +169,7 @@ class Image(ImageSettings):
             border_labels.extend(np.unique(I[:, :, -1]).tolist())
             border_labels = set(border_labels)
             for lab in border_labels: I[I == lab] = 0
-            if 1 != I.max(): I = label(I)
-            return I
+            return label(I)
         else:
             logging.warning("XY border clearing not implemented for images " +
                 f"with {len(I.shape)} dimensions.")
@@ -177,6 +177,7 @@ class Image(ImageSettings):
 
     @staticmethod
     def clear_Z_borders(self, I: np.ndarray) -> np.ndarray:
+        I = label(I > 0)
         if 2 == len(I.shape): return I
         elif 3 == len(I.shape):
             border_labels = []
@@ -184,12 +185,23 @@ class Image(ImageSettings):
             border_labels.extend(np.unique(I[-1, :, :]).tolist())
             border_labels = set(border_labels)
             for lab in border_labels: I[I == lab] = 0
-            if 1 != I.max(): I = label(I)
-            return I
+            return label(I)
         else:
             logging.warning("Z border clearing not implemented for images " +
                 f"with {len(I.shape)} dimensions.")
             return I
+
+    @staticmethod
+    def fill_holes(self, mask: np.ndarray) -> np.ndarray:
+        mask = ndi.binary_fill_holes(mask)
+        if 3 == len(mask.shape):
+            for slice_id in range(mask.shape[0]):
+                mask[slice_id, :, :] = ndi.binary_fill_holes(
+                    mask[slice_id, :, :])
+        elif 2 != len(mask.shape):
+            logging.warning("3D hole filling not performed on images with " +
+                f"{len(mask.shape)} dimensions.")
+        return mask
 
     def load_from_local(self) -> None:
         assert self.__path_to_local is not None

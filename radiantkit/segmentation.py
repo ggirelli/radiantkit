@@ -43,7 +43,25 @@ class Binarizer(BinarizerSettings):
 	def __init__(self, logger: log.Logger = log.getLogger("radiantkit")):
 		super(Binarizer, self).__init__(logger)
 
-	def run(self, I: np.ndarray, mask2: np.ndarray = None) -> np.ndarray:
+	@staticmethod
+	def inherit_labels(mask: np.ndarray, mask2d: np.ndarray) -> np.ndarray:
+		assert 2 == len(mask2d.shape)
+		if 2 == len(mask.shape):
+			assert mask2d.shape == mask.shape
+			return mask2d[np.logical_and(mask>0, mask2d>0)]
+		elif 3 == len(mask.shape):
+			assert mask2d.shape == mask[-2:].shape
+			new_mask = mask.copy()
+			for slice_id in range(mask.shape[0]):
+				new_mask[slice_id,:,:] = mask2d[np.logical_and(
+					mask[slice_id,:,:]>0, mask2d>0)]
+			return new_mask
+		else:
+			self.logger.warning("mask combination not allowed for images " +
+				f"with {len(mask.shape)} dimensions.")
+			return mask
+
+	def run(self, I: np.ndarray, mask2d: np.ndarray = None) -> np.ndarray:
 		if not self.do_global and not self.do_local:
 			self.logger.warning("no threshold applied.")
 			return I
@@ -54,7 +72,7 @@ class Binarizer(BinarizerSettings):
 			I = imt.Image.z_project(I,
 				const.ProjectionType(self.segmentation_type))
 
-		masks = []
+		mask = []
 		global_threshold = 0
 		if self.do_global:
 			global_threshold = threshold_otsu(I)
@@ -73,12 +91,11 @@ class Binarizer(BinarizerSettings):
 			mask.pop(1)
 		mask = mask[0]
 
-		if mask2 is not None: mask = np.logical_and(mask, mask2>0)
+		if mask2d is not None: mask = np.logical_and(mask, mask2d>0)
 		if self.do_clear_XY_borders: mask = imt.Image.do_clear_XY_borders(mask)
 		if self.do_clear_Z_borders: mask = imt.Image.do_clear_Z_borders(mask)
+		if self.do_fill_holes: mask = imt.Image.fill_holes(mask)
+		if mask2d is not None: mask = self.inherit_labels(mask, mask2d)
 
-		if self.do_fill_holes:
-			pass
-
-		return I
+		return mask
 
