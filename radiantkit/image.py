@@ -7,7 +7,10 @@ import logging
 import numpy as np
 import os
 from radiantkit import const
+from skimage import filters
 from skimage.io import imread
+from skimage.morphology import closing
+from skimage.morphology import square, cube
 import tifffile
 from typing import List, Tuple
 import warnings
@@ -113,6 +116,43 @@ class Image(ImageSettings):
         elif projection_type == const.ProjectionType.MAX_PROJECTION:
             I = I.max(0).astype(I.dtype)
         return I
+
+    @staticmethod
+    def close(I: np.ndarray) -> np.ndarray:
+        assert 1 == I.max()
+        if 2 == len(I.shape):
+            I = closing(I, square(3))
+        elif 3 == len(i.shape):
+            I = closing(I, cube(3))
+        else:
+            logging.info("Close operation not implemented for images with " +
+                f"{len(I.shape)} dimensions.")
+        return I
+
+    @staticmethod
+    def threshold_adaptive(I: np.ndarray, block_size: int,
+        method: str, mode: str, *args, **kwargs) -> np.ndarray:
+        assert 0 == block_size % 2
+
+        def threshold_adaptive_slice(I: np.ndarray, block_size: int,
+            method: str, mode: str, *args, **kwargs) -> np.ndarray:
+            threshold = filters.threshold_local(I, block_size, *args,
+                method = method, mode = mode, **kwargs)
+            return I >= threshold
+
+        if 2 == len(i.shape):
+            mask = threshold_adaptive_slice(I, block_size,
+                method, mode, *args, **kwargs)
+        elif 3 == len(i.shape):
+            mask = I.copy()
+            for slice_id in range(mask.shape[0]):
+                mask[slice_id, :, :] = threshold_adaptive_slice(
+                    mask[slice_id, :, :], block_size, method, mode,
+                    *args, **kwargs)
+        else:
+            logging.info("Local threshold not implemented for images with " +
+                f"{len(I.shape)} dimensions.")
+        return mask
 
     def clear_borders(self, dimensions: List[int]) -> None:
         pass
