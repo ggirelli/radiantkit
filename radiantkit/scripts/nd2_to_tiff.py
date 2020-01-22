@@ -81,7 +81,6 @@ double quotes, i.e., "\\$". Alternatively, use single quotes, i.e., '$'.
     if args.outdir is None:
         args.outdir = os.path.splitext(os.path.basename(args.input))[0]
         args.outdir = os.path.join(os.path.dirname(args.input), args.outdir)
-        logging.info(f"Output directory: '{args.outdir}'")
 
     assert os.path.isfile(args.input), f"input file not found: {args.input}"
     assert not os.path.isfile(args.outdir
@@ -168,6 +167,9 @@ def run(args: argparse.Namespace) -> None:
         f"{nd2I.sizes['x']} x {nd2I.sizes['y']} x {nd2I.sizes['z']}")
     else: logging.info(f"XY size: {nd2I.sizes['x']} x {nd2I.sizes['y']}")
     if args.dry: sys.exit()
+
+    logging.info(f"Output directory: '{args.outdir}'")
+    if not os.path.isdir(args.outdir): os.mkdir(args.outdir)
 
     if args.channels is not None:
         args.channels = [c for c in args.channels
