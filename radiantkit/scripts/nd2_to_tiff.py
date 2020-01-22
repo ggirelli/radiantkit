@@ -16,7 +16,8 @@ from tqdm import tqdm
 from typing import List
 
 logging.basicConfig(level=logging.INFO,
-    format='%(asctime)s - %(message)s', datefmt='%m/%d/%Y %I:%M:%S')
+    format='%(asctime)s %(levelname)s: %(message)s',
+    datefmt='%m/%d/%Y %I:%M:%S')
 
 def parse_arguments() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description = '''
@@ -166,14 +167,14 @@ def run(args: argparse.Namespace) -> None:
     if nd2I.is3D: logging.info("XYZ size: " + 
         f"{nd2I.sizes['x']} x {nd2I.sizes['y']} x {nd2I.sizes['z']}")
     else: logging.info(f"XY size: {nd2I.sizes['x']} x {nd2I.sizes['y']}")
-    if args.dry:
-        sys.exit()
+    if args.dry: sys.exit()
 
     if args.channels is not None:
         args.channels = [c for c in args.channels
             if c in list(nd2I.get_channel_names())]
         if 0 == len(args.channels):
             logging.error("None of the specified channels was found.")
+            sys.exit()
         logging.info(f"Converting only the following channels: {args.channels}")
 
     export_fn = export_field_3d if nd2I.is3D() else export_field_2d
