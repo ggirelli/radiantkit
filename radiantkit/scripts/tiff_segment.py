@@ -34,7 +34,7 @@ objects with different intensity levels.
 	parser.add_argument('imgFolder', type = str,
 	    help = 'Path to folder containing deconvolved tiff images.')
 	parser.add_argument('outFolder', type = str,
-	    help = '''Path to output folder where imt.binarized images will be
+	    help = '''Path to output folder where binarized images will be
 	    stored (created if does not exist).''')
 
 	default_inreg = '^.*\.tiff?$'
@@ -42,7 +42,7 @@ objects with different intensity levels.
 	    help = """regular expression to identify images from imgFolder.
 	    Default: '%s'""" % (default_inreg,), default = default_inreg)
 	parser.add_argument('--outprefix', type = str,
-	    help = """prefix to add to the name of output imt.binarized images.
+	    help = """prefix to add to the name of output binarized images.
 	    Default: 'mask_', 'cmask_' if --compressed is used.""",
 	    default = 'mask_')
 	parser.add_argument('--neighbour', type = int,
@@ -141,9 +141,8 @@ def confirm_arguments(args: argparse.Namespace) -> None:
 	    export_settings(OH, settings_string)
 
 def run_segmentation(imgpath: str, imgdir: str) -> None:
-	I = imt.Image3D()
-	I.from_tiff(imgpath)
-	I.rescale_factor = imt.get_dtype(I.pixels)
+	I = imt.Image3D.from_tiff(imgpath)
+	I.rescale_factor = I.get_huygens_rescaling_factor()
 
 	binarizer = segmentation.Binarizer()
 	binarizer.segmentation_type = const.SEGMENTATION_TYPE.THREED
@@ -157,9 +156,7 @@ def run_segmentation(imgpath: str, imgdir: str) -> None:
 			mask2_path = os.path.join(
 				args.manual_2d_masks, os.path.basename(imgpath))
 			if os.path.isfile(mask2d_path):
-				mask2d = imt.Image3D()
-				mask2d.from_tiff(mask2_path)
-				mask2d = mask2d.pixels
+				mask2d = imt.ImageBinary2D.from_tiff(mask2_path).pixels
 
 	mask = binarizer.run(I.pixels, mask2d)
 

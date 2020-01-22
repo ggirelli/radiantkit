@@ -113,7 +113,7 @@ def export_channel(args: argparse.Namespace, field_of_view: pims.frame.Frame,
     opath: str, metadata: dict, bundle_axes: List[str],
     resolutionZ: float = None) -> None:
     resolutionXY = (1/metadata['pixel_microns'], 1/metadata['pixel_microns'])
-    imt.Image.save_tiff(os.path.join(args.outdir, opath), field_of_view,
+    imt.save_tiff(os.path.join(args.outdir, opath), field_of_view,
         imt.get_dtype(field_of_view.max()), args.doCompress,
         bundled_axes = "".join(bundle_axes).upper(), resolution = resolutionXY,
         inMicrons = True, forImageJ = True, ResolutionZ = resolutionZ)

@@ -13,6 +13,7 @@ from typing import Tuple, Union
 class BinarizerSettings(object):
 	segmentation_type: const.SegmentationType = None
 	do_global: bool = True
+	global_closing: bool = True
 	do_local: bool = True
 	_local_side: int = 101
 	local_method: str = 'median'
@@ -60,7 +61,7 @@ class Binarizer(BinarizerSettings):
 				f"with {len(mask.shape)} dimensions.")
 			return mask
 
-	def run(self, I: np.ndarray, mask2d: np.ndarray = None) -> np.ndarray:
+	def run(self, I: imt.ImageBase, mask2d: imt.ImageBinary2D=None) -> np.ndarray:
 		if not self.do_global and not self.do_local:
 			self.logger.warning("no threshold applied.")
 			return I
@@ -68,33 +69,38 @@ class Binarizer(BinarizerSettings):
 		if self.segmentation_type in (const.SegmentationType.SUM_PROJECTION,
 			const.SegmentationType.MAX_PROJECTION):
 			self.logger.info(f"projecting over Z [{self.segmentation_type}].")
-			I = imt.Image.z_project(I,
-				const.ProjectionType(self.segmentation_type))
+			I.z_project(const.ProjectionType(self.segmentation_type))
 
 		mask = []
 		global_threshold = 0
 		if self.do_global:
 			global_threshold = threshold_otsu(I)
 			self.logger.info(f"applying global threshold of {global_threshold}")
-			mask.append(imt.Image.close(I > thr))
+			gmask = I.threshold_global(global_threshold)
+			if self.global_closing: gmask.close()
+			mask.append(gmask)
 		if self.do_local and 1 < self.local_side:
 			self.logger.info("applying adaptive threshold to neighbourhood " +
 				f"with side of {self.local_side} px.")
-			local_mask = imt.Image.threshold_adaptive(I,
-					self.local_side, self.local_method, self.local_mode)
-			if self.local_closing: local_mask = imt.Image.close(local_mask)
+			local_mask = I.threshold_adaptive(
+				self.local_side, self.local_method, self.local_mode)
+			if self.local_closing: local_mask.close()
 			mask.append(local_mask)
 
 		while 1 < len(mask):
-			mask[0] = np.logical_and(mask[0], mask[1])
+			mask[0].logical_and(mask[1])
 			mask.pop(1)
 		mask = mask[0]
 
-		if mask2d is not None: mask = np.logical_and(mask, mask2d>0)
-		if self.do_clear_XY_borders: mask = imt.Image.do_clear_XY_borders(mask)
-		if self.do_clear_Z_borders: mask = imt.Image.do_clear_Z_borders(mask)
-		if self.do_fill_holes: mask = imt.Image.fill_holes(mask)
-		if mask2d is not None: mask = self.inherit_labels(mask, mask2d)
+		if mask2d is not None: mask.logical_and(imt.ImageBinary(mask2d))
+		mask = imt.ImageLabeled(mask)
+		if self.do_clear_XY_borders: mask.do_clear_XY_borders()
+		if self.do_clear_Z_borders: mask.do_clear_Z_borders()
+		mask = imt.ImageBinary(mask)
+		if self.do_fill_holes: mask.fill_holes()
+		if mask2d is not None:
+			mask = self.inherit_labels(mask.pixels, mask2d.pixels)
+		else: mask = mask.pixels
 
 		return mask
 

@@ -103,8 +103,7 @@ def plot_profile(args: argparse.Namespace,
 
 def is_OOF(args: argparse.Namespace, ipath: str,
     logger: logging.RootLogger) -> pd.DataFrame:
-    I = imt.Image.read_tiff(os.path.join(args.imdir, ipath))
-    I = imt.Image.extract_nd(I, 3)
+    I = imt.Image3D.read_tiff(os.path.join(args.imdir, ipath)).pixels
 
     slice_descriptors = []
     for zi in range(I.shape[0]):

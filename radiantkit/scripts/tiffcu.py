@@ -85,12 +85,10 @@ def export_image(ipath: str, opath: str, compress: bool=None) -> str:
     if opath is None: opath = ipath
     
     if not compress:
-        imt.Image.save_tiff(os.path.join(odir, opath),
-            I, imt.get_dtype(I.max()), compressed=False)
+        I.to_tiff(os.path.join(odir, opath), compressed=False)
         label = "Uncompressed"
     else:
-        imt.Image.save_tiff(os.path.join(odir, opath),
-            I, imt.get_dtype(I.max()), compressed=True)
+        I.to_tiff(os.path.join(odir, opath), compressed=True)
         label = "Compressed"
 
     logging.info(f"{label} '{os.path.join(idir, ipath)}'")

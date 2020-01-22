@@ -262,7 +262,7 @@ def save_settings(args: argparse.Namespace) -> None:
 
 def run(args: argparse.Namespace) -> None:
     logging.info("Reading input image...")
-    I = imt.Image.extract_nd(imt.Image.read_tiff(args.input), 3)
+    I = imt.Image.read_tiff(args.input).pixels
 
     if 3 == len(I.shape):
         logging.info(f"3D stack found: {I.shape}")
