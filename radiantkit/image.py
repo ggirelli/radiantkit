@@ -6,7 +6,7 @@
 import logging
 import numpy as np
 import os
-from radiantkit import const
+from radiantkit import const, segmentation
 from skimage import filters
 from skimage.io import imread
 from skimage.measure import label
@@ -14,7 +14,7 @@ from skimage.morphology import closing
 from skimage.morphology import square, cube
 from skimage.segmentation import clear_border
 import tifffile
-from typing import List, Tuple
+from typing import List, Tuple, Union
 import warnings
 
 class ImageSettings(object):
@@ -32,8 +32,8 @@ class Image(ImageSettings):
     __pixels: np.ndarray = None
     __rescale_factor: float = 1.
 
-    def __init__(self, *args, **kwargs):
-        super(Image, self).__init__(*args, **kwargs)
+    def __init__(self):
+        super(Image, self).__init__()
 
     @property
     def shape(self) -> Tuple[int]:

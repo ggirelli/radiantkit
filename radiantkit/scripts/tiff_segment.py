@@ -9,6 +9,8 @@ from ggc.args import check_threads, export_settings
 from joblib import delayed, Parallel
 import logging
 import os
+from radiantkit import const, segmentation
+from radiantkit import image as imt
 import re
 import sys
 from tqdm import tqdm
@@ -138,7 +140,27 @@ def confirm_arguments(args: argparse.Namespace) -> None:
 	    export_settings(OH, settings_string)
 
 def run_segmentation(imgpath: str, imgdir: str) -> None:
-	print((imgpath, imgdir))
+	I = imt.Image3D()
+	I.from_tiff(imgpath)
+	I.rescale_factor = imt.get_dtype(I.pixels)
+
+	binarizer = segmentation.Binarizer()
+	binarizer.segmentation_type = const.SEGMENTATION_TYPE.THREED
+	binarizer.local_side = args.neighbour
+	binarizer.min_z_size = args.min_Z
+	binarizer.do_clear_Z_borders = args.do_clear_Z
+
+	mask2d = None
+	if args.combineWith2D:
+		if os.path.isdir(args.manual_2d_masks):
+			mask2_path = os.path.join(
+				args.manual_2d_masks, os.path.basename(imgpath))
+			if os.path.isfile(mask2d_path):
+				mask2d = imt.Image3D()
+				mask2d.from_tiff(mask2_path)
+				mask2d = mask2d.pixels
+
+	mask = binarizer.run(I.pixels, mask2d)
 
 def run(args: argparse.Namespace) -> None:
 	imglist = [f for f in os.listdir(args.imgFolder) 

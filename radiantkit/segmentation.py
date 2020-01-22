@@ -12,7 +12,6 @@ from typing import Tuple, Union
 
 class BinarizerSettings(object):
 	segmentation_type: const.SegmentationType = None
-	analysis_type: const.AnalysisType = None
 	do_global: bool = True
 	do_local: bool = True
 	_local_side: int = 101
