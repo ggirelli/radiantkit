@@ -114,8 +114,7 @@ def export_channel(args: argparse.Namespace, field_of_view: pims.frame.Frame,
     resolutionXY = (1/metadata['pixel_microns'], 1/metadata['pixel_microns'])
     imt.save_tiff(os.path.join(args.outdir, opath), field_of_view,
         imt.get_dtype(field_of_view.max()), args.doCompress,
-        bundled_axes = "".join(bundle_axes).upper(), resolution = resolutionXY,
-        inMicrons = True, forImageJ = True, ResolutionZ = resolutionZ)
+        resolution = resolutionXY, inMicrons = True, ResolutionZ = resolutionZ)
 
 def export_field_3d(args: argparse.Namespace, field_of_view: pims.frame.Frame,
     metadata: dict, field_id: int, bundle_axes: List[str],

@@ -157,10 +157,9 @@ def run(args: argparse.Namespace) -> None:
     for (OI, opath) in tqdm(field_generator(CZI, args.fields, args.channels),
         total=export_total):
         imt.save_tiff(os.path.join(args.outdir, opath),
-            OI, imt.get_dtype(OI.max()), args.doCompress, bundled_axes = "ZYX",
+            OI, imt.get_dtype(OI.max()), args.doCompress, bundled_axes = "TZYX",
             resolution = (1e-6/resolution["X"], 1e-6/resolution["Y"]),
-            inMicrons = True, ResolutionZ = resolution["Z"]*1e6,
-            forImageJ = True)
+            inMicrons = True, ResolutionZ = resolution["Z"]*1e6)
 
 def main():
     run(parse_arguments())
