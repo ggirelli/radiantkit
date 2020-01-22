@@ -19,7 +19,7 @@ from typing import List, Tuple, Union
 import warnings
 
 class ImageSettings(object):
-    _axes_order: str = "TZYX"
+    _axes_order: str = "VCTZYX"
 
     def __init__(self):
         super(ImageSettings, self).__init__()
@@ -35,7 +35,7 @@ class ImageBase(ImageSettings):
     def __init__(self, pixels: np.ndarray, path: str=None):
         super(ImageSettings, self).__init__()
         self._pixels = pixels.copy()
-        self._extract_nd()
+        self._remove_empty_axes()
 
     @property
     def shape(self) -> Tuple[int]:
@@ -57,8 +57,17 @@ class ImageBase(ImageSettings):
     
     def _extract_nd(self) -> None:
         self._pixels = extract_nd(self._pixels, self.nd)
+        assert len(self._pixels.shape) <= self.nd
         if len(self._pixels.shape) != self.nd:
             self._axes_order = self._axes_order[-self.nd:]
+
+    def _remove_empty_axes(self) -> None:
+        if len(self.pixels.shape) != self.nd: self._extract_nd()
+        while 1 == self.pixels.shape[0]:
+            new_shape = list(self.pixels.shape)
+            new_shape.pop(0)
+            self.pixels.shape = new_shape
+            self._axes_order = self._axes_order[1:]
 
     def z_project(self, projection_type: const.ProjectionType) -> np.ndarray:
         return z_project(self.pixels, projection_type)
