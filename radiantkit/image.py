@@ -78,10 +78,12 @@ class ImageBase(ImageSettings):
             return
         self._pixels = None
 
-    def to_tiff(self, path: str, compressed: bool, inMicrons: bool=False,
+    def to_tiff(self, path: str, compressed: bool,
+        bundle_axes: str=None, inMicrons: bool=False,
         ResolutionZ: float=None, forImageJ: bool=False, **kwargs) -> None:
-        save_tiff(path, self.pixels, self.dtype, compressed, inMicrons,
-            ResolutionZ, forImageJ, **kwargs)
+        if bundle_axes is None: bundle_axes = self._axes_order
+        save_tiff(path, self.pixels, self.dtype, compressed, bundle_axes,
+            inMicrons, ResolutionZ, forImageJ, **kwargs)
 
 class ImageLabeled(ImageBase):
     def __init__(self, pixels: np.ndarray, path: str=None,
@@ -278,19 +280,18 @@ def extract_nd(I: np.ndarray, nd: int) -> np.ndarray:
     return I
 
 def save_tiff(path: str, I: np.ndarray, dtype: str, compressed: bool,
-    bundled_axes: str="CZYX", inMicrons: bool=False,
+    bundle_axes: str="CTZYX", inMicrons: bool=False,
     ResolutionZ: float=None, forImageJ: bool=False, **kwargs) -> None:
     
-    if not "C" in bundled_axes: bundled_axes = f"C{bundled_axes}"
-    while len(bundled_axes) > len(I.shape):
+    while len(bundle_axes) > len(I.shape):
         new_shape = [1]
         [new_shape.append(n) for n in I.shape]
         I.shape = new_shape
 
     assert_msg = "shape mismatch between bundled axes and image."
-    assert len(bundled_axes) == len(I.shape), assert_msg
+    assert len(bundle_axes) == len(I.shape), assert_msg
 
-    metadata = {'axes' : bundled_axes}
+    metadata = {'axes' : bundle_axes}
     if inMicrons: metadata['unit'] = "um"
     if not type(None) == ResolutionZ: metadata['spacing'] = ResolutionZ
 

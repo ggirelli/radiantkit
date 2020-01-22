@@ -81,7 +81,7 @@ def export_image(ipath: str, opath: str, compress: bool=None) -> str:
     opath = os.path.basename(opath)
 
     if compress is None: compress = False
-    I = imt.Image.read_tiff(os.path.join(idir, ipath))
+    I = imt.ImageBase.from_tiff(os.path.join(idir, ipath))
     if opath is None: opath = ipath
     
     if not compress:
