@@ -57,8 +57,12 @@ double quotes, i.e., "\\$". Alternatively, use single quotes, i.e., '$'.
         help = """Extract only specified fields of view. Can be specified as
         when specifying which pages to print. E.g., '1-2,5,8-9'.""",
         default = None)
+    parser.add_argument('-c', '--channels', metavar = "channels", type = str,
+        help = """Extract only specified channels. Should be specified as a list
+        of space-separated channel names. E.g., 'dapi cy5 a488'.""",
+        default = None, nargs = "+")
 
-    parser.add_argument('-c', '--compressed',
+    parser.add_argument('-C', '--compressed',
         action = 'store_const', dest = 'doCompress',
         const = True, default = False,
         help = 'Force compressed TIFF as output.')
@@ -73,10 +77,6 @@ double quotes, i.e., "\\$". Alternatively, use single quotes, i.e., '$'.
 
     args = parser.parse_args()
 
-    if args.fields is not None:
-        args.fields = MultiRange(args.fields)
-        args.fields.zero_indexed = True
-
     if args.outdir is None:
         args.outdir = os.path.splitext(os.path.basename(args.input))[0]
         args.outdir = os.path.join(os.path.dirname(args.input), args.outdir)
@@ -86,6 +86,13 @@ double quotes, i.e., "\\$". Alternatively, use single quotes, i.e., '$'.
     assert not os.path.isfile(args.outdir
         ), f"output directory cannot be a file: {args.outdir}"
     if not os.path.isdir(args.outdir): os.mkdir(args.outdir)
+
+    if args.fields is not None:
+        args.fields = MultiRange(args.fields)
+        args.fields.zero_indexed = True
+
+    if args.channels is not None:
+        args.channels = [c.lower() for c in args.channels]
 
     return args
 
@@ -111,7 +118,8 @@ def export_channel(args: argparse.Namespace, field_of_view: pims.frame.Frame,
         inMicrons = True, forImageJ = True, ResolutionZ = resolutionZ)
 
 def export_field_3d(args: argparse.Namespace, field_of_view: pims.frame.Frame,
-    metadata: dict, field_id: int, bundle_axes: List[str]) -> None:
+    metadata: dict, field_id: int, bundle_axes: List[str],
+    channels: List[str] = None) -> None:
     if args.deltaZ is not None: resolutionZ = args.deltaZ
     else: resolutionZ = ND2Reader2.get_resolutionZ(args.input, field_id)
 
@@ -120,19 +128,28 @@ def export_field_3d(args: argparse.Namespace, field_of_view: pims.frame.Frame,
         export_channel(args, field_of_view, opath, metadata,
             bundle_axes, resolutionZ)
     else:
+        if channels is None:
+            channels = [c.lower() for c in metadata['channels']]
         for channel_id in range(field_of_view.shape[3]):
+            if not metadata['channels'][channel_id].lower() in channels:
+                continue
             opath = get_output_path(args, bundle_axes,
                 metadata, channel_id, field_id)
             export_channel(args, field_of_view[:, :, :, channel_id], opath,
                 metadata, bundle_axes, resolutionZ)
 
 def export_field_2d(args: argparse.Namespace, field_of_view: pims.frame.Frame,
-    metadata: dict, field_id: int, bundle_axes: List[str]) -> None:
+    metadata: dict, field_id: int, bundle_axes: List[str],
+    channels: List[str] = None) -> None:
     if "c" not in bundle_axes:
         opath = get_output_path(args, bundle_axes, metadata, 0, field_id)
         export_channel(args, field_of_view, opath, metadata, bundle_axes)
     else:
+        if channels is None:
+            channels = [c.lower() for c in metadata['channels']]
         for channel_id in range(field_of_view.shape[3]):
+            if not metadata['channels'][channel_id].lower() in channels:
+                continue
             opath = get_output_path(args, metadata, channel_id, field_id)
             export_channel(args, field_of_view[:, :, channel_id],
                 opath, metadata, bundle_axes)
@@ -152,22 +169,29 @@ def run(args: argparse.Namespace) -> None:
     if args.dry:
         sys.exit()
 
+    if args.channels is not None:
+        args.channels = [c for c in args.channels
+            if c in list(nd2I.get_channel_names())]
+        if 0 == len(args.channels):
+            logging.error("None of the specified channels was found.")
+        logging.info(f"Converting only the following channels: {args.channels}")
+
     export_fn = export_field_3d if nd2I.is3D() else export_field_2d
     if 1 == nd2I.field_count():
         if args.fields is not None:
             if not 1 in list(args.fields):
                 logging.warning("Skipped only available field " +
                     "(not included in specified field range.")
-        
         nd2I.set_axes_for_bundling()
-        export_fn(args, nd2I[0], nd2I.metadata, 0, nd2I.bundle_axes)
+        export_fn(args, nd2I[0], nd2I.metadata, 0, nd2I.bundle_axes,
+            args.channels)
     else:
         nd2I.iter_axes = 'v'
         nd2I.set_axes_for_bundling()
 
         if args.fields is not None:
             args.fields = list(args.fields)
-            logging.info("Exporting only following fields: " +
+            logging.info("Converting only the following fields: " +
                 f"{[x+1 for x in args.fields]}")
             field_generator = tqdm(args.fields)
         else: field_generator = tqdm(range(nd2I.sizes['v']))
@@ -178,7 +202,7 @@ def run(args: argparse.Namespace) -> None:
                     "(from specified field range, not available in nd2 file).")
             else:
                 export_fn(args, nd2I[field_id], nd2I.metadata,
-                    field_id, nd2I.bundle_axes)
+                    field_id, nd2I.bundle_axes, args.channels)
 
 def main():
     run(parse_arguments())
