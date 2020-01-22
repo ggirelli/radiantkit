@@ -8,6 +8,7 @@ matplotlib.use('ps')
 
 import argparse
 from ggc.args import check_threads
+from joblib import delayed, Parallel
 import logging
 import matplotlib.pyplot as plt
 import numpy as np
@@ -41,8 +42,8 @@ filename matching the --pattern. Use --range to change the in-focus definition.
         default = .5)
     parser.add_argument('-p', '--pattern', type = str, metavar = 'regexp',
         help = '''Provide a regular expression pattern matching the images in
-        the image folder that you want to check. Default: "^.*\.tif$"''',
-        default = "^.*\.tif$")
+        the image folder that you want to check. Default: "^.*\.tif(f)$"''',
+        default = "^.*\.tif(f)$")
     parser.add_argument('-t', '--threads', metavar = "nthreads", type = int,
         help = """Number of threads for parallelization. Default: 1""",
         default = 1)
@@ -103,7 +104,7 @@ def plot_profile(args: argparse.Namespace,
 
 def is_OOF(args: argparse.Namespace, ipath: str,
     logger: logging.RootLogger) -> pd.DataFrame:
-    I = imt.Image3D.read_tiff(os.path.join(args.imdir, ipath)).pixels
+    I = imt.Image3D.from_tiff(os.path.join(args.imdir, ipath)).pixels
 
     slice_descriptors = []
     for zi in range(I.shape[0]):
@@ -125,6 +126,7 @@ def is_OOF(args: argparse.Namespace, ipath: str,
         if max_slice_id <= (halfstack+halfrange):
             response = "in-focus"
     logger.info(f"{ipath} is {response}.")
+    profile_data['response'] = response
 
     if "out-of-focus" == response and args.rename:
         os.rename(os.path.join(args.imdir, ipath),
@@ -161,10 +163,11 @@ def run(args: argparse.Namespace, logger: logging.RootLogger) -> None:
 def main():
     args = parse_arguments()
 
-    FH = logging.FileHandler(
-        filename=f"{os.path.splitext(args.output)[0]}.log", mode="w+")
-    FH.setLevel(logging.INFO)
     logger = logging.getLogger()
-    logger.addHandler(FH)
+    if 1 == args.threads:
+        FH = logging.FileHandler(
+            filename=f"{os.path.splitext(args.output)[0]}.log", mode="w+")
+        FH.setLevel(logging.INFO)
+        logger.addHandler(FH)
 
     run(args, logger)
