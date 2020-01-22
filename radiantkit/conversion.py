@@ -31,9 +31,16 @@ class ND2Reader2(ND2Reader):
         if "c" in self.axes: return 1 < self.channel_count()
         return False
 
+    def get_channel_names(self) -> Iterable[str]:
+        for channel in self.metadata['channels']:
+            yield channel.lower()
+
     def channel_count(self) -> int:
-        if not 'c' in self.axes: return 1
-        return self.sizes['c']
+        if not 'c' in self.sizes: n = 1
+        else: n = self.sizes["c"]
+        assert (len(list(self.get_channel_names())) == n
+            ), "channel count mismatch."
+        return n
 
     def set_axes_for_bundling(self):
         if self.is3D():
@@ -86,7 +93,7 @@ class CziFile2(CziFile):
 
     def channel_count(self) -> int:
         if not 'C' in self.axes: n = 1
-        n = self.pixels.shape[self.axes.index("C")]
+        else: n = self.pixels.shape[self.axes.index("C")]
         assert (len(list(self.get_channel_names())) == n
             ), "channel count mismatch."
         return n

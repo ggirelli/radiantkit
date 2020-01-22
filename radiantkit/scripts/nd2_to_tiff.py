@@ -9,6 +9,7 @@ import os
 import pims
 from radiantkit.conversion import ND2Reader2
 import radiantkit.image as imt
+from radiantkit.string import MultiRange
 from string import Template
 import sys
 from tqdm import tqdm
@@ -52,11 +53,19 @@ double quotes, i.e., "\\$". Alternatively, use single quotes, i.e., '$'.
         help = """Template for output file name. See main description for more
         details. Default: '${channel_name}_${series_id}'""",
         default = "${channel_name}_${series_id}")
+    parser.add_argument('-f', '--fields', metavar = "fields", type = str,
+        help = """Extract only specified fields of view. Can be specified as
+        when specifying which pages to print. E.g., '1-2,5,8-9'.""",
+        default = None)
 
-    parser.add_argument('--compressed',
+    parser.add_argument('-c', '--compressed',
         action = 'store_const', dest = 'doCompress',
         const = True, default = False,
         help = 'Force compressed TIFF as output.')
+    parser.add_argument('-n', '--dry-run',
+        action = 'store_const', dest = 'dry',
+        const = True, default = False,
+        help = 'Describe input data and stop.')
 
     version = "0.0.1"
     parser.add_argument('--version', action = 'version',
@@ -64,10 +73,14 @@ double quotes, i.e., "\\$". Alternatively, use single quotes, i.e., '$'.
 
     args = parser.parse_args()
 
+    if args.fields is not None:
+        args.fields = MultiRange(args.fields)
+        args.fields.zero_indexed = True
+
     if args.outdir is None:
         args.outdir = os.path.splitext(os.path.basename(args.input))[0]
         args.outdir = os.path.join(os.path.dirname(args.input), args.outdir)
-        print(f"Output directory: '{args.outdir}'")
+        logging.info(f"Output directory: '{args.outdir}'")
 
     assert os.path.isfile(args.input), f"input file not found: {args.input}"
     assert not os.path.isfile(args.outdir
@@ -132,18 +145,40 @@ def run(args: argparse.Namespace) -> None:
     assert not nd2I.isLive(), "time-course conversion images not implemented."
     logging.info(f"Found {nd2I.field_count()} field(s) of view, " +
         f"with {nd2I.channel_count()} channel(s).")
+    logging.info(f"Channels: {list(nd2I.get_channel_names())}.")
+    if nd2I.is3D: logging.info("XYZ size: " + 
+        f"{nd2I.sizes['x']} x {nd2I.sizes['y']} x {nd2I.sizes['z']}")
+    else: logging.info(f"XY size: {nd2I.sizes['x']} x {nd2I.sizes['y']}")
+    if args.dry:
+        sys.exit()
 
     export_fn = export_field_3d if nd2I.is3D() else export_field_2d
     if 1 == nd2I.field_count():
+        if args.fields is not None:
+            if not 1 in list(args.fields):
+                logging.warning("Skipped only available field " +
+                    "(not included in specified field range.")
+        
         nd2I.set_axes_for_bundling()
         export_fn(args, nd2I[0], nd2I.metadata, 0, nd2I.bundle_axes)
     else:
         nd2I.iter_axes = 'v'
         nd2I.set_axes_for_bundling()
-        for field_id in tqdm(range(nd2I.sizes['v'])):
-            field_of_view = nd2I[field_id]
-            export_fn(args, field_of_view, nd2I.metadata,
-                field_id, nd2I.bundle_axes)
+
+        if args.fields is not None:
+            args.fields = list(args.fields)
+            logging.info("Exporting only following fields: " +
+                f"{[x+1 for x in args.fields]}")
+            field_generator = tqdm(args.fields)
+        else: field_generator = tqdm(range(nd2I.sizes['v']))
+
+        for field_id in field_generator:
+            if field_id >= nd2I.field_count():
+                logging.warning(f"Skipped field #{field_id+1}" +
+                    "(from specified field range, not available in nd2 file).")
+            else:
+                export_fn(args, nd2I[field_id], nd2I.metadata,
+                    field_id, nd2I.bundle_axes)
 
 def main():
     run(parse_arguments())
