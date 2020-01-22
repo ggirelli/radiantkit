@@ -199,7 +199,7 @@ def tiff_split(I: np.ndarray, side: List[int], step: List[int],
     inverted: bool = False) -> np.ndarray:
     if step is None: step = side
 
-    n = I.shape[-1]//side[0] * I.shape[-2]//side[1]
+    n = (I.shape[-1]//side[0]) * (I.shape[-2]//side[1])
     logging.info(f"Output {n} images.")
     if 0 == n: return
 
@@ -262,7 +262,7 @@ def save_settings(args: argparse.Namespace) -> None:
 
 def run(args: argparse.Namespace) -> None:
     logging.info("Reading input image...")
-    I = imt.Image.read_tiff(args.input).pixels
+    I = imt.ImageBase.from_tiff(args.input).pixels
 
     if 3 == len(I.shape):
         logging.info(f"3D stack found: {I.shape}")
@@ -295,7 +295,7 @@ def run(args: argparse.Namespace) -> None:
     image_counter = 1
     for sub_image in tiff_split(I, args.side, args.step, args.inverted):
         opath = os.path.join(args.outdir, f"{prefix}.sub{image_counter}{ext}")
-        imt.Image.save_tiff(opath, sub_image, imt.get_dtype(sub_image.max()),
+        imt.save_tiff(opath, sub_image, imt.get_dtype(sub_image.max()),
             compressed=False)
         image_counter += 1
 
