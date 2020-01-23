@@ -61,7 +61,7 @@ class Binarizer(BinarizerSettings):
 				f"with {len(mask.shape)} dimensions.")
 			return mask
 
-	def run(self, I: imt.ImageBase, mask2d: imt.ImageBinary2D=None) -> np.ndarray:
+	def run(self, I: imt.ImageBase, mask2d: imt.ImageBinary=None) -> np.ndarray:
 		if not self.do_global and not self.do_local:
 			self.logger.warning("no threshold applied.")
 			return I

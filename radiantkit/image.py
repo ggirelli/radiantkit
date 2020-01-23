@@ -3,6 +3,7 @@
 @contact: gigi.ga90@gmail.com
 '''
 
+from enum import auto, Enum
 import logging
 import numpy as np
 import os
@@ -19,6 +20,7 @@ from typing import List, Tuple, Union
 import warnings
 
 class ImageSettings(object):
+    __ALLOWED_AXES: str = "VCTZYX"
     _axes_order: str = "VCTZYX"
 
     def __init__(self):
@@ -46,6 +48,37 @@ class ImageBase(ImageSettings):
         if self._pixels is None and self._path_to_local is not None:
             self.load_from_local()
         return self._pixels
+
+    @property
+    def axes(self) -> str:
+        return self._axes_order
+
+    @axes.setter
+    def axes(self, new_axes: str) -> None:
+        assert all([c in self.__ALLOWED_AXES for c in new_axes])
+        assert all([1 == c.count(new_axes) for c in set(new_axes)])
+        if len(new_axes) < len(self.axes):
+            for c in self.axes:
+                if not c in new_axes:
+                    axes_id = self.axes.index(c)
+                    self._pixels = np.delete(self.pixels,
+                        slice(1, self.pixels.shape[axes_id]), axes_id)
+                    self._pixels = np.squeeze(self.pixels, axes_id)
+        
+        while len(new_axes) > len(self.axes):
+            for c in new_axes:
+                if not c in self.axes:
+                    self._axes_order = f"{c}{self.axes}"
+                    new_shape = [1]
+                    new_shape.extend(self._pixels.shape)
+                    self._pixels.shape = new_shape
+
+        if new_axes != self.axes:
+            assert len(new_axes) == len(self.axes)
+            assert all([c in new_axes for c in self.axes])
+            self._pixels = np.moveaxis(self.pixels, range(len(self.axes)),
+                [new_axes.index(c) for c in self.axes])
+            self._axes_order = new_axes
 
     @property
     def dtype(self) -> str:
@@ -114,25 +147,6 @@ class ImageLabeled(ImageBase):
     def clear_Z_borders(self) -> None:
         self._pixels = clear_Z_borders(self._pixels)
 
-class ImageLabeled2D(ImageLabeled):
-    _axes_order: str = "YX"
-    def __init__(self, pixels: np.ndarray, path: str=None,
-        doRelabel: bool=True):
-        super(Image3D, self).__init__(pixels, path, doRelabel)
-
-    @staticmethod
-    def from_tiff(self, path: str, doRelabel: bool=True) -> 'ImageLabeled2D':
-        return ImageLabeled2D(read_tiff(path), path, doRelabel)
-
-class ImageLabeled3D(ImageLabeled):
-    _axes_order: str = "ZYX"
-    def __init__(self):
-        super(Image3D, self).__init__()
-
-    @staticmethod
-    def from_tiff(self, path: str, doRelabel: bool=True) -> 'ImageLabeled3D':
-        return ImageLabeled3D(read_tiff(path), path, doRelabel)
-
 class ImageBinary(ImageBase):
     def __init__(self, pixels: np.ndarray, path: str=None,
         doRebinarize: bool=True):
@@ -177,26 +191,6 @@ class ImageBinary(ImageBase):
     def label(self) -> ImageLabeled:
         return ImageLabeled(self.pixels)
 
-class ImageBinary2D(ImageBinary):
-    _axes_order: str = "YX"
-    def __init__(self, pixels: np.ndarray, path: str=None,
-        doRebinarize: bool=True):
-        super(ImageBinary2D, self).__init__(pixels, path, doRebinarize)
-
-    @staticmethod
-    def from_tiff(path: str) -> 'ImageBinary2D':
-        return ImageBinary2D(read_tiff(path), path)
-
-class ImageBinary3D(ImageBinary):
-    _axes_order: str = "ZYX"
-    def __init__(self, pixels: np.ndarray, path: str=None,
-        doRebinarize: bool=True):
-        super(ImageBinary3D, self).__init__(pixels, path, doRebianrize)
-
-    @staticmethod
-    def from_tiff(path: str) -> 'ImageBinary3D':
-        return ImageBinary3D(read_tiff(path), path)
-
 class Image(ImageBase):
     __rescale_factor: float = 1.
 
@@ -228,24 +222,6 @@ class Image(ImageBase):
         method: str, mode: str, *args, **kwargs) -> ImageBinary:
         return ImageBinary(threshold_adaptive(self.pixels, block_size,
             method, mode, *args, **kwargs), doRebinarize=False)
-
-class Image2D(Image):
-    _axes_order: str = "YX"
-    def __init__(self, pixels: np.ndarray, path: str=None):
-        super(Image2D, self).__init__(pixels, path)
-
-    @staticmethod
-    def from_tiff(path: str) -> 'Image2D':
-        return Image2D(read_tiff(path), path)
-
-class Image3D(Image):
-    _axes_order: str = "ZYX"
-    def __init__(self, pixels: np.ndarray, path: str=None):
-        super(Image3D, self).__init__(pixels, path)
-
-    @staticmethod
-    def from_tiff(path: str) -> 'Image3D':
-        return Image3D(read_tiff(path), path)
 
 def get_huygens_rescaling_factor(path: str) -> float:
     basename,ext = tuple(os.path.splitext(os.path.basename(path)))
