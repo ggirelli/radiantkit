@@ -8,7 +8,7 @@ from czifile import CziFile
 from nd2reader import ND2Reader
 from nd2reader.parser import Parser as ND2Parser
 import numpy as np
-from typing import Iterable, Set, Tuple
+from typing import Iterable, Optional, Set, Tuple
 import warnings
 import xml.etree.ElementTree as ET
 
@@ -59,7 +59,7 @@ class ND2Reader2(ND2Reader):
             return set(np.round(np.diff(Zdata), 3))
 
 class CziFile2(CziFile):
-    __pixels: np.ndarray = None
+    __pixels: Optional[np.ndarray] = None
 
     def __init__(self, filename):
         super(CziFile2, self).__init__(filename)
@@ -127,7 +127,7 @@ class CziFile2(CziFile):
         self.axes =  bundle_axes
 
     def get_channel_pixels(self, args: argparse.Namespace,
-        field_id: int = None) -> Iterable[Tuple[np.ndarray, int]]:
+        field_id: Optional[int] = None) -> Iterable[Tuple[np.ndarray, int]]:
         if field_id is not None: field = self.pixels[field_id, :]
         else:
             assert "C" == self.axes[0]

@@ -4,11 +4,11 @@
 '''
 
 import re
-from typing import Iterator
+from typing import Iterator, Optional
 
 class MultiRange(object):
-    __string_range: str = None
-    __extremes_list: list = None
+    __string_range: Optional[str] = None
+    __extremes_list: Optional[list] = None
     __reg: re.Pattern = re.compile(r'^[0-9-, ]+$')
     zero_indexed = False
 

@@ -8,10 +8,10 @@ import numpy as np
 from radiantkit import const
 from radiantkit import image as imt
 from skimage.filters import threshold_otsu
-from typing import Tuple, Union
+from typing import Optional, Tuple, Union
 
 class BinarizerSettings(object):
-	segmentation_type: const.SegmentationType = None
+	segmentation_type: const.SegmentationType = const.SegmentationType(None)
 	do_global: bool = True
 	global_closing: bool = True
 	do_local: bool = True
@@ -24,7 +24,7 @@ class BinarizerSettings(object):
 	do_fill_holes: bool = True
 	radius_interval: Tuple[float] = (10., float('inf'))
 	min_z_size: Union[float,int] = .25
-	logger: log.Logger = None
+	logger: Optional[log.Logger] = None
 
 	def __init__(self, logger: log.Logger = log.getLogger("radiantkit")):
 		super(BinarizerSettings, self).__init__()
@@ -61,7 +61,8 @@ class Binarizer(BinarizerSettings):
 				f"with {len(mask.shape)} dimensions.")
 			return mask
 
-	def run(self, I: imt.ImageBase, mask2d: imt.ImageBinary=None) -> np.ndarray:
+	def run(self, I: imt.ImageBase,
+		mask2d: Optional[imt.ImageBinary]=None) -> np.ndarray:
 		if not self.do_global and not self.do_local:
 			self.logger.warning("no threshold applied.")
 			return I

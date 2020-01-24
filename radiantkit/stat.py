@@ -7,7 +7,7 @@ import numpy as np
 from scipy.signal import convolve
 from scipy import stats
 
-def gpartial(V, d, sigma):
+def gpartial(V: np.ndarray, d: int, sigma: float) -> np.ndarray:
     '''Calculate the partial derivative of V along dimension d using a filter
     of size sigma. Based on code by Erik Wernersson, PhD.'''
     w = round(8 * sigma + 2)
