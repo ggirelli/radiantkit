@@ -16,7 +16,7 @@ from skimage.morphology import closing, opening
 from skimage.morphology import dilation, erosion
 from skimage.segmentation import clear_border
 import tifffile
-from typing import List, Tuple, Union
+from typing import List, Optional, Tuple, Union
 import warnings
 
 class ImageSettings(object):
@@ -31,13 +31,19 @@ class ImageSettings(object):
         return len(self._axes_order)
 
 class ImageBase(ImageSettings):
-    _path_to_local: str = None
-    _pixels: np.ndarray = None
+    _path_to_local: Optional[str] = None
+    _pixels: Optional[np.ndarray] = None
 
-    def __init__(self, pixels: np.ndarray, path: str=None):
+    def __init__(self, pixels: np.ndarray, path: Optional[str]=None,
+        axes: Optional[str]=None):
         super(ImageSettings, self).__init__()
         self._pixels = pixels.copy()
         self._remove_empty_axes()
+        if axes is not None:
+            assert len(axes) == len(self.shape)
+            assert all([c in self.__ALLOWED_AXES for c in new_axes])
+            assert all([1 == c.count(new_axes) for c in set(new_axes)])
+            self._axes_order = axes
 
     @property
     def shape(self) -> Tuple[int]:
@@ -48,6 +54,14 @@ class ImageBase(ImageSettings):
         if self._pixels is None and self._path_to_local is not None:
             self.load_from_local()
         return self._pixels
+
+    @property
+    def dtype(self) -> str:
+        return get_dtype(self.pixels.max())
+
+    @property
+    def path(self):
+        return self._path_to_local
 
     @property
     def axes(self) -> str:
@@ -80,10 +94,6 @@ class ImageBase(ImageSettings):
                 [new_axes.index(c) for c in self.axes])
             self._axes_order = new_axes
 
-    @property
-    def dtype(self) -> str:
-        return get_dtype(self.pixels.max())
-
     @staticmethod
     def from_tiff(path: str) -> 'ImageBase':
         return ImageBase(read_tiff(path), path)
@@ -105,6 +115,9 @@ class ImageBase(ImageSettings):
     def z_project(self, projection_type: const.ProjectionType) -> np.ndarray:
         return z_project(self.pixels, projection_type)
 
+    def is_loadable(self) -> bool:
+        return self.path is not None and os.path.isfile(self.path)
+
     def load_from_local(self) -> None:
         assert self._path_to_local is not None
         assert os.path.isfile(self._path_to_local)
@@ -121,14 +134,15 @@ class ImageBase(ImageSettings):
         self._pixels = None
 
     def to_tiff(self, path: str, compressed: bool,
-        bundle_axes: str=None, inMicrons: bool=False,
-        ResolutionZ: float=None, forImageJ: bool=False, **kwargs) -> None:
+        bundle_axes: Optional[str]=None, inMicrons: bool=False,
+        ResolutionZ: Optional[float]=None, forImageJ:
+        bool=False, **kwargs) -> None:
         if bundle_axes is None: bundle_axes = self._axes_order
         save_tiff(path, self.pixels, self.dtype, compressed, bundle_axes,
             inMicrons, ResolutionZ, forImageJ, **kwargs)
 
 class ImageLabeled(ImageBase):
-    def __init__(self, pixels: np.ndarray, path: str=None,
+    def __init__(self, pixels: np.ndarray, path: Optional[str]=None,
         doRelabel: bool=True):
         super(ImageLabeled, self).__init__(pixels, path)
         if doRelabel: self._relabel()
@@ -148,7 +162,7 @@ class ImageLabeled(ImageBase):
         self._pixels = clear_Z_borders(self._pixels)
 
 class ImageBinary(ImageBase):
-    def __init__(self, pixels: np.ndarray, path: str=None,
+    def __init__(self, pixels: np.ndarray, path: Optional[str]=None,
         doRebinarize: bool=True):
         super(ImageBinary, self).__init__(pixels, path)
         if doRebinarize: self._rebinarize()
@@ -194,7 +208,7 @@ class ImageBinary(ImageBase):
 class Image(ImageBase):
     __rescale_factor: float = 1.
 
-    def __init__(self, pixels: np.ndarray, path: str=None):
+    def __init__(self, pixels: np.ndarray, path: Optional[str]=None):
         super(Image, self).__init__(pixels, path)
     
     @property
@@ -266,7 +280,7 @@ def extract_nd(I: np.ndarray, nd: int) -> np.ndarray:
 
 def save_tiff(path: str, I: np.ndarray, dtype: str, compressed: bool,
     bundle_axes: str="CTZYX", inMicrons: bool=False,
-    ResolutionZ: float=None, forImageJ: bool=False, **kwargs) -> None:
+    ResolutionZ: Optional[float]=None, forImageJ: bool=False, **kwargs) -> None:
     
     while len(bundle_axes) > len(I.shape):
         new_shape = [1]
@@ -278,7 +292,7 @@ def save_tiff(path: str, I: np.ndarray, dtype: str, compressed: bool,
 
     metadata = {'axes' : bundle_axes}
     if inMicrons: metadata['unit'] = "um"
-    if not type(None) == ResolutionZ: metadata['spacing'] = ResolutionZ
+    if ResolutionZ is not None: metadata['spacing'] = ResolutionZ
 
     if compressed:
         tifffile.imsave(path, I.astype(dtype),
