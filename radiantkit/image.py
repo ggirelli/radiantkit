@@ -169,7 +169,7 @@ class ImageBinary(ImageBase):
         assert 1 == self._pixels.max()
 
     @staticmethod
-    def from_tiff(self, path: str, doRebinarize: bool=True) -> 'ImageBinary':
+    def from_tiff(path: str, doRebinarize: bool=True) -> 'ImageBinary':
         return ImageBinary(read_tiff(path), path, doRebinarize)
 
     def _rebinarize(self) -> None:

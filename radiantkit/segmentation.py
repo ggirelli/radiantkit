@@ -11,7 +11,8 @@ from skimage.filters import threshold_otsu
 from typing import Optional, Tuple, Union
 
 class BinarizerSettings(object):
-	segmentation_type: const.SegmentationType = const.SegmentationType(None)
+	segmentation_type: const.SegmentationType = (
+		const.SegmentationType.get_default())
 	do_global: bool = True
 	global_closing: bool = True
 	do_local: bool = True
