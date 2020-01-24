@@ -20,7 +20,7 @@ from typing import List, Optional, Tuple, Union
 import warnings
 
 class ImageSettings(object):
-    __ALLOWED_AXES: str = "VCTZYX"
+    _ALLOWED_AXES: str = "VCTZYX"
     _axes_order: str = "VCTZYX"
 
     def __init__(self):
@@ -37,13 +37,16 @@ class ImageBase(ImageSettings):
     def __init__(self, pixels: np.ndarray, path: Optional[str]=None,
         axes: Optional[str]=None):
         super(ImageSettings, self).__init__()
+        assert len(pixels.shape) <= len(self._ALLOWED_AXES)
         self._pixels = pixels.copy()
         self._remove_empty_axes()
         if axes is not None:
             assert len(axes) == len(self.shape)
-            assert all([c in self.__ALLOWED_AXES for c in new_axes])
+            assert all([c in self._ALLOWED_AXES for c in new_axes])
             assert all([1 == c.count(new_axes) for c in set(new_axes)])
             self._axes_order = axes
+        else:
+            self._axes_order = self._ALLOWED_AXES[-len(self.shape):]
 
     @property
     def shape(self) -> Tuple[int]:
