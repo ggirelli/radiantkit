@@ -33,7 +33,7 @@ class MultiRange(object):
             self.__extremes_list, key = lambda x: x[0])
         self.__clean_extremes_list()
 
-    def __clean_extremes_list(self):
+    def __clean_extremes_list(self) -> None:
         is_clean = False
         while not is_clean:
             popped = 0
