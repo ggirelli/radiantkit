@@ -10,13 +10,13 @@ class MultiRange(object):
     __string_range: Optional[str] = None
     __extremes_list: Optional[list] = None
     __reg: re.Pattern = re.compile(r'^[0-9-, ]+$')
-    zero_indexed = False
 
     def __init__(self, s: str):
         super(MultiRange, self).__init__()
+
         assert (self.__reg.search(s) is not None
             ), ("cannot parse range string. " +
-            "It should only contains numbers, commas, dashes, and spaces.")[0]
+            "It should only contains numbers, commas, dashes, and spaces.",)[0]
         self.__string_range = s
 
         string_range_list = [b.strip() for b in self.__string_range.split(",")]
@@ -56,7 +56,7 @@ class MultiRange(object):
     def __next__(self) -> int:
         for extremes in self.__extremes_list:
             for i in range(extremes[0], extremes[1]+1):
-                yield i - self.zero_indexed
+                yield i
 
     def __iter__(self) -> Iterator[int]:
         return self.__next__()
