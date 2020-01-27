@@ -6,6 +6,7 @@
 import logging
 import numpy as np
 from radiantkit import const
+from radiantkit.image import inherit_labels
 from radiantkit.image import ImageBase, ImageBinary, ImageLabeled
 from skimage.filters import threshold_otsu
 from typing import Optional, Tuple, Type, Union
@@ -44,26 +45,8 @@ class Binarizer(BinarizerSettings):
 		logger: logging.Logger = logging.getLogger("radiantkit")):
 		super(Binarizer, self).__init__(logger)
 
-	@staticmethod
-	def inherit_labels(mask: np.ndarray, mask2d: np.ndarray) -> np.ndarray:
-		assert 2 == len(mask2d.shape)
-		if 2 == len(mask.shape):
-			assert mask2d.shape == mask.shape
-			return mask2d[np.logical_and(mask>0, mask2d>0)]
-		elif 3 == len(mask.shape):
-			assert mask2d.shape == mask[-2:].shape
-			new_mask = mask.copy()
-			for slice_id in range(mask.shape[0]):
-				new_mask[slice_id,:,:] = mask2d[np.logical_and(
-					mask[slice_id,:,:]>0, mask2d>0)]
-			return new_mask
-		else:
-			self.logger.warning("mask combination not allowed for images " +
-				f"with {len(mask.shape)} dimensions.")
-			return mask
-
 	def run(self, I: Type[ImageBase],
-		mask2d: Optional[ImageBinary]=None) -> ImageBinary:
+		mask2d: Optional[Union[ImageBinary, ImageLabeled]]=None) -> ImageBinary:
 		if not self.do_global and not self.do_local:
 			self.logger.warning("no threshold applied.")
 			return I
@@ -97,7 +80,7 @@ class Binarizer(BinarizerSettings):
 
 		if mask2d is not None:
 			logging.info("combining with 2D mask")
-			mask.logical_and(ImageBinary(mask2d))
+			mask.logical_and(ImageBinary(mask2d.pixels))
 
 		mask = ImageLabeled(mask.pixels)
 		if self.do_clear_XY_borders:
@@ -112,10 +95,5 @@ class Binarizer(BinarizerSettings):
 			logging.info("filling holes")
 			mask.fill_holes()
 
-		if mask2d is not None:
-			logging.info("recovering labels from 2D mask")
-			mask = self.inherit_labels(mask.pixels, mask2d.pixels)
-		else: mask = mask.pixels
-
-		return ImageBinary(mask)
+		return mask
 

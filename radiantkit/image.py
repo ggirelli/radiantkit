@@ -185,18 +185,39 @@ class ImageLabeled(ImageBase):
             for axis in self.axes if axis not in axes])
         return (self.pixels == lab).max(axes_ids).sum()
 
-    def filter_size(self, axes: str,
-        pass_range: Tuple[Union[int,float]]) -> None:
+    def __remove_labels_by_size(self, labels: List[int],
+        sizes: List[int], pass_range: Tuple[Union[int,float]],
+        axes: str="total") -> None:
         assert 2 == len(pass_range)
         assert pass_range[0] <= pass_range[1]
-        labels,sizes = np.unique(self.pixels, return_counts=True)
+
+        sizes = np.array(sizes)
+        labels = np.array(labels)
         filtered = np.logical_or(sizes < pass_range[0], sizes > pass_range[1])
+
         logging.info(f"removing {filtered.sum()}/{self.max} labels " +
             f"outside of {axes} size range {pass_range}")
-        logging.debug(labels[filtered])
+        logging.debug(np.array((labels, sizes)))
         self._pixels[np.isin(self.pixels, labels[filtered])] = 0
         self._pixels = label(self.pixels)
         logging.info(f"retained {self.max} labels")
+
+    def filter_size(self, axes: str,
+        pass_range: Tuple[Union[int,float]]) -> None:
+        labels = np.unique(self.pixels)
+        labels = labels[0 != labels]
+        sizes = []
+        for current_label in labels:
+            logging.debug(f"Calculating {axes} size for label {current_label}")
+            sizes.append(self.size(current_label, axes))
+        self.__remove_labels_by_size(labels, sizes, pass_range, axes)
+
+    def filter_total_size(self, pass_range: Tuple[Union[int,float]]) -> None:
+        labels, sizes = np.unique(self.pixels, return_counts=True)
+        self.__remove_labels_by_size(labels, sizes, pass_range)
+
+    def inherit_labels(self, mask2d: 'ImageLabeled') -> None:
+        self._pixels = inherit_labels(self, mask2d)
 
 class ImageBinary(ImageBase):
     def __init__(self, pixels: np.ndarray, path: Optional[str]=None,
@@ -215,17 +236,17 @@ class ImageBinary(ImageBase):
     def fill_holes(self) -> None:
         self._pixels = fill_holes(self.pixels)
 
-    def close(self) -> None:
-        self._pixels = closing2(self.pixels)
+    def close(self, block_side: int=3) -> None:
+        self._pixels = closing2(self.pixels, block_side)
 
-    def open(self) -> None:
-        self._pixels = opening2(self.pixels)
+    def open(self, block_side: int=3) -> None:
+        self._pixels = opening2(self.pixels, block_side)
 
-    def dilate(self) -> None:
-        self._pixels = dilate(self.pixels)
+    def dilate(self, block_side: int=3) -> None:
+        self._pixels = dilate(self.pixels, block_side)
 
-    def erode(self) -> None:
-        self._pixels = erode(self.pixels)
+    def erode(self, block_side: int=3) -> None:
+        self._pixels = erode(self.pixels, block_side)
 
     def logical_and(self, B: 'ImageBinary') -> None:
         self._pixels = np.logical_and(self.pixels, B.pixels)
@@ -241,6 +262,15 @@ class ImageBinary(ImageBase):
 
     def label(self) -> ImageLabeled:
         return ImageLabeled(self.pixels)
+
+    def to_tiff(self, path: str, compressed: bool,
+        bundle_axes: Optional[str]=None, inMicrons: bool=False,
+        ResolutionZ: Optional[float]=None, forImageJ:
+        bool=False, **kwargs) -> None:
+        if bundle_axes is None: bundle_axes = self._axes_order
+        save_tiff(path, self.pixels*np.iinfo(self.dtype).max, self.dtype,
+            compressed, bundle_axes, inMicrons, ResolutionZ, forImageJ,
+            **kwargs)
 
 class Image(ImageBase):
     _rescale_factor: float = 1.
@@ -385,45 +415,45 @@ def fill_holes(mask: np.ndarray) -> np.ndarray:
             f"{len(mask.shape)} dimensions.")
     return mask
 
-def closing2(mask: np.ndarray) -> np.ndarray:
+def closing2(mask: np.ndarray, block_side: int=3) -> np.ndarray:
     assert 1 == mask.max()
     if 2 == len(mask.shape):
-        mask = closing(mask, square(3))
+        mask = closing(mask, square(block_side))
     elif 3 == len(mask.shape):
-        mask = closing(mask, cube(3))
+        mask = closing(mask, cube(block_side))
     else:
         logging.info("Close operation not implemented for images with " +
             f"{len(mask.shape)} dimensions.")
     return mask
 
-def opening2(mask: np.ndarray) -> np.ndarray:
+def opening2(mask: np.ndarray, block_side: int=3) -> np.ndarray:
     assert 1 == mask.max()
     if 2 == len(mask.shape):
-        mask = opening(mask, square(3))
+        mask = opening(mask, square(block_side))
     elif 3 == len(mask.shape):
-        mask = opening(mask, cube(3))
+        mask = opening(mask, cube(block_side))
     else:
         logging.info("Open operation not implemented for images with " +
             f"{len(mask.shape)} dimensions.")
     return mask
 
-def dilate(mask: np.ndarray) -> np.ndarray:
+def dilate(mask: np.ndarray, block_side: int=3) -> np.ndarray:
     assert 1 == mask.max()
     if 2 == len(mask.shape):
-        mask = dilation(mask, square(3))
+        mask = dilation(mask, square(block_side))
     elif 3 == len(mask.shape):
-        mask = dilation(mask, cube(3))
+        mask = dilation(mask, cube(block_side))
     else:
         logging.info("Dilate operation not implemented for images with " +
             f"{len(mask.shape)} dimensions.")
     return mask
 
-def erode(mask: np.ndarray) -> np.ndarray:
+def erode(mask: np.ndarray, block_side: int=3) -> np.ndarray:
     assert 1 == mask.max()
     if 2 == len(mask.shape):
-        mask = erosion(mask, square(3))
+        mask = erosion(mask, square(block_side))
     elif 3 == len(mask.shape):
-        mask = erosion(mask, cube(3))
+        mask = erosion(mask, cube(block_side))
     else:
         logging.info("Erode operation not implemented for images with " +
             f"{len(mask.shape)} dimensions.")
@@ -459,3 +489,21 @@ def clear_Z_borders(L: np.ndarray) -> np.ndarray:
         logging.warning("Z border clearing not implemented for images " +
             f"with {len(L.shape)} dimensions.")
         return L
+
+def inherit_labels(mask: Union[ImageBinary, ImageLabeled],
+    mask2d: Union[ImageBinary, ImageLabeled]) -> ImageLabeled:
+    assert 2 == len(mask2d.shape)
+    if 2 == len(mask.shape):
+        assert mask2d.shape == mask.shape
+        return mask2d.pixels[np.logical_and(mask.pixels>0, mask2d.pixels>0)]
+    elif 3 == len(mask.shape):
+        assert mask2d.shape == mask[-2:].shape
+        new_mask = mask.pixels.copy()
+        for slice_id in range(mask.shape[0]):
+            new_mask[slice_id,:,:] = mask2d.pixels[np.logical_and(
+                mask.pixels[slice_id,:,:]>0, mask2d.pixels>0)]
+        return ImageLabeled(new_mask, doRelabel=False)
+    else:
+        self.logger.warning("mask combination not allowed for images " +
+            f"with {len(mask.shape)} dimensions.")
+        return mask

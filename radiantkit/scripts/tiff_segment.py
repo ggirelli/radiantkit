@@ -63,8 +63,8 @@ objects with different intensity levels.
         to combine with 3D masks.""",  metavar = "MAN2DDIR")
     parser.add_argument('-F', '--dilate-fill-erode', type = int,
         metavar = "DFE", help = """Number of pixels for dilation/erosion in a
-        dilate-fill-erode operation. Default: 10. Set to 0 to skip.""",
-        default = 10)
+        dilate-fill-erode operation. Default: 0. Set to 0 to skip.""",
+        default = 0)
 
     parser.add_argument('--clear-Z',
         action = 'store_const', dest = 'do_clear_Z',
@@ -152,7 +152,10 @@ def confirm_arguments(args: argparse.Namespace) -> None:
 def run_segmentation(args: argparse.Namespace,
     imgpath: str, imgdir: str) -> None:
     I = Image.from_tiff(os.path.join(imgdir, imgpath))
+    logging.info(f"Image axes: {I.axes}")
+    logging.info(f"Image shape: {I.shape}")
     I.rescale_factor = I.get_huygens_rescaling_factor()
+    logging.info(f"Rescaling factor: {I.rescale_factor}")
 
     binarizer = segmentation.Binarizer()
     binarizer.segmentation_type = const.SegmentationType.THREED
@@ -166,18 +169,41 @@ def run_segmentation(args: argparse.Namespace,
             mask2_path = os.path.join(
                 args.manual_2d_masks, os.path.basename(imgpath))
             if os.path.isfile(mask2d_path):
-                mask2d = ImageBinary.from_tiff(mask2_path, axes="YX").pixels
+                mask2d = ImageLabeled.from_tiff(mask2_path, axes="YX",
+                    doRelabel=False)
 
-    L = binarizer.run(I, mask2d).label()
+    M = binarizer.run(I, mask2d)
+
+    if 0 != args.dilate_fill_erode:
+        logging.info("dilating")
+        M.dilate(args.dilate_fill_erode)
+        logging.info("filling")
+        M.fill_holes()
+        logging.info("eroding")
+        M.erode(args.dilate_fill_erode)
+    logging.info("labeling")
+    L = M.label()
 
     xy_size_range = (np.pi*args.radius[0]**2, np.pi*args.radius[1]**2)
-    logging.info(f"Filtering XY size: {xy_size_range}")
+    logging.info(f"filtering XY size: {xy_size_range}")
     L.filter_size("XY", xy_size_range)
     z_size_range = (args.min_Z*I.axis_shape("Z"), np.inf)
-    logging.info(f"Filtering Z size: {z_size_range}")
+    logging.info(f"filtering Z size: {z_size_range}")
     L.filter_size("Z", z_size_range)
 
-    print(L.pixels.max())
+    if mask2d is not None:
+        logging.info("recovering labels from 2D mask")
+        L.inherit_labels(mask2d)
+
+    if not args.labeled:
+        logging.info("writing binary output")
+        M = ImageBinary(L.pixels)
+        M.to_tiff(os.path.join(args.outFolder, f"{args.outprefix}{imgpath}"),
+            args.compressed)
+    else:
+        logging.info("writing labeled output")
+        L.to_tiff(os.path.join(args.outFolder, f"{args.outprefix}{imgpath}"),
+            args.compressed)
 
 def run(args: argparse.Namespace) -> None:
     imglist = [f for f in os.listdir(args.imgFolder) 
