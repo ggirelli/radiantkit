@@ -6,9 +6,9 @@
 import logging as log
 import numpy as np
 from radiantkit import const
-from radiantkit import image as imt
+from radiantkit.image import ImageBase, ImageBinary, ImageLabeled
 from skimage.filters import threshold_otsu
-from typing import Optional, Tuple, Union
+from typing import Optional, Tuple, Type, Union
 
 class BinarizerSettings(object):
 	segmentation_type: const.SegmentationType = (
@@ -62,8 +62,8 @@ class Binarizer(BinarizerSettings):
 				f"with {len(mask.shape)} dimensions.")
 			return mask
 
-	def run(self, I: imt.ImageBase,
-		mask2d: Optional[imt.ImageBinary]=None) -> np.ndarray:
+	def run(self, I: Type[ImageBase],
+		mask2d: Optional[ImageBinary]=None) -> ImageBinary:
 		if not self.do_global and not self.do_local:
 			self.logger.warning("no threshold applied.")
 			return I
@@ -94,15 +94,15 @@ class Binarizer(BinarizerSettings):
 			mask.pop(1)
 		mask = mask[0]
 
-		if mask2d is not None: mask.logical_and(imt.ImageBinary(mask2d))
-		mask = imt.ImageLabeled(mask)
+		if mask2d is not None: mask.logical_and(ImageBinary(mask2d))
+		mask = ImageLabeled(mask)
 		if self.do_clear_XY_borders: mask.do_clear_XY_borders()
 		if self.do_clear_Z_borders: mask.do_clear_Z_borders()
-		mask = imt.ImageBinary(mask)
+		mask = ImageBinary(mask)
 		if self.do_fill_holes: mask.fill_holes()
 		if mask2d is not None:
 			mask = self.inherit_labels(mask.pixels, mask2d.pixels)
 		else: mask = mask.pixels
 
-		return mask
+		return ImageBinary(mask)
 
