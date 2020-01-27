@@ -17,7 +17,7 @@ class BinarizerSettings(object):
 	global_closing: bool = True
 	do_local: bool = True
 	_local_side: int = 101
-	local_method: str = 'median'
+	local_method: str = 'gaussian'
 	local_mode: str = 'constant'
 	local_closing: bool = True
 	do_clear_XY_borders: bool = True

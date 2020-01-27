@@ -357,6 +357,7 @@ def threshold_adaptive(I: np.ndarray, block_size: int,
     elif 3 == len(I.shape):
         mask = I.copy()
         for slice_id in range(mask.shape[0]):
+            logging.debug(f"ADAPT_THR SLICE#({slice_id})")
             mask[slice_id, :, :] = threshold_adaptive_slice(
                 mask[slice_id, :, :], block_size, method, mode,
                 *args, **kwargs)
