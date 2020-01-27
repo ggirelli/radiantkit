@@ -141,7 +141,7 @@ def confirm_arguments(args: argparse.Namespace) -> None:
 	    export_settings(OH, settings_string)
 
 def run_segmentation(imgpath: str, imgdir: str) -> None:
-	I = imt.Image3D.from_tiff(imgpath)
+	I = imt.Image.from_tiff(imgpath)
 	I.rescale_factor = I.get_huygens_rescaling_factor()
 
 	binarizer = segmentation.Binarizer()
@@ -156,7 +156,7 @@ def run_segmentation(imgpath: str, imgdir: str) -> None:
 			mask2_path = os.path.join(
 				args.manual_2d_masks, os.path.basename(imgpath))
 			if os.path.isfile(mask2d_path):
-				mask2d = imt.ImageBinary2D.from_tiff(mask2_path).pixels
+				mask2d = imt.ImageBinary.from_tiff(mask2_path, axes="YX").pixels
 
 	mask = binarizer.run(I.pixels, mask2d)
 

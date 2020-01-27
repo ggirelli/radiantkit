@@ -33,6 +33,8 @@ class MultiRange(object):
             self.__extremes_list, key = lambda x: x[0])
         self.__clean_extremes_list()
 
+        assert 0 < self.__extremes_list[0][0], "'page' count starts from 1."
+
     def __clean_extremes_list(self) -> None:
         is_clean = False
         while not is_clean:

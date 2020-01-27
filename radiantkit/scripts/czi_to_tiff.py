@@ -135,29 +135,29 @@ def run(args: argparse.Namespace) -> None:
     if args.fields is not None:
         args.fields = list(args.fields)
         logging.info("Converting only the following fields: " +
-            f"{[x+1 for x in args.fields]}")
+            f"{[x for x in args.fields]}")
 
     def field_generator(CZI: CziFile2, fields, channels):
         if fields is None: fields = range(CZI.field_count())
         if channels is None: channels = list(CZI.get_channel_names())
         for field_id in fields:
-            if field_id >= CZI.field_count():
-                logging.warning(f"Skipped field #{field_id+1}" +
+            if field_id-1 >= CZI.field_count():
+                logging.warning(f"Skipped field #{field_id}" +
                     "(from specified field range, not available in czi file).")
                 continue
-            for yieldedValue in CZI.get_channel_pixels(args, field_id):
+            for yieldedValue in CZI.get_channel_pixels(args, field_id-1):
                 channel_pixels, channel_id = yieldedValue
                 if not list(CZI.get_channel_names())[channel_id ] in channels:
                     continue
                 yield (channel_pixels,
-                    get_output_path(args, CZI, channel_id, field_id))
+                    get_output_path(args, CZI, channel_id, field_id-1))
 
     export_total = min(CZI.field_count()*CZI.channel_count(),
         len(list(args.fields))*len(args.channels))
     for (OI, opath) in tqdm(field_generator(CZI, args.fields, args.channels),
         total=export_total):
         imt.save_tiff(os.path.join(args.outdir, opath),
-            OI, imt.get_dtype(OI.max()), args.doCompress, bundled_axes = "TZYX",
+            OI, imt.get_dtype(OI.max()), args.doCompress, bundle_axes = "TZYX",
             resolution = (1e-6/resolution["X"], 1e-6/resolution["Y"]),
             inMicrons = True, ResolutionZ = resolution["Z"]*1e6)
 

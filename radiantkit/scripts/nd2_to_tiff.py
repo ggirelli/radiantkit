@@ -194,17 +194,17 @@ def run(args: argparse.Namespace) -> None:
         if args.fields is not None:
             args.fields = list(args.fields)
             logging.info("Converting only the following fields: " +
-                f"{[x+1 for x in args.fields]}")
+                f"{[x for x in args.fields]}")
             field_generator = tqdm(args.fields)
         else: field_generator = tqdm(range(nd2I.sizes['v']))
 
         for field_id in field_generator:
-            if field_id >= nd2I.field_count():
-                logging.warning(f"Skipped field #{field_id+1}" +
+            if field_id-1 >= nd2I.field_count():
+                logging.warning(f"Skipped field #{field_id}" +
                     "(from specified field range, not available in nd2 file).")
             else:
-                export_fn(args, nd2I[field_id], nd2I.metadata,
-                    field_id, nd2I.bundle_axes, args.channels)
+                export_fn(args, nd2I[field_id-1], nd2I.metadata,
+                    field_id-1, nd2I.bundle_axes, args.channels)
 
 def main():
     run(parse_arguments())

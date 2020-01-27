@@ -146,8 +146,8 @@ class ImageBase(ImageSettings):
 
 class ImageLabeled(ImageBase):
     def __init__(self, pixels: np.ndarray, path: Optional[str]=None,
-        doRelabel: bool=True):
-        super(ImageLabeled, self).__init__(pixels, path)
+        axes: Optional[str]=None, doRelabel: bool=True):
+        super(ImageLabeled, self).__init__(pixels, path, axes)
         if doRelabel: self._relabel()
 
     @staticmethod
@@ -166,8 +166,8 @@ class ImageLabeled(ImageBase):
 
 class ImageBinary(ImageBase):
     def __init__(self, pixels: np.ndarray, path: Optional[str]=None,
-        doRebinarize: bool=True):
-        super(ImageBinary, self).__init__(pixels, path)
+        axes: Optional[str]=None, doRebinarize: bool=True):
+        super(ImageBinary, self).__init__(pixels, path, axes)
         if doRebinarize: self._rebinarize()
         assert 1 == self._pixels.max()
 
@@ -211,8 +211,9 @@ class ImageBinary(ImageBase):
 class Image(ImageBase):
     __rescale_factor: float = 1.
 
-    def __init__(self, pixels: np.ndarray, path: Optional[str]=None):
-        super(Image, self).__init__(pixels, path)
+    def __init__(self, pixels: np.ndarray, path: Optional[str]=None,
+        axes: Optional[str]=None):
+        super(Image, self).__init__(pixels, path, axes)
     
     @property
     def rescale_factor(self) -> float:
