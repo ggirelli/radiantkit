@@ -3,7 +3,7 @@
 @contact: gigi.ga90@gmail.com
 '''
 
-import logging as log
+import logging
 import numpy as np
 from radiantkit import const
 from radiantkit.image import ImageBase, ImageBinary, ImageLabeled
@@ -23,9 +23,10 @@ class BinarizerSettings(object):
 	do_clear_XY_borders: bool = True
 	do_clear_Z_borders: bool = False
 	do_fill_holes: bool = True
-	logger: Optional[log.Logger] = None
+	logger: Optional[logging.Logger] = None
 
-	def __init__(self, logger: log.Logger = log.getLogger("radiantkit")):
+	def __init__(self,
+		logger: logging.Logger = logging.getLogger("radiantkit")):
 		super(BinarizerSettings, self).__init__()
 		self.logger = logger
 
@@ -39,7 +40,8 @@ class BinarizerSettings(object):
 		self._local_side = value
 
 class Binarizer(BinarizerSettings):
-	def __init__(self, logger: log.Logger = log.getLogger("radiantkit")):
+	def __init__(self,
+		logger: logging.Logger = logging.getLogger("radiantkit")):
 		super(Binarizer, self).__init__(logger)
 
 	@staticmethod
@@ -93,13 +95,25 @@ class Binarizer(BinarizerSettings):
 			mask.pop(1)
 		mask = mask[0]
 
-		if mask2d is not None: mask.logical_and(ImageBinary(mask2d))
-		mask = ImageLabeled(mask)
-		if self.do_clear_XY_borders: mask.do_clear_XY_borders()
-		if self.do_clear_Z_borders: mask.do_clear_Z_borders()
-		mask = ImageBinary(mask)
-		if self.do_fill_holes: mask.fill_holes()
 		if mask2d is not None:
+			logging.info("combining with 2D mask")
+			mask.logical_and(ImageBinary(mask2d))
+
+		mask = ImageLabeled(mask.pixels)
+		if self.do_clear_XY_borders:
+			logging.info("clearing XY borders")
+			mask.clear_XY_borders()
+		if self.do_clear_Z_borders:
+			logging.info("clearing Z borders")
+			mask.clear_Z_borders()
+
+		mask = ImageBinary(mask.pixels)
+		if self.do_fill_holes:
+			logging.info("filling holes")
+			mask.fill_holes()
+
+		if mask2d is not None:
+			logging.info("recovering labels from 2D mask")
 			mask = self.inherit_labels(mask.pixels, mask2d.pixels)
 		else: mask = mask.pixels
 

@@ -8,9 +8,10 @@ from ggc.prompt import ask
 from ggc.args import check_threads, export_settings
 from joblib import delayed, Parallel
 import logging
+import numpy as np
 import os
 from radiantkit import const, segmentation
-from radiantkit import image as imt
+from radiantkit.image import Image, ImageBinary, ImageLabeled
 import re
 import sys
 from tqdm import tqdm
@@ -150,7 +151,7 @@ def confirm_arguments(args: argparse.Namespace) -> None:
 
 def run_segmentation(args: argparse.Namespace,
     imgpath: str, imgdir: str) -> None:
-    I = imt.Image.from_tiff(os.path.join(imgdir, imgpath))
+    I = Image.from_tiff(os.path.join(imgdir, imgpath))
     I.rescale_factor = I.get_huygens_rescaling_factor()
 
     binarizer = segmentation.Binarizer()
@@ -165,15 +166,16 @@ def run_segmentation(args: argparse.Namespace,
             mask2_path = os.path.join(
                 args.manual_2d_masks, os.path.basename(imgpath))
             if os.path.isfile(mask2d_path):
-                mask2d = imt.ImageBinary.from_tiff(mask2_path, axes="YX").pixels
+                mask2d = ImageBinary.from_tiff(mask2_path, axes="YX").pixels
 
-    M = binarizer.run(I, mask2d)
-    L = ImageLabeled(M)
+    L = binarizer.run(I, mask2d).label()
 
     xy_size_range = (np.pi*args.radius[0]**2, np.pi*args.radius[1]**2)
-    L.filter_size(xy_size_range, "XY")
-    z_size_range = (args.min_Z*I.axis_shape("Z", np.inf))
-    L.filter_size(z_size_range, "Z")
+    logging.info(f"Filtering XY size: {xy_size_range}")
+    L.filter_size("XY", xy_size_range)
+    z_size_range = (args.min_Z*I.axis_shape("Z"), np.inf)
+    logging.info(f"Filtering Z size: {z_size_range}")
+    L.filter_size("Z", z_size_range)
 
     print(L.pixels.max())
 

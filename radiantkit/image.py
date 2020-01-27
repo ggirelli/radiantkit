@@ -8,6 +8,7 @@ import logging
 import numpy as np
 import os
 from radiantkit import const
+from scipy import ndimage as ndi
 from skimage import filters
 from skimage.io import imread
 from skimage.measure import label
@@ -154,6 +155,10 @@ class ImageLabeled(ImageBase):
         super(ImageLabeled, self).__init__(pixels, path, axes)
         if doRelabel: self._relabel()
 
+    @property
+    def max(self):
+        return self.pixels.max()
+
     @staticmethod
     def from_tiff(self, path: str, doRelabel: bool=True) -> 'ImageLabeled':
         return ImageLabeled(read_tiff(path), path, doRelabel)
@@ -175,61 +180,64 @@ class ImageLabeled(ImageBase):
         return self.size(lab, "Z")
 
     def size(self, lab: int, axes: str) -> int:
-        assert all([axis in self.mask.axes for axis in axes])
-        axes_ids = tuple([self.mask.axes.index(axis)
-            for axis in self.mask.axes if axis not in axes])
-        return (self.mask.pixels == lab).max(axes_ids).sum()
+        assert all([axis in self.axes for axis in axes])
+        axes_ids = tuple([self.axes.index(axis)
+            for axis in self.axes if axis not in axes])
+        return (self.pixels == lab).max(axes_ids).sum()
 
     def filter_size(self, axes: str,
         pass_range: Tuple[Union[int,float]]) -> None:
         assert 2 == len(pass_range)
         assert pass_range[0] <= pass_range[1]
-        for current_label in range(1, self.pixels.max()):
-            current_size = self.size(current_label, axes)
-            if current_size < pass_range[0] or current_size > pass_range[1]:
-                self.pixels[self.pixels == current_label] = 0
-        self.pixels = label(self.pixels)
+        labels,sizes = np.unique(self.pixels, return_counts=True)
+        filtered = np.logical_or(sizes < pass_range[0], sizes > pass_range[1])
+        logging.info(f"removing {filtered.sum()}/{self.max} labels " +
+            f"outside of {axes} size range {pass_range}")
+        logging.debug(labels[filtered])
+        self._pixels[np.isin(self.pixels, labels[filtered])] = 0
+        self._pixels = label(self.pixels)
+        logging.info(f"retained {self.max} labels")
 
 class ImageBinary(ImageBase):
     def __init__(self, pixels: np.ndarray, path: Optional[str]=None,
         axes: Optional[str]=None, doRebinarize: bool=True):
         super(ImageBinary, self).__init__(pixels, path, axes)
         if doRebinarize: self._rebinarize()
-        assert 1 == self._pixels.max()
+        assert 1 == self.pixels.max()
 
     @staticmethod
     def from_tiff(path: str, doRebinarize: bool=True) -> 'ImageBinary':
         return ImageBinary(read_tiff(path), path, doRebinarize)
 
     def _rebinarize(self) -> None:
-        self._pixels = self._pixels > self._pixels.min()
+        self._pixels = self.pixels > self.pixels.min()
 
     def fill_holes(self) -> None:
-        self._pixels = fill_holes(self._pixels)
+        self._pixels = fill_holes(self.pixels)
 
     def close(self) -> None:
-        self._pixels = closing2(self._pixels)
+        self._pixels = closing2(self.pixels)
 
     def open(self) -> None:
-        self._pixels = opening2(self._pixels)
+        self._pixels = opening2(self.pixels)
 
     def dilate(self) -> None:
-        self._pixels = dilate(self._pixels)
+        self._pixels = dilate(self.pixels)
 
     def erode(self) -> None:
-        self._pixels = erode(self._pixels)
+        self._pixels = erode(self.pixels)
 
     def logical_and(self, B: 'ImageBinary') -> None:
-        self._pixels = np.logical_and(self._pixels, B.pixels)
+        self._pixels = np.logical_and(self.pixels, B.pixels)
 
     def logical_or(self, B: 'ImageBinary') -> None:
-        self._pixels = np.logical_or(self._pixels, B.pixels)
+        self._pixels = np.logical_or(self.pixels, B.pixels)
 
     def logical_xor(self, B: 'ImageBinary') -> None:
-        self._pixels = np.logical_xor(self._pixels, B.pixels)
+        self._pixels = np.logical_xor(self.pixels, B.pixels)
 
     def invert(self) -> None:
-        self._pixels = np.logical_not(self._pixels)
+        self._pixels = np.logical_not(self.pixels)
 
     def label(self) -> ImageLabeled:
         return ImageLabeled(self.pixels)
@@ -370,8 +378,8 @@ def fill_holes(mask: np.ndarray) -> np.ndarray:
     mask = ndi.binary_fill_holes(mask)
     if 3 == len(mask.shape):
         for slice_id in range(mask.shape[0]):
-            mask[slice_id, :, :] = ndi.binary_fill_holes(
-                mask[slice_id, :, :])
+            logging.debug(f"FILL_HOLES SLICE#({slice_id})")
+            mask[slice_id, :, :] = ndi.binary_fill_holes(mask[slice_id, :, :])
     elif 2 != len(mask.shape):
         logging.warning("3D hole filling not performed on images with " +
             f"{len(mask.shape)} dimensions.")
