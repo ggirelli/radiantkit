@@ -23,8 +23,6 @@ class BinarizerSettings(object):
 	do_clear_XY_borders: bool = True
 	do_clear_Z_borders: bool = False
 	do_fill_holes: bool = True
-	radius_interval: Tuple[float] = (10., float('inf'))
-	min_z_size: Union[float,int] = .25
 	logger: Optional[log.Logger] = None
 
 	def __init__(self, logger: log.Logger = log.getLogger("radiantkit")):
@@ -37,7 +35,7 @@ class BinarizerSettings(object):
 
 	@local_side.setter
 	def local_side(self, value: int) -> None:
-		if 0 != value % 2: value += 1
+		if 0 == value % 2: value += 1
 		self._local_side = value
 
 class Binarizer(BinarizerSettings):
@@ -76,14 +74,15 @@ class Binarizer(BinarizerSettings):
 		mask = []
 		global_threshold = 0
 		if self.do_global:
-			global_threshold = threshold_otsu(I)
+			global_threshold = threshold_otsu(I.pixels)
 			self.logger.info(f"applying global threshold of {global_threshold}")
 			gmask = I.threshold_global(global_threshold)
 			if self.global_closing: gmask.close()
 			mask.append(gmask)
 		if self.do_local and 1 < self.local_side:
 			self.logger.info("applying adaptive threshold to neighbourhood " +
-				f"with side of {self.local_side} px.")
+				f"with side of {self.local_side} px. " +
+				f"({self.local_method}, {self.local_mode})")
 			local_mask = I.threshold_adaptive(
 				self.local_side, self.local_method, self.local_mode)
 			if self.local_closing: local_mask.close()

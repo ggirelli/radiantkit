@@ -46,8 +46,8 @@ objects with different intensity levels.
 	    Default: 'mask_', 'cmask_' if --compressed is used.""",
 	    default = 'mask_')
 	parser.add_argument('--neighbour', type = int,
-	    help = """Side of neighbourhood square/cube. Default: 101""",
-	    default = 101)
+	    help = """Side of neighbourhood square/cube. Must be odd.
+	    Default: 101""", default = 101)
 	parser.add_argument('--radius', type = float, nargs = 2,
 	    help = """Range of object radii [vx] to be considered a nucleus.
 	    Default: [10, Inf]""", default = [10., float('Inf')])
@@ -91,6 +91,9 @@ objects with different intensity levels.
 	args.inreg = re.compile(args.inreg)
 	if args.compressed and "mask_" == args.outprefix:
 	    args.outprefix = 'cmask_'
+
+	assert 1 == args.neighbour % 2
+	assert args.min_Z >= 0 and args.min_Z <= 1
 
 	args.combineWith2D = args.manual_2d_masks is not None
 	if args.combineWith2D:
@@ -140,12 +143,13 @@ def confirm_arguments(args: argparse.Namespace) -> None:
 	with open(os.path.join(args.outFolder, "settings.txt"), "w+") as OH:
 	    export_settings(OH, settings_string)
 
-def run_segmentation(imgpath: str, imgdir: str) -> None:
-	I = imt.Image.from_tiff(imgpath)
+def run_segmentation(args: argparse.Namespace,
+	imgpath: str, imgdir: str) -> None:
+	I = imt.Image.from_tiff(os.path.join(imgdir, imgpath))
 	I.rescale_factor = I.get_huygens_rescaling_factor()
 
 	binarizer = segmentation.Binarizer()
-	binarizer.segmentation_type = const.SEGMENTATION_TYPE.THREED
+	binarizer.segmentation_type = const.SegmentationType.THREED
 	binarizer.local_side = args.neighbour
 	binarizer.min_z_size = args.min_Z
 	binarizer.do_clear_Z_borders = args.do_clear_Z
@@ -158,7 +162,15 @@ def run_segmentation(imgpath: str, imgdir: str) -> None:
 			if os.path.isfile(mask2d_path):
 				mask2d = imt.ImageBinary.from_tiff(mask2_path, axes="YX").pixels
 
-	mask = binarizer.run(I.pixels, mask2d)
+	M = binarizer.run(I, mask2d)
+	L = ImageLabeled(M)
+
+	xy_size_range = (np.pi*args.radius[0]**2, np.pi*args.radius[1]**2)
+	L.filter_size(xy_size_range, "XY")
+	z_size_range = (args.min_Z*I.axis_shape("Z", np.inf))
+	L.filter_size(z_size_range, "Z")
+
+	print(L.pixels.max())
 
 def run(args: argparse.Namespace) -> None:
 	imglist = [f for f in os.listdir(args.imgFolder) 
@@ -166,10 +178,12 @@ def run(args: argparse.Namespace) -> None:
 	    and not type(None) == type(re.match(args.inreg, f))]
 	logging.info(f"found {len(imglist)} image(s) to segment.")
 	if 1 == args.threads:
-	    for imgpath in tqdm(imglist): run_segmentation(imgpath, args.imgFolder)
+	    for imgpath in tqdm(imglist): run_segmentation(
+	    	args, imgpath, args.imgFolder)
 	else:
 	    Parallel(n_jobs = args.threads, verbose = 11)(
-	        delayed(run_segmentation)(imgpath, args.imgFolder)
+	        delayed(run_segmentation)(
+	        	args, imgpath, args.imgFolder)
 	        for imgpath in imglist)
 
 def main():

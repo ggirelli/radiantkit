@@ -115,6 +115,10 @@ class ImageBase(ImageSettings):
             self.pixels.shape = new_shape
             self._axes_order = self._axes_order[1:]
 
+    def axis_shape(self, axis: str) -> int:
+        if not axis in self._axes_order: return None
+        return self.shape[self._axes_order.index(axis)]
+
     def z_project(self, projection_type: const.ProjectionType) -> np.ndarray:
         return z_project(self.pixels, projection_type)
 
@@ -164,6 +168,28 @@ class ImageLabeled(ImageBase):
     def clear_Z_borders(self) -> None:
         self._pixels = clear_Z_borders(self._pixels)
 
+    def sizeXY(self, lab: int) -> int:
+        return self.size(lab, "XY")
+
+    def sizeZ(self, lab: int) -> int:
+        return self.size(lab, "Z")
+
+    def size(self, lab: int, axes: str) -> int:
+        assert all([axis in self.mask.axes for axis in axes])
+        axes_ids = tuple([self.mask.axes.index(axis)
+            for axis in self.mask.axes if axis not in axes])
+        return (self.mask.pixels == lab).max(axes_ids).sum()
+
+    def filter_size(self, axes: str,
+        pass_range: Tuple[Union[int,float]]) -> None:
+        assert 2 == len(pass_range)
+        assert pass_range[0] <= pass_range[1]
+        for current_label in range(1, self.pixels.max()):
+            current_size = self.size(current_label, axes)
+            if current_size < pass_range[0] or current_size > pass_range[1]:
+                self.pixels[self.pixels == current_label] = 0
+        self.pixels = label(self.pixels)
+
 class ImageBinary(ImageBase):
     def __init__(self, pixels: np.ndarray, path: Optional[str]=None,
         axes: Optional[str]=None, doRebinarize: bool=True):
@@ -209,7 +235,7 @@ class ImageBinary(ImageBase):
         return ImageLabeled(self.pixels)
 
 class Image(ImageBase):
-    __rescale_factor: float = 1.
+    _rescale_factor: float = 1.
 
     def __init__(self, pixels: np.ndarray, path: Optional[str]=None,
         axes: Optional[str]=None):
@@ -234,7 +260,7 @@ class Image(ImageBase):
         return get_huygens_rescaling_factor(self._path_to_local)
 
     def threshold_global(self, thr: Union[int,float]) -> ImageBinary:
-        return ImageBinary.from_tiff(self.pixels>thr, doRebinarize=False)
+        return ImageBinary(self.pixels>thr, doRebinarize=False)
 
     def threshold_adaptive(self, block_size: int,
         method: str, mode: str, *args, **kwargs) -> ImageBinary:
@@ -267,19 +293,17 @@ def read_tiff(path: str) -> np.ndarray:
             I = imread(path)
             warning_list = [str(e) for e in warning_list]
             if any(["axes do not match shape" in e for e in warning_list]):
-                print(f"WARNING: "+
-                    "image axes do not match metadata in '{path}'")
-                print("Using the image axes.")
+                logging.warning(f"image axes do not match metadata in '{path}'")
+                logging.warning("using the image axes.")
     except (ValueError, TypeError) as e:
-        print(f"ERROR: "+
-            "cannot read image from '{path}', file seems corrupted.")
+        logging.critical(f"cannot read image '{path}', file seems corrupted.")
         raise
     return I
 
 def extract_nd(I: np.ndarray, nd: int) -> np.ndarray:
     if len(I.shape) <= nd: return I
     while len(I.shape) > nd: I = I[0]
-    if 0 in I.shape: print("WARNING: the image contains empty dimensions.")
+    if 0 in I.shape: logging.warning("the image contains empty dimensions.")
     return I
 
 def save_tiff(path: str, I: np.ndarray, dtype: str, compressed: bool,
@@ -319,7 +343,7 @@ def z_project(I: np.ndarray,
 
 def threshold_adaptive(I: np.ndarray, block_size: int,
     method: str, mode: str, *args, **kwargs) -> np.ndarray:
-    assert 0 == block_size % 2
+    assert 1 == block_size % 2
 
     def threshold_adaptive_slice(I: np.ndarray, block_size: int,
         method: str, mode: str, *args, **kwargs) -> np.ndarray:
@@ -327,10 +351,10 @@ def threshold_adaptive(I: np.ndarray, block_size: int,
             method = method, mode = mode, **kwargs)
         return I >= threshold
 
-    if 2 == len(i.shape):
+    if 2 == len(I.shape):
         mask = threshold_adaptive_slice(I, block_size,
             method, mode, *args, **kwargs)
-    elif 3 == len(i.shape):
+    elif 3 == len(I.shape):
         mask = I.copy()
         for slice_id in range(mask.shape[0]):
             mask[slice_id, :, :] = threshold_adaptive_slice(
@@ -356,7 +380,7 @@ def closing2(mask: np.ndarray) -> np.ndarray:
     assert 1 == mask.max()
     if 2 == len(mask.shape):
         mask = closing(mask, square(3))
-    elif 3 == len(i.shape):
+    elif 3 == len(mask.shape):
         mask = closing(mask, cube(3))
     else:
         logging.info("Close operation not implemented for images with " +
@@ -367,7 +391,7 @@ def opening2(mask: np.ndarray) -> np.ndarray:
     assert 1 == mask.max()
     if 2 == len(mask.shape):
         mask = opening(mask, square(3))
-    elif 3 == len(i.shape):
+    elif 3 == len(mask.shape):
         mask = opening(mask, cube(3))
     else:
         logging.info("Open operation not implemented for images with " +
@@ -378,7 +402,7 @@ def dilate(mask: np.ndarray) -> np.ndarray:
     assert 1 == mask.max()
     if 2 == len(mask.shape):
         mask = dilation(mask, square(3))
-    elif 3 == len(i.shape):
+    elif 3 == len(mask.shape):
         mask = dilation(mask, cube(3))
     else:
         logging.info("Dilate operation not implemented for images with " +
@@ -389,7 +413,7 @@ def erode(mask: np.ndarray) -> np.ndarray:
     assert 1 == mask.max()
     if 2 == len(mask.shape):
         mask = erosion(mask, square(3))
-    elif 3 == len(i.shape):
+    elif 3 == len(mask.shape):
         mask = erosion(mask, cube(3))
     else:
         logging.info("Erode operation not implemented for images with " +
