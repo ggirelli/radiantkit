@@ -22,56 +22,64 @@ logging.basicConfig(level=logging.INFO,
 
 def parse_arguments() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description = '''
-Perform automatic 3D segmentation of DNA staining. Images are first identified
-based on a regular expression matching the file name. Then, they are re-scaled
-(if deconvolved with Huygens software). Afterwards, a global (Otsu) and local
-(gaussian) thresholds are applied to binarize the image in 3D. Finally, holes
-are filled in 3D and a closing operation is performed to remove small objects.
-Objects are filtered based on volume and Z size. Moreover, objects touching the
-XY image borders are discarded. Use the --labeled flag to label identified
-objects with different intensity levels. By default, the script generates
-compressed binary tiff images; use the --uncompressed flag to generate normal
-tiff images instead. Images from the input folder that have the specified
-prefix and suffix are not segmented.
+Perform automatic 3D segmentation of TIFF images. The default parameters are
+optimized for nuclear DNA staining and voxel size of 0.13x0.13x0.3 uM.
+
+The input images are first identified based on a regular expression matched to
+the file name. Then, they are re-scaled (if deconvolved with Huygens software).
+Afterwards, a global (Otsu) and local (gaussian) thresholds are applied to
+binarize the image in 3D. Finally, holes are filled in 3D and a closing
+operation is performed to remove small objects. Finally. objects are filtered
+based on XY projected and Z size. Moreover, objects touching the XY image
+borders are discarded.
+
+If a folder path is provided with the -2 option, any binary file with name
+matching the one of an input image will be combined to the binarized image.
+
+Use the --labeled flag to label identified objects with different intensity
+levels. By default, the script generates compressed binary tiff images; use the
+--uncompressed flag to generate normal tiff images instead.
+
+Input images that have the specified prefix and suffix are not segmented.
     ''', formatter_class = argparse.RawDescriptionHelpFormatter)
 
     parser.add_argument('input', type = str,
         help = 'Path to folder containing deconvolved tiff images.')
 
     parser.add_argument('-o', '--output', type = str,
-        help = '''Path to output folder where binarized images will be
-        stored (created if does not exist). Defaults to the input folder.''')
+        help = '''Path to output folder where to save binarized images (created
+        if missing). Defaults to the input folder.''')
     default_inreg = '^.*\.tiff?$'
     parser.add_argument('--inreg', type = str,
-        help = """Regular expression to identify images from input.
+        help = """Regular expression to identify input TIFF images.
         Default: '%s'""" % (default_inreg,), default = default_inreg)
     parser.add_argument('-p', '--outprefix', type = str,
-        help = """Prefix to add to the name of output binarized images.
+        help = """Prefix for output binarized images name.
         Default: ''.""", default = '')
     parser.add_argument('-s', '--outsuffix', type = str,
-        help = """Suffix to add to the name of output binarized images.
+        help = """Suffix for output binarized images name.
         Default: 'mask'.""", default = 'mask')
     parser.add_argument('--neighbour', type = int,
-        help = """Side of neighbourhood square/cube. Must be odd.
-        Default: 101""", default = 101)
+        help = """Side of neighbourhood region for adaptig thresholding.
+        Must be odd. Default: 101""", default = 101)
     parser.add_argument('--radius', type = float, nargs = 2,
-        help = """Range of object radii [vx] to be considered a nucleus.
-        Default: [10, Inf]""", default = [10., float('Inf')])
-    parser.add_argument('--min-Z', type = float, help = """Minimum fraction of
-        stack occupied by an object to be considered a nucleus. Default: .25""",
+        help = """Filter range of object radii [px]. Default: [10, Inf]""",
+        default = [10., float('Inf')])
+    parser.add_argument('--min-Z', type = float,
+        help = """Minimum stack fraction occupied by an object. Default: .25""",
         default = .25)
     parser.add_argument('-t', '--threads', type = int,
         help = """Number of threads for parallelization. Default: 1""",
         default = 1)
-    parser.add_argument('-2', '--manual-2d-masks', type = str,
+    parser.add_argument('-2', type = str,
         help = """Path to folder with 2D masks with matching name,
         to combine with 3D masks.""",  metavar = "MAN2DDIR")
     parser.add_argument('-F', '--dilate-fill-erode', type = int,
-        metavar = "DFE", help = """Number of pixels for dilation/erosion in a
-        dilate-fill-erode operation. Default: 0. Set to 0 to skip.""",
+        metavar = "DFE", help = """Number of pixels for dilation/erosion steps
+        in a dilate-fill-erode operation. Default: 0. Set to 0 to skip.""",
         default = 0)
 
-    parser.add_argument('--clear-Z',
+    parser.add_argument('-Z', '--clear-Z',
         action = 'store_const', dest = 'do_clear_Z',
         const = True, default = False,
         help = """Remove objects touching the bottom/top of the stack.""",)
@@ -82,7 +90,7 @@ prefix and suffix are not segmented.
     parser.add_argument('--uncompressed',
         action = 'store_const', dest = 'compressed',
         const = False, default = True,
-        help = 'Generate uncompressed TIF binary masks.')
+        help = 'Generate uncompressed TIFF binary masks.')
     parser.add_argument('-y', '--do-all', action = 'store_const',
         help = """Do not ask for settings confirmation and proceed.""",
         const = True, default = False)
