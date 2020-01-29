@@ -163,9 +163,21 @@ def log_nd2_info(nd2I: ND2Reader2) -> None:
 
 def can_template_export_fields(args: argparse.Namespace,
     nd2I: ND2Reader2) -> bool:
-    if nd2I.field_count > 1 and "${series_id}" not in args.template:
+    if nd2I.field_count() > 1 and "${series_id}" not in args.template:
         if args.fields is not None:
             if 1 < len(args.fields):
+                return False
+        else: return False
+    return True
+
+def can_template_export_channels(args: argparse.Namespace,
+    nd2I: ND2Reader2) -> bool:
+    seeds_missing = all([x not in args.template
+        for x in ["${channel_id}", "${channel_name}"]])
+
+    if nd2I.channel_count() > 1 and seeds_missing:
+        if args.channels is not None:
+            if 1 < len(args.channels):
                 return False
         else: return False
     return True
@@ -191,7 +203,7 @@ def run(args: argparse.Namespace) -> None:
 
     if not can_template_export_fields():
         logging.critical("when exporting more than 1 field, " +
-            "the template must include the ${series_id} seed. "
+            "the template must include the ${series_id} seed. " +
             f"Got '{args.template}' instead.")
         sys.exit()
 
@@ -199,6 +211,11 @@ def run(args: argparse.Namespace) -> None:
     if not os.path.isdir(args.outdir): os.mkdir(args.outdir)
 
     args.channels = clean_channel_list
+    if not can_template_export_channels():
+        logging.critical("when exporting more than 1 channel, the template " +
+            "must include either ${channel_id} or ${channel_name} seeds. " +
+            f"Got '{args.template}' instead.")
+        sys.exit()
 
     export_fn = export_field_3d if nd2I.is3D() else export_field_2d
     if 1 == nd2I.field_count():
