@@ -9,7 +9,8 @@ import os
 from radiantkit.conversion import CziFile2
 import radiantkit.image as imt
 from radiantkit.string import MultiRange
-from string import Template
+from radiantkit.string import TIFFNameTemplateFields as TNTFields
+from radiantkit.string import TIFFNameTemplate as TNTemplate
 import sys
 from tqdm import tqdm
 
@@ -18,19 +19,23 @@ logging.basicConfig(level=logging.INFO,
     datefmt='%m/%d/%Y %I:%M:%S')
 
 def parse_arguments() -> argparse.Namespace:
-    parser = argparse.ArgumentParser(description = '''
+    parser = argparse.ArgumentParser(description = f'''
 Convert a czi file into single channel tiff images.
 
 The output tiff file names follow the specified template (-T). A template is a
 string including a series of "seeds" that are replaced by the corresponding
 values when writing the output file. Available seeds are:
-${channel_name} : the channel name, lower-cased.
-${channel_id}   : the channel ID (number). Leading 0s added up to 3 digits.
-${series_id}    : the series ID (number). Leading 0s added up to 3 digits.
-${dimensions}   : the number of dimensions in the image, followed by a "D".
-${axes_order}   : the order of the axes in the image (e.g., "TZYX").
-The default template is "${channel_name}_${series_id}". Hence, when writing the
-3rd series of the "a488" channel, the output file name would be:"a488_003.tiff".
+{TNTFields.CHANNEL_NAME} : channel name, lower-cased.
+{TNTFields.CHANNEL_ID} : channel ID (number).
+{TNTFields.SERIES_ID} : series ID (number).
+{TNTFields.DIMENSIONS} : number of dimensions, followed by "D".
+{TNTFields.AXES_ORDER} : axes order (e.g., "TZYX").
+Leading 0s are added up to 3 digits to any ID seed.
+
+The default template is "{TNTFields.CHANNEL_NAME}_{TNTFields.SERIES_ID}".
+Hence, when writing the 3rd series of the "a488" channel, the output file name
+would be:"a488_003.tiff".
+
 Please, remember to escape the "$" when running from command line if using
 double quotes, i.e., "\\$". Alternatively, use single quotes, i.e., '$'.
     ''', formatter_class = argparse.RawDescriptionHelpFormatter)
@@ -44,8 +49,8 @@ double quotes, i.e., "\\$". Alternatively, use single quotes, i.e., '$'.
 
     parser.add_argument('-T', '--template', metavar = "template", type = str,
         help = """Template for output file name. See main description for more
-        details. Default: '${channel_name}_${series_id}'""",
-        default = "${channel_name}_${series_id}")
+        details. Default: '{TNTFields.CHANNEL_NAME}_{TNTFields.SERIES_ID}'""",
+        default = f"{TNTFields.CHANNEL_NAME}_{TNTFields.SERIES_ID}")
     parser.add_argument('-f', '--fields', metavar = "fields", type = str,
         help = """Extract only specified fields of view. Can be specified as
         when specifying which pages to print. E.g., '1-2,5,8-9'.""",
@@ -85,47 +90,40 @@ double quotes, i.e., "\\$". Alternatively, use single quotes, i.e., '$'.
     if args.channels is not None:
         args.channels = [c.lower() for c in args.channels]
 
-    return args
+    assert 0 != len(args.template)
+    args.template = TNTemplate(args.template)
 
-def get_output_path(args: argparse.Namespace, CZI: CziFile2,
-    channel_id: int, field_id: int = 1) -> str:
-    d = {
-        'channel_name' : list(CZI.get_channel_names())[channel_id],
-        'channel_id' : f"{(channel_id+1):03d}",
-        'series_id' : f"{(field_id+1):03d}",
-        'dimensions' : 3,
-        'axes_order' : "ZYX"
-    }
-    t = Template(args.template)
-    return f"{t.safe_substitute(d)}.tiff"
+    return args
 
 def run(args: argparse.Namespace) -> None:
     CZI = CziFile2(args.input)
     assert not CZI.isLive(), "time-course conversion images not implemented."
-    logging.info(f"Found {CZI.field_count()} field(s) of view, " +
-        f"with {CZI.channel_count()} channel(s).")
-    logging.info(f"Channels: {list(CZI.get_channel_names())}.")
-
-    resolution = CZI.get_resolution()
-    x_size = CZI.pixels.shape[CZI.axes.index("X")]
-    y_size = CZI.pixels.shape[CZI.axes.index("Y")]
-    if CZI.is3D:
-        z_size = CZI.pixels.shape[CZI.axes.index("Z")]
-        logging.info(f"XYZ size: {x_size} x {y_size} x {z_size}")
-    else: logging.info(f"XY size: {x_size} x {y_size}")
-
+    CZI.log_details()
     if args.dry: sys.exit()
-    
+
+    if not args.template.can_export_fields(CZI.field_count(), args.fields):
+        logging.critical("when exporting more than 1 field, the template " +
+            f"must include the {TNTFields.SERIES_ID} seed. " +
+            f"Got '{args.template.template}' instead.")
+        sys.exit()
+
     logging.info(f"Output directory: '{args.outdir}'")
     if not os.path.isdir(args.outdir): os.mkdir(args.outdir)
 
     if args.channels is not None:
-        args.channels = [c for c in args.channels
-            if c in list(CZI.get_channel_names())]
+        args.channels = CZI.select_channels(args.channels)
         if 0 == len(args.channels):
             logging.error("None of the specified channels was found.")
             sys.exit()
         logging.info(f"Converting only the following channels: {args.channels}")
+
+    if not args.template.can_export_channels(
+        CZI.channel_count(), args.channels):
+        logging.critical("when exporting more than 1 channel, the template " +
+            f"must include either {TNTFields.CHANNEL_ID} or " +
+            f"{TNTFields.CHANNEL_NAME} seeds. " +
+            f"Got '{args.template.template}' instead.")
+        sys.exit()
 
     CZI.squeeze_axes("SCZYX")
 
@@ -150,16 +148,23 @@ def run(args: argparse.Namespace) -> None:
                 if not list(CZI.get_channel_names())[channel_id ] in channels:
                     continue
                 yield (channel_pixels,
-                    get_output_path(args, CZI, channel_id, field_id-1))
+                    CZI.get_tiff_path(args.template, channel_id, field_id-1))
 
-    export_total = min(CZI.field_count()*CZI.channel_count(),
-        len(list(args.fields))*len(args.channels))
+    export_total = float('inf')
+    if args.fields is not None and args.channels is not None:
+        export_total = len(args.fields)*len(args.channels)
+    elif args.fields is not None:
+            export_total = len(args.fields)
+    elif args.channels is not None:
+            export_total = len(args.channels)
+    export_total = min(CZI.field_count()*CZI.channel_count(), export_total)
     for (OI, opath) in tqdm(field_generator(CZI, args.fields, args.channels),
         total=export_total):
         imt.save_tiff(os.path.join(args.outdir, opath),
             OI, imt.get_dtype(OI.max()), args.doCompress, bundle_axes = "TZYX",
-            resolution = (1e-6/resolution["X"], 1e-6/resolution["Y"]),
-            inMicrons = True, ResolutionZ = resolution["Z"]*1e6)
+            resolution = (1e-6/CZI.get_axis_resolution("X"),
+                1e-6/CZI.get_axis_resolution("Y")),
+            inMicrons = True, ResolutionZ = CZI.get_axis_resolution("Z")*1e6)
 
 def main():
     run(parse_arguments())

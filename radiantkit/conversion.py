@@ -99,6 +99,20 @@ class CziFile2(CziFile):
                 self.__pixels = self.asarray()
         return self.__pixels
 
+    def log_details(self,
+        logger: Optional[Type[logging.Logger]]=logging.getLogger()) -> None:
+        logger.info(f"Found {self.field_count()} field(s) of view, " +
+            f"with {self.channel_count()} channel(s).")
+
+        logger.info(f"Channels: {list(self.get_channel_names())}.")
+
+        x_size = self.pixels.shape[self.axes.index("X")]
+        y_size = self.pixels.shape[self.axes.index("Y")]
+        if self.is3D:
+            z_size = self.pixels.shape[self.axes.index("Z")]
+            logger.info(f"XYZ size: {x_size} x {y_size} x {z_size}")
+        else: logger.info(f"XY size: {x_size} x {y_size}")
+
     def field_count(self) -> int:
         if not "S" in self.axes: return 1
         return self.pixels.shape[self.axes.index("S")]
@@ -126,14 +140,18 @@ class CziFile2(CziFile):
             ), "channel count mismatch."
         return n
 
-    def get_resolution(self) -> dict:
+    def get_axis_resolution(self, axis: str) -> dict:
         resolution_path = "Metadata/Scaling/Items/Distance"
-        resolution = []
         for x in ET.fromstring(self.metadata()).findall(resolution_path):
-            if x.attrib['Id'] in ["X", "Y", "Z"]:
-                resolution.append((x.attrib['Id'], float(x[0].text)))
-        return dict(resolution)
+            if x.attrib['Id'] == axis:
+                return float(x[0].text)
 
+    def get_resolution(self) -> dict:
+        resolution = {}
+        for axis in "XYZ":
+            resolution[axis] = self.get_axis_resolution(axis)
+        return resolution
+    
     def squeeze_axes(self, skip: str) -> None:
         axes = list(self.axes)
         for axis in axes:
@@ -162,3 +180,19 @@ class CziFile2(CziFile):
             field = self.pixels
         for channel_id  in range(self.channel_count()):
             yield (field[channel_id], channel_id)
+
+
+    def select_channels(self, channels: List[str]) -> List[str]:
+        return [c.lower() for c in channels
+            if c.lower() in list(self.get_channel_names())]
+
+    def get_tiff_path(self, template: TNTemplate,
+        channel_id: int, field_id: int) -> str:
+        d = {
+            'channel_name' : list(self.get_channel_names())[channel_id],
+            'channel_id' : f"{(channel_id+1):03d}",
+            'series_id' : f"{(field_id+1):03d}",
+            'dimensions' : 3,
+            'axes_order' : "ZYX"
+        }
+        return f"{template.safe_substitute(d)}.tiff"
