@@ -43,7 +43,7 @@ prefix and suffix are not segmented.
         stored (created if does not exist). Defaults to the input folder.''')
     default_inreg = '^.*\.tiff?$'
     parser.add_argument('--inreg', type = str,
-        help = """regular expression to identify images from input.
+        help = """Regular expression to identify images from input.
         Default: '%s'""" % (default_inreg,), default = default_inreg)
     parser.add_argument('-p', '--outprefix', type = str,
         help = """Prefix to add to the name of output binarized images.
