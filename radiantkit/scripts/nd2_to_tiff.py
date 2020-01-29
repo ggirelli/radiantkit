@@ -90,7 +90,6 @@ double quotes, i.e., "\\$". Alternatively, use single quotes, i.e., '$'.
     assert os.path.isfile(args.input), f"input file not found: {args.input}"
     assert not os.path.isfile(args.outdir
         ), f"output directory cannot be a file: {args.outdir}"
-    if not os.path.isdir(args.outdir): os.mkdir(args.outdir)
 
     if args.fields is not None:
         args.fields = MultiRange(args.fields)
@@ -107,14 +106,12 @@ double quotes, i.e., "\\$". Alternatively, use single quotes, i.e., '$'.
 def export_channel(args: argparse.Namespace, field_of_view: pims.frame.Frame,
     opath: str, metadata: dict, resolutionZ: float = None) -> None:
     resolutionXY = (1/metadata['pixel_microns'], 1/metadata['pixel_microns'])
-    print(os.path.join(args.outdir, opath))
     imt.save_tiff(os.path.join(args.outdir, opath), field_of_view,
         imt.get_dtype(field_of_view.max()), args.doCompress,
         resolution = resolutionXY, inMicrons = True, ResolutionZ = resolutionZ)
 
 def export_field_3d(args: argparse.Namespace, nd2I: ND2Reader2,
     field_id: int, channels: Optional[List[str]] = None) -> None:
-    print(field_id)
     if channels is None: channels = nd2I.get_channel_names()
     if args.deltaZ is not None: resolutionZ = args.deltaZ
     else: resolutionZ = ND2Reader2.get_resolutionZ(args.input, field_id)
