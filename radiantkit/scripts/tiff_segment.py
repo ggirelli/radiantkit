@@ -29,23 +29,28 @@ based on a regular expression matching the file name. Then, they are re-scaled
 are filled in 3D and a closing operation is performed to remove small objects.
 Objects are filtered based on volume and Z size. Moreover, objects touching the
 XY image borders are discarded. Use the --labeled flag to label identified
-objects with different intensity levels.
+objects with different intensity levels. By default, the script generates
+compressed binary tiff images; use the --uncompressed flag to generate normal
+tiff images instead. Images from the input folder that have the specified
+prefix and suffix are not segmented.
     ''', formatter_class = argparse.RawDescriptionHelpFormatter)
 
-    parser.add_argument('imgFolder', type = str,
+    parser.add_argument('input', type = str,
         help = 'Path to folder containing deconvolved tiff images.')
-    parser.add_argument('outFolder', type = str,
-        help = '''Path to output folder where binarized images will be
-        stored (created if does not exist).''')
 
+    parser.add_argument('-o', '--output', type = str,
+        help = '''Path to output folder where binarized images will be
+        stored (created if does not exist). Defaults to the input folder.''')
     default_inreg = '^.*\.tiff?$'
     parser.add_argument('--inreg', type = str,
-        help = """regular expression to identify images from imgFolder.
+        help = """regular expression to identify images from input.
         Default: '%s'""" % (default_inreg,), default = default_inreg)
-    parser.add_argument('--outprefix', type = str,
-        help = """prefix to add to the name of output binarized images.
-        Default: 'mask_', 'cmask_' if --compressed is used.""",
-        default = 'mask_')
+    parser.add_argument('-p', '--outprefix', type = str,
+        help = """Prefix to add to the name of output binarized images.
+        Default: ''.""", default = '')
+    parser.add_argument('-s', '--outsuffix', type = str,
+        help = """Suffix to add to the name of output binarized images.
+        Default: 'mask'.""", default = 'mask')
     parser.add_argument('--neighbour', type = int,
         help = """Side of neighbourhood square/cube. Must be odd.
         Default: 101""", default = 101)
@@ -73,11 +78,11 @@ objects with different intensity levels.
     parser.add_argument('--labeled',
         action = 'store_const', dest = 'labeled',
         const = True, default = False,
-        help = 'Import/Export masks as labeled instead of binary.')
-    parser.add_argument('--compressed',
+        help = 'Export masks as labeled instead of binary.')
+    parser.add_argument('--uncompressed',
         action = 'store_const', dest = 'compressed',
-        const = True, default = False,
-        help = 'Generate compressed TIF binary masks.')
+        const = False, default = True,
+        help = 'Generate uncompressed TIF binary masks.')
     parser.add_argument('-y', '--do-all', action = 'store_const',
         help = """Do not ask for settings confirmation and proceed.""",
         const = True, default = False)
@@ -93,9 +98,15 @@ objects with different intensity levels.
     args = parser.parse_args()
     args.version = version
 
+    if args.output is None: args.output = args.input
+
     args.inreg = re.compile(args.inreg)
-    if args.compressed and "mask_" == args.outprefix:
-        args.outprefix = 'cmask_'
+    if 0 != len(args.outprefix):
+        if '.' != args.outprefix[-1]:
+            args.outprefix = f"{args.outprefix}."
+    if 0 != len(args.outsuffix):
+        if '.' != args.outsuffix[0]:
+            args.outsuffix = f".{args.outsuffix}"
 
     assert 1 == args.neighbour % 2
     assert args.min_Z >= 0 and args.min_Z <= 1
@@ -115,10 +126,11 @@ def print_settings(args: argparse.Namespace, clear: bool = True) -> str:
 
 ---------- SETTING :  VALUE ----------
 
-   Input directory :  '{args.imgFolder}'
-  Output directory :  '{args.outFolder}'
+   Input directory :  '{args.input}'
+  Output directory :  '{args.output}'
 
        Mask prefix :  '{args.outprefix}'
+       Mask suffix :  '{args.outsuffix}'
      Neighbourhood :  {args.neighbour}
           2D masks : '{args.manual_2d_masks}'
            Labeled :  {args.labeled}
@@ -131,7 +143,7 @@ def print_settings(args: argparse.Namespace, clear: bool = True) -> str:
 
            Threads :  {args.threads}
             Regexp :  '{args.inreg}'
-             Debug :  '{args.debug_mode}'
+             Debug :  {args.debug_mode}
 
     """
     if clear: print("\033[H\033[J")
@@ -142,11 +154,11 @@ def confirm_arguments(args: argparse.Namespace) -> None:
     settings_string = print_settings(args)
     if not args.do_all: ask("Confirm settings and proceed?")
 
-    assert os.path.isdir(args.imgFolder
-        ), f"image folder not found: {args.imgFolder}"
-    if not os.path.isdir(args.outFolder): os.mkdir(args.outFolder)
+    assert os.path.isdir(args.input
+        ), f"image folder not found: {args.input}"
+    if not os.path.isdir(args.output): os.mkdir(args.output)
 
-    with open(os.path.join(args.outFolder, "settings.txt"), "w+") as OH:
+    with open(os.path.join(args.output, "settings.txt"), "w+") as OH:
         export_settings(OH, settings_string)
 
 def run_segmentation(args: argparse.Namespace,
@@ -195,28 +207,37 @@ def run_segmentation(args: argparse.Namespace,
         logging.info("recovering labels from 2D mask")
         L.inherit_labels(mask2d)
 
+    imgbase,imgext = os.path.splitext(imgpath)
     if not args.labeled:
         logging.info("writing binary output")
         M = ImageBinary(L.pixels)
-        M.to_tiff(os.path.join(args.outFolder, f"{args.outprefix}{imgpath}"),
+        M.to_tiff(os.path.join(args.output,
+            f"{args.outprefix}{imgbase}{args.outsuffix}{imgext}"),
             args.compressed)
     else:
         logging.info("writing labeled output")
-        L.to_tiff(os.path.join(args.outFolder, f"{args.outprefix}{imgpath}"),
+        L.to_tiff(os.path.join(args.output,
+            f"{args.outprefix}{imgbase}{args.outsuffix}{imgext}"),
             args.compressed)
 
 def run(args: argparse.Namespace) -> None:
-    imglist = [f for f in os.listdir(args.imgFolder) 
-        if os.path.isfile(os.path.join(args.imgFolder, f))
+    imglist = [f for f in os.listdir(args.input) 
+        if os.path.isfile(os.path.join(args.input, f))
         and not type(None) == type(re.match(args.inreg, f))]
+    
+    if 0 != len(args.outsuffix): imglist = [f for f in imglist
+        if not os.path.splitext(f)[0].endswith(args.outsuffix)]
+    if 0 != len(args.outprefix): imglist = [f for f in imglist
+        if not os.path.splitext(f)[0].startswith(args.outprefix)]
+    
     logging.info(f"found {len(imglist)} image(s) to segment.")
     if 1 == args.threads:
         for imgpath in tqdm(imglist): run_segmentation(
-            args, imgpath, args.imgFolder)
+            args, imgpath, args.input)
     else:
         Parallel(n_jobs = args.threads, verbose = 11)(
             delayed(run_segmentation)(
-                args, imgpath, args.imgFolder)
+                args, imgpath, args.input)
             for imgpath in imglist)
 
 def main():
