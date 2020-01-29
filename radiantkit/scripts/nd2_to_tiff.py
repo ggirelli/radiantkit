@@ -104,80 +104,49 @@ double quotes, i.e., "\\$". Alternatively, use single quotes, i.e., '$'.
 
     return args
 
-def get_output_path(args: argparse.Namespace, bundle_axes: List[str],
-    metadata: dict, channel_id: int, field_id: int) -> str:
-    d = {
-        'channel_name' : metadata['channels'][channel_id].lower(),
-        'channel_id' : f"{(channel_id+1):03d}",
-        'series_id' : f"{(field_id+1):03d}",
-        'dimensions' : len(bundle_axes),
-        'axes_order' : "".join(bundle_axes)
-    }
-    return f"{args.template.safe_substitute(d)}.tiff"
-
 def export_channel(args: argparse.Namespace, field_of_view: pims.frame.Frame,
-    opath: str, metadata: dict, bundle_axes: List[str],
-    resolutionZ: float = None) -> None:
+    opath: str, metadata: dict, resolutionZ: float = None) -> None:
     resolutionXY = (1/metadata['pixel_microns'], 1/metadata['pixel_microns'])
+    print(os.path.join(args.outdir, opath))
     imt.save_tiff(os.path.join(args.outdir, opath), field_of_view,
         imt.get_dtype(field_of_view.max()), args.doCompress,
         resolution = resolutionXY, inMicrons = True, ResolutionZ = resolutionZ)
 
-def export_field_3d(args: argparse.Namespace, field_of_view: pims.frame.Frame,
-    metadata: dict, field_id: int, bundle_axes: List[str],
-    channels: List[str] = None) -> None:
+def export_field_3d(args: argparse.Namespace, nd2I: ND2Reader2,
+    field_id: int, channels: Optional[List[str]] = None) -> None:
+    print(field_id)
+    if channels is None: channels = nd2I.get_channel_names()
     if args.deltaZ is not None: resolutionZ = args.deltaZ
     else: resolutionZ = ND2Reader2.get_resolutionZ(args.input, field_id)
 
-    if "c" not in bundle_axes:
-        opath = get_output_path(args, bundle_axes, metadata, 0, field_id)
-        export_channel(args, field_of_view, opath, metadata,
-            bundle_axes, resolutionZ)
+    if not nd2I.hasMultiChannels():
+        export_channel(args, nd2I[field_id],
+            nd2I.get_tiff_path(args.template, channel_id, field_id),
+            nd2I.metadata, resolutionZ)
     else:
-        if channels is None:
-            channels = [c.lower() for c in metadata['channels']]
-        for channel_id in range(field_of_view.shape[3]):
-            if not metadata['channels'][channel_id].lower() in channels:
-                continue
-            opath = get_output_path(args, bundle_axes,
-                metadata, channel_id, field_id)
-            export_channel(args, field_of_view[:, :, :, channel_id], opath,
-                metadata, bundle_axes, resolutionZ)
+        channels = nd2I.select_channels(channels)
+        for channel_id in range(nd2I[field_id].shape[3]):
+            channel_name = nd2I.metadata['channels'][channel_id].lower()
+            if not channel_name in channels: continue
+            export_channel(args, nd2I[field_id][:, :, :, channel_id],
+                nd2I.get_tiff_path(args.template, channel_id, field_id),
+                nd2I.metadata, resolutionZ)
 
-def export_field_2d(args: argparse.Namespace, field_of_view: pims.frame.Frame,
-    metadata: dict, field_id: int, bundle_axes: List[str],
-    channels: List[str] = None) -> None:
-    if "c" not in bundle_axes:
-        opath = get_output_path(args, bundle_axes, metadata, 0, field_id)
-        export_channel(args, field_of_view, opath, metadata, bundle_axes)
+def export_field_2d(args: argparse.Namespace, nd2I: ND2Reader2,
+    field_id: int, channels: Optional[List[str]] = None) -> None:
+    if channels is None: channels = nd2I.get_channel_names()
+    if not nd2I.hasMultiChannels():
+        export_channel(args, nd2I[field_id],
+            nd2I.get_tiff_path(args.template, 0, field_id),
+            nd2I.metadata)
     else:
-        if channels is None:
-            channels = [c.lower() for c in metadata['channels']]
-        for channel_id in range(field_of_view.shape[3]):
-            if not metadata['channels'][channel_id].lower() in channels:
-                continue
-            opath = get_output_path(args, metadata, channel_id, field_id)
-            export_channel(args, field_of_view[:, :, channel_id],
-                opath, metadata, bundle_axes)
-
-def log_nd2_info(nd2I: ND2Reader2) -> None:
-    logging.info(f"Found {nd2I.field_count()} field(s) of view, " +
-        f"with {nd2I.channel_count()} channel(s).")
-    logging.info(f"Channels: {list(nd2I.get_channel_names())}.")
-    if nd2I.is3D: logging.info("XYZ size: " + 
-        f"{nd2I.sizes['x']} x {nd2I.sizes['y']} x {nd2I.sizes['z']}")
-    else: logging.info(f"XY size: {nd2I.sizes['x']} x {nd2I.sizes['y']}")
-
-def clean_channel_list(nd2I: ND2Reader2,
-    channels: Optional[List[str]]) -> Optional[List[str]]:
-    if channels is not None:
-        channels = [c for c in channels
-            if c in list(nd2I.get_channel_names())]
-        if 0 == len(channels):
-            logging.error("None of the specified channels was found.")
-            sys.exit()
-        logging.info(f"Converting only the following channels: {channels}")
-    return channels
+        channels = nd2I.select_channels(channels)
+        for channel_id in range(nd2I[field_id].shape[3]):
+            channel_name = nd2I.metadata['channels'][channel_id].lower()
+            if not channel_name in channels: continue
+            export_channel(args, nd2I[field_id][:, :, channel_id],
+                nd2I.get_tiff_path(args.template, channel_id, field_id),
+                nd2I.metadata)
 
 def run(args: argparse.Namespace) -> None:
     if args.deltaZ is not None:
@@ -185,7 +154,7 @@ def run(args: argparse.Namespace) -> None:
 
     nd2I = ND2Reader2(args.input)
     assert not nd2I.isLive(), "time-course conversion images not implemented."
-    log_nd2_info(nd2I)
+    nd2I.log_details()
     if args.dry: sys.exit()
 
     if not args.template.can_export_fields(nd2I.field_count(), args.fields):
@@ -197,7 +166,13 @@ def run(args: argparse.Namespace) -> None:
     logging.info(f"Output directory: '{args.outdir}'")
     if not os.path.isdir(args.outdir): os.mkdir(args.outdir)
 
-    args.channels = clean_channel_list(nd2I, args.channels)
+    if args.channels is not None:
+        args.channels = nd2I.select_channels(args.channels)
+        if 0 == len(args.channels):
+            logging.error("None of the specified channels was found.")
+            sys.exit()
+        logging.info(f"Converting only the following channels: {args.channels}")
+
     if not args.template.can_export_channels(
         nd2I.channel_count(), args.channels):
         logging.critical("when exporting more than 1 channel, the template " +
@@ -213,8 +188,7 @@ def run(args: argparse.Namespace) -> None:
                 logging.warning("Skipped only available field " +
                     "(not included in specified field range.")
         nd2I.set_axes_for_bundling()
-        export_fn(args, nd2I[0], nd2I.metadata, 0, nd2I.bundle_axes,
-            args.channels)
+        export_fn(args, nd2I, 0, args.channels)
     else:
         nd2I.iter_axes = 'v'
         nd2I.set_axes_for_bundling()
@@ -224,15 +198,14 @@ def run(args: argparse.Namespace) -> None:
             logging.info("Converting only the following fields: " +
                 f"{[x for x in args.fields]}")
             field_generator = tqdm(args.fields)
-        else: field_generator = tqdm(range(nd2I.sizes['v']))
+        else: field_generator = tqdm(range(1, nd2I.sizes['v']+1))
 
         for field_id in field_generator:
             if field_id-1 >= nd2I.field_count():
                 logging.warning(f"Skipped field #{field_id}" +
                     "(from specified field range, not available in nd2 file).")
             else:
-                export_fn(args, nd2I[field_id-1], nd2I.metadata,
-                    field_id-1, nd2I.bundle_axes, args.channels)
+                export_fn(args, nd2I, field_id-1, args.channels)
 
 def main():
     run(parse_arguments())

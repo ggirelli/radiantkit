@@ -5,16 +5,29 @@
 
 import argparse
 from czifile import CziFile
+import logging
 from nd2reader import ND2Reader
 from nd2reader.parser import Parser as ND2Parser
 import numpy as np
-from typing import Iterable, Optional, Set, Tuple
+from radiantkit.string import TIFFNameTemplate as TNTemplate
+from typing import Iterable, List, Optional, Set, Tuple, Type
 import warnings
 import xml.etree.ElementTree as ET
 
 class ND2Reader2(ND2Reader):
     def __init__(self, filename):
         super(ND2Reader2, self).__init__(filename)
+
+    def log_details(self,
+        logger: Optional[Type[logging.Logger]]=logging.getLogger()) -> None:
+        logger.info(f"Found {self.field_count()} field(s) of view, " +
+            f"with {self.channel_count()} channel(s).")
+
+        logger.info(f"Channels: {list(self.get_channel_names())}.")
+
+        if self.is3D: logger.info("XYZ size: " + 
+            f"{self.sizes['x']} x {self.sizes['y']} x {self.sizes['z']}")
+        else: logger.info(f"XY size: {self.sizes['x']} x {self.sizes['y']}")
 
     def field_count(self) -> int:
         if not 'v' in self.axes: return 1
@@ -57,6 +70,21 @@ class ND2Reader2(ND2Reader):
             Zlevels = Zlevels + len(Zlevels) * field_id
             Zdata = Zdata[Zlevels]
             return set(np.round(np.diff(Zdata), 3))
+
+    def select_channels(self, channels: List[str]) -> List[str]:
+        return [c.lower() for c in channels
+            if c.lower() in list(self.get_channel_names())]
+
+    def get_tiff_path(self, template: TNTemplate,
+        channel_id: int, field_id: int) -> str:
+        d = {
+            'channel_name' : self.metadata['channels'][channel_id].lower(),
+            'channel_id' : f"{(channel_id+1):03d}",
+            'series_id' : f"{(field_id+1):03d}",
+            'dimensions' : len(self.bundle_axes),
+            'axes_order' : "".join(self.bundle_axes)
+        }
+        return f"{template.safe_substitute(d)}.tiff"
 
 class CziFile2(CziFile):
     __pixels: Optional[np.ndarray] = None
