@@ -72,10 +72,6 @@ Input images that have the specified prefix and suffix are not segmented.
         action='store_const', dest='do_clear_Z',
         const=True, default=False,
         help="""Remove objects touching the bottom/top of the stack.""",)
-    parser.add_argument('--debug',
-        action='store_const', dest='debug_mode',
-        const=True, default=False,
-        help='Log also debugging messages.')
     parser.add_argument('--labeled',
         action='store_const', dest='labeled',
         const=True, default=False,
@@ -84,6 +80,15 @@ Input images that have the specified prefix and suffix are not segmented.
         action='store_const', dest='compressed',
         const=False, default=True,
         help='Generate uncompressed TIFF binary masks.')
+    
+    parser.add_argument('--debug',
+        action='store_const', dest='debug_mode',
+        const=True, default=False,
+        help='Log also debugging messages. Silenced by --silent.')
+    parser.add_argument('--silent',
+        action='store_const', dest='silent',
+        const=True, default=False,
+        help='Limits logs to critical events only.')
     
     default_inreg='^.*\.tiff?$'
     parser.add_argument('--inreg', type=str, metavar="REGEXP",
@@ -248,5 +253,6 @@ def run(args: argparse.Namespace) -> None:
 def main():
     args = parse_arguments()
     if args.debug_mode: logging.getLogger().level = logging.DEBUG
+    if args.silent: logging.getLogger().level = logging.CRITICAL
     confirm_arguments(args)
     run(args)
