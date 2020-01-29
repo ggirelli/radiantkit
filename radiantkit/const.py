@@ -3,7 +3,7 @@
 @contact: gigi.ga90@gmail.com
 '''
 
-from enum import auto, Enum
+from enum import Enum
 
 class ProjectionType(Enum):
     SUM_PROJECTION = 'SUM_PROJECTION'
