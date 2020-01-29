@@ -3,13 +3,17 @@
 @contact: gigi.ga90@gmail.com
 '''
 
+from enum import Enum
 import re
-from typing import Iterator, Optional
+from string import Template
+from typing import Iterator, List, Optional
 
 class MultiRange(object):
     __string_range: Optional[str] = None
     __extremes_list: Optional[list] = None
     __reg: re.Pattern = re.compile(r'^[0-9-, ]+$')
+    __length: Optional[int] = None
+    __ready: bool = False
 
     def __init__(self, s: str):
         super(MultiRange, self).__init__()
@@ -34,6 +38,15 @@ class MultiRange(object):
         self.__clean_extremes_list()
 
         assert 0 < self.__extremes_list[0][0], "'page' count starts from 1."
+        self.__ready = True
+
+    @property
+    def length(self):
+        if self.__length is None and self.__ready:
+            self.__length = 0
+            for a,b in self.__extremes_list:
+                self.__length += b-a+1
+        return self.__length
 
     def __clean_extremes_list(self) -> None:
         is_clean = False
@@ -62,3 +75,39 @@ class MultiRange(object):
 
     def __iter__(self) -> Iterator[int]:
         return self.__next__()
+
+    def __len__(self) -> int:
+        return self.length
+
+class TIFFNameTemplateFields(object):
+    CHANNEL_NAME = "${channel_name}"
+    CHANNEL_ID = "${channel_id}"
+    SERIES_ID = "${series_id}"
+    DIMENSIONS = "${dimensions}"
+    AXES_ORDER = "${axes_order}"
+
+class TIFFNameTemplate(Template):
+    def __init__(self, s: str):
+        super(TIFFNameTemplate, self).__init__(s)
+    
+    def can_export_fields(self, n_fields: int,
+        selected_fields: Optional[List[int]]=None) -> bool:
+        if 1 < n_fields:
+            if TIFFNameTemplateFields.SERIES_ID not in self.template:
+                if selected_fields is not None:
+                    if 1 < len(selected_fields):
+                        return False
+                else: return False
+        return True
+
+    def can_export_channels(self, n_channels: int,
+        selected_channels: Optional[List[str]]) -> bool:
+        seeds_missing = all([x not in self.template
+            for x in [TIFFNameTemplateFields.CHANNEL_ID,
+            TIFFNameTemplateFields.CHANNEL_NAME]])
+        if 1 < n_channels and seeds_missing:
+            if selected_channels is not None:
+                if 1 < len(selected_channels):
+                    return False
+            else: return False
+        return True

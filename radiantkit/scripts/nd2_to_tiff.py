@@ -10,17 +10,18 @@ import pims
 from radiantkit.conversion import ND2Reader2
 import radiantkit.image as imt
 from radiantkit.string import MultiRange
-from string import Template
+from radiantkit.string import TIFFNameTemplateFields as TNTFields
+from radiantkit.string import TIFFNameTemplate as TNTemplate
 import sys
 from tqdm import tqdm
-from typing import List
+from typing import List, Optional
 
 logging.basicConfig(level=logging.INFO,
     format='%(asctime)s %(levelname)s: %(message)s',
     datefmt='%m/%d/%Y %I:%M:%S')
 
 def parse_arguments() -> argparse.Namespace:
-    parser = argparse.ArgumentParser(description = '''
+    parser = argparse.ArgumentParser(description = f'''
 Convert a nd2 file into single channel tiff images. In the case of 3+D images,
 the script also checks for consistent deltaZ distance across consecutive 2D
 slices (i.e., dZ). If the distance is consitent, it is used to set the tiff
@@ -30,13 +31,17 @@ this check and provide a single dZ value to be used.
 The output tiff file names follow the specified template (-T). A template is a
 string including a series of "seeds" that are replaced by the corresponding
 values when writing the output file. Available seeds are:
-${channel_name} : the channel name, lower-cased.
-${channel_id}   : the channel ID (number). Leading 0s added up to 3 digits.
-${series_id}    : the series ID (number). Leading 0s added up to 3 digits.
-${dimensions}   : the number of dimensions in the image, followed by a "D".
-${axes_order}   : the order of the axes in the image (e.g., "TZYX").
-The default template is "${channel_name}_${series_id}". Hence, when writing the
-3rd series of the "a488" channel, the output file name would be:"a488_003.tiff".
+{TNTFields.CHANNEL_NAME} : channel name, lower-cased.
+{TNTFields.CHANNEL_ID} : channel ID (number).
+{TNTFields.SERIES_ID} : series ID (number).
+{TNTFields.DIMENSIONS} : number of dimensions, followed by "D".
+{TNTFields.AXES_ORDER} : axes order (e.g., "TZYX").
+Leading 0s are added up to 3 digits to any ID seed.
+
+The default template is "{TNTFields.CHANNEL_NAME}_{TNTFields.SERIES_ID}".
+Hence, when writing the 3rd series of the "a488" channel, the output file name
+would be:"a488_003.tiff".
+
 Please, remember to escape the "$" when running from command line if using
 double quotes, i.e., "\\$". Alternatively, use single quotes, i.e., '$'.
     ''', formatter_class = argparse.RawDescriptionHelpFormatter)
@@ -51,9 +56,9 @@ double quotes, i.e., "\\$". Alternatively, use single quotes, i.e., '$'.
         help = """If provided (in um), the script does not check delta Z
         consistency and instead uses the provided one.""", default = None)
     parser.add_argument('-T', '--template', metavar = "template", type = str,
-        help = """Template for output file name. See main description for more
-        details. Default: '${channel_name}_${series_id}'""",
-        default = "${channel_name}_${series_id}")
+        help = f"""Template for output file name. See main description for more
+        details. Default: '{TNTFields.CHANNEL_NAME}_{TNTFields.SERIES_ID}'""",
+        default = f"{TNTFields.CHANNEL_NAME}_{TNTFields.SERIES_ID}")
     parser.add_argument('-f', '--fields', metavar = "fields", type = str,
         help = """Extract only specified fields of view. Can be specified as
         when specifying which pages to print. E.g., '1-2,5,8-9'.""",
@@ -94,6 +99,9 @@ double quotes, i.e., "\\$". Alternatively, use single quotes, i.e., '$'.
     if args.channels is not None:
         args.channels = [c.lower() for c in args.channels]
 
+    assert 0 != len(args.template)
+    args.template = TNTemplate(args.template)
+
     return args
 
 def get_output_path(args: argparse.Namespace, bundle_axes: List[str],
@@ -105,8 +113,7 @@ def get_output_path(args: argparse.Namespace, bundle_axes: List[str],
         'dimensions' : len(bundle_axes),
         'axes_order' : "".join(bundle_axes)
     }
-    t = Template(args.template)
-    return f"{t.safe_substitute(d)}.tiff"
+    return f"{args.template.safe_substitute(d)}.tiff"
 
 def export_channel(args: argparse.Namespace, field_of_view: pims.frame.Frame,
     opath: str, metadata: dict, bundle_axes: List[str],
@@ -161,28 +168,8 @@ def log_nd2_info(nd2I: ND2Reader2) -> None:
         f"{nd2I.sizes['x']} x {nd2I.sizes['y']} x {nd2I.sizes['z']}")
     else: logging.info(f"XY size: {nd2I.sizes['x']} x {nd2I.sizes['y']}")
 
-def can_template_export_fields(args: argparse.Namespace,
-    nd2I: ND2Reader2) -> bool:
-    if nd2I.field_count() > 1 and "${series_id}" not in args.template:
-        if args.fields is not None:
-            if 1 < len(args.fields):
-                return False
-        else: return False
-    return True
-
-def can_template_export_channels(args: argparse.Namespace,
-    nd2I: ND2Reader2) -> bool:
-    seeds_missing = all([x not in args.template
-        for x in ["${channel_id}", "${channel_name}"]])
-
-    if nd2I.channel_count() > 1 and seeds_missing:
-        if args.channels is not None:
-            if 1 < len(args.channels):
-                return False
-        else: return False
-    return True
-
-def clean_channel_list(channels: Optional(List[str])) -> Optional(List[str]):
+def clean_channel_list(nd2I: ND2Reader2,
+    channels: Optional[List[str]]) -> Optional[List[str]]:
     if channels is not None:
         channels = [c for c in channels
             if c in list(nd2I.get_channel_names())]
@@ -201,20 +188,22 @@ def run(args: argparse.Namespace) -> None:
     log_nd2_info(nd2I)
     if args.dry: sys.exit()
 
-    if not can_template_export_fields():
-        logging.critical("when exporting more than 1 field, " +
-            "the template must include the ${series_id} seed. " +
-            f"Got '{args.template}' instead.")
+    if not args.template.can_export_fields(nd2I.field_count(), args.fields):
+        logging.critical("when exporting more than 1 field, the template " +
+            f"must include the {TNTFields.SERIES_ID} seed. " +
+            f"Got '{args.template.template}' instead.")
         sys.exit()
 
     logging.info(f"Output directory: '{args.outdir}'")
     if not os.path.isdir(args.outdir): os.mkdir(args.outdir)
 
-    args.channels = clean_channel_list
-    if not can_template_export_channels():
+    args.channels = clean_channel_list(nd2I, args.channels)
+    if not args.template.can_export_channels(
+        nd2I.channel_count(), args.channels):
         logging.critical("when exporting more than 1 channel, the template " +
-            "must include either ${channel_id} or ${channel_name} seeds. " +
-            f"Got '{args.template}' instead.")
+            f"must include either {TNTFields.CHANNEL_ID} or " +
+            f"{TNTFields.CHANNEL_NAME} seeds. " +
+            f"Got '{args.template.template}' instead.")
         sys.exit()
 
     export_fn = export_field_3d if nd2I.is3D() else export_field_2d
