@@ -16,12 +16,8 @@ import re
 import sys
 from tqdm import tqdm
 
-logging.basicConfig(level=logging.INFO,
-    format='%(asctime)s %(levelname)s: %(message)s',
-    datefmt='%m/%d/%Y %I:%M:%S')
-
 def parse_arguments() -> argparse.Namespace:
-    parser = argparse.ArgumentParser(description = '''
+    parser=argparse.ArgumentParser(description='''
 Perform automatic 3D segmentation of TIFF images. The default parameters are
 optimized for nuclear DNA staining and voxel size of 0.13x0.13x0.3 uM.
 
@@ -41,67 +37,68 @@ levels. By default, the script generates compressed binary tiff images; use the
 --uncompressed flag to generate normal tiff images instead.
 
 Input images that have the specified prefix and suffix are not segmented.
-    ''', formatter_class = argparse.RawDescriptionHelpFormatter)
+    ''', formatter_class=argparse.RawDescriptionHelpFormatter)
 
-    parser.add_argument('input', type = str,
-        help = 'Path to folder containing deconvolved tiff images.')
+    parser.add_argument('input', type=str,
+        help='Path to folder containing deconvolved tiff images.')
 
-    parser.add_argument('-o', '--output', type = str,
-        help = '''Path to output folder where to save binarized images (created
+    parser.add_argument('-o', type=str, metavar="DIRPATH", dest="output",
+        help='''Path to output folder where to save binarized images (created
         if missing). Defaults to the input folder.''')
-    default_inreg = '^.*\.tiff?$'
-    parser.add_argument('--inreg', type = str,
-        help = """Regular expression to identify input TIFF images.
-        Default: '%s'""" % (default_inreg,), default = default_inreg)
-    parser.add_argument('-p', '--outprefix', type = str,
-        help = """Prefix for output binarized images name.
-        Default: ''.""", default = '')
-    parser.add_argument('-s', '--outsuffix', type = str,
-        help = """Suffix for output binarized images name.
-        Default: 'mask'.""", default = 'mask')
-    parser.add_argument('--neighbour', type = int,
-        help = """Side of neighbourhood region for adaptig thresholding.
-        Must be odd. Default: 101""", default = 101)
-    parser.add_argument('--radius', type = float, nargs = 2,
-        help = """Filter range of object radii [px]. Default: [10, Inf]""",
-        default = [10., float('Inf')])
-    parser.add_argument('--min-Z', type = float,
-        help = """Minimum stack fraction occupied by an object. Default: .25""",
-        default = .25)
-    parser.add_argument('-t', '--threads', type = int,
-        help = """Number of threads for parallelization. Default: 1""",
-        default = 1)
-    parser.add_argument('-2', type = str,
-        help = """Path to folder with 2D masks with matching name,
-        to combine with 3D masks.""",  metavar = "MAN2DDIR")
-    parser.add_argument('-F', '--dilate-fill-erode', type = int,
-        metavar = "DFE", help = """Number of pixels for dilation/erosion steps
+    parser.add_argument('--outprefix', type=str, metavar="TEXT",
+        help="""Prefix for output binarized images name.
+        Default: ''.""", default='')
+    parser.add_argument('--outsuffix', type=str, metavar="TEXT",
+        help="""Suffix for output binarized images name.
+        Default: 'mask'.""", default='mask')
+    parser.add_argument('--neighbour', type=int, metavar="NUMBER",
+        help="""Side of neighbourhood region for adaptig thresholding.
+        Must be odd. Default: 101""", default=101)
+    parser.add_argument('--radius', type=float, nargs=2,
+        help="""Filter range of object radii [px]. Default: [10, Inf]""",
+        default=[10., float('Inf')], metavar=("MIN_RADIUS", "MAX_RADIUS"))
+    parser.add_argument('--min-Z', type=float, metavar='FRACTION',
+        help="""Minimum stack fraction occupied by an object. Default: .25""",
+        default=.25)
+    parser.add_argument('--mask-2d', type=str, metavar="DIRPATH",
+        help="""Path to folder with 2D masks with matching name,
+        to combine with 3D masks.""")
+    parser.add_argument('--dilate-fill-erode', type=int, metavar="NUMBER",
+        help="""Number of pixels for dilation/erosion steps
         in a dilate-fill-erode operation. Default: 0. Set to 0 to skip.""",
-        default = 0)
+        default=0)
 
-    parser.add_argument('-Z', '--clear-Z',
-        action = 'store_const', dest = 'do_clear_Z',
-        const = True, default = False,
-        help = """Remove objects touching the bottom/top of the stack.""",)
+    parser.add_argument('--clear-Z',
+        action='store_const', dest='do_clear_Z',
+        const=True, default=False,
+        help="""Remove objects touching the bottom/top of the stack.""",)
+    parser.add_argument('--debug',
+        action='store_const', dest='debug_mode',
+        const=True, default=False,
+        help='Log also debugging messages.')
     parser.add_argument('--labeled',
-        action = 'store_const', dest = 'labeled',
-        const = True, default = False,
-        help = 'Export masks as labeled instead of binary.')
+        action='store_const', dest='labeled',
+        const=True, default=False,
+        help='Export masks as labeled instead of binary.')
     parser.add_argument('--uncompressed',
-        action = 'store_const', dest = 'compressed',
-        const = False, default = True,
-        help = 'Generate uncompressed TIFF binary masks.')
-    parser.add_argument('-y', '--do-all', action = 'store_const',
-        help = """Do not ask for settings confirmation and proceed.""",
-        const = True, default = False)
-    parser.add_argument('--debug', '-u',
-        action = 'store_const', dest = 'debug_mode',
-        const = True, default = False,
-        help = 'Log also debugging messages.')
+        action='store_const', dest='compressed',
+        const=False, default=True,
+        help='Generate uncompressed TIFF binary masks.')
+    
+    default_inreg='^.*\.tiff?$'
+    parser.add_argument('--inreg', type=str, metavar="REGEXP",
+        help="""Regular expression to identify input TIFF images.
+        Default: '%s'""" % (default_inreg,), default=default_inreg)
+    parser.add_argument('-t', type=int, metavar="NUMBER", dest="threads",
+        help="""Number of threads for parallelization. Default: 1""",
+        default=1)
+    parser.add_argument('-y', '--do-all', action='store_const',
+        help="""Do not ask for settings confirmation and proceed.""",
+        const=True, default=False)
 
-    version = "3.1.1"
-    parser.add_argument('--version', action = 'version',
-        version = '%s %s' % (sys.argv[0], version,))
+    version="3.1.1"
+    parser.add_argument('--version', action='version',
+        version='%s %s' % (sys.argv[0], version,))
 
     args = parser.parse_args()
     args.version = version
@@ -119,10 +116,10 @@ Input images that have the specified prefix and suffix are not segmented.
     assert 1 == args.neighbour % 2
     assert args.min_Z >= 0 and args.min_Z <= 1
 
-    args.combineWith2D = args.manual_2d_masks is not None
+    args.combineWith2D = args.mask_2d is not None
     if args.combineWith2D:
-        assert os.path.isdir(args.manual_2d_masks
-            ), f"2D mask folder not found, '{args.manual_2d_masks}'"
+        assert os.path.isdir(args.mask_2d
+            ), f"2D mask folder not found, '{args.mask_2d}'"
 
     args.threads = check_threads(args.threads)
 
@@ -140,7 +137,7 @@ def print_settings(args: argparse.Namespace, clear: bool = True) -> str:
        Mask prefix :  '{args.outprefix}'
        Mask suffix :  '{args.outsuffix}'
      Neighbourhood :  {args.neighbour}
-          2D masks : '{args.manual_2d_masks}'
+          2D masks : '{args.mask_2d}'
            Labeled :  {args.labeled}
         Compressed :  {args.compressed}
 
@@ -150,7 +147,7 @@ def print_settings(args: argparse.Namespace, clear: bool = True) -> str:
            Clear Z :  {args.do_clear_Z}
 
            Threads :  {args.threads}
-            Regexp :  '{args.inreg}'
+            Regexp :  {args.inreg.pattern}
              Debug :  {args.debug_mode}
 
     """
