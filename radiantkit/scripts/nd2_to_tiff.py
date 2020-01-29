@@ -153,30 +153,52 @@ def export_field_2d(args: argparse.Namespace, field_of_view: pims.frame.Frame,
             export_channel(args, field_of_view[:, :, channel_id],
                 opath, metadata, bundle_axes)
 
-def run(args: argparse.Namespace) -> None:
-    if args.deltaZ is not None:
-        logging.info(f"Enforcing a deltaZ of {args.deltaZ:.3f} um.")
-
-    nd2I = ND2Reader2(args.input)
-    assert not nd2I.isLive(), "time-course conversion images not implemented."
+def log_nd2_info(nd2I: ND2Reader2) -> None:
     logging.info(f"Found {nd2I.field_count()} field(s) of view, " +
         f"with {nd2I.channel_count()} channel(s).")
     logging.info(f"Channels: {list(nd2I.get_channel_names())}.")
     if nd2I.is3D: logging.info("XYZ size: " + 
         f"{nd2I.sizes['x']} x {nd2I.sizes['y']} x {nd2I.sizes['z']}")
     else: logging.info(f"XY size: {nd2I.sizes['x']} x {nd2I.sizes['y']}")
+
+def can_template_export_fields(args: argparse.Namespace,
+    nd2I: ND2Reader2) -> bool:
+    if nd2I.field_count > 1 and "${series_id}" not in args.template:
+        if args.fields is not None:
+            if 1 < len(args.fields):
+                return False
+        else: return False
+    return True
+
+def clean_channel_list(channels: Optional(List[str])) -> Optional(List[str]):
+    if channels is not None:
+        channels = [c for c in channels
+            if c in list(nd2I.get_channel_names())]
+        if 0 == len(channels):
+            logging.error("None of the specified channels was found.")
+            sys.exit()
+        logging.info(f"Converting only the following channels: {channels}")
+    return channels
+
+def run(args: argparse.Namespace) -> None:
+    if args.deltaZ is not None:
+        logging.info(f"Enforcing a deltaZ of {args.deltaZ:.3f} um.")
+
+    nd2I = ND2Reader2(args.input)
+    assert not nd2I.isLive(), "time-course conversion images not implemented."
+    log_nd2_info(nd2I)
     if args.dry: sys.exit()
+
+    if not can_template_export_fields():
+        logging.critical("when exporting more than 1 field, " +
+            "the template must include the ${series_id} seed. "
+            f"Got '{args.template}' instead.")
+        sys.exit()
 
     logging.info(f"Output directory: '{args.outdir}'")
     if not os.path.isdir(args.outdir): os.mkdir(args.outdir)
 
-    if args.channels is not None:
-        args.channels = [c for c in args.channels
-            if c in list(nd2I.get_channel_names())]
-        if 0 == len(args.channels):
-            logging.error("None of the specified channels was found.")
-            sys.exit()
-        logging.info(f"Converting only the following channels: {args.channels}")
+    args.channels = clean_channel_list
 
     export_fn = export_field_3d if nd2I.is3D() else export_field_2d
     if 1 == nd2I.field_count():
