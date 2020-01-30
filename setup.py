@@ -1,32 +1,23 @@
-"""A setuptools based setup module.
+'''
+@author: Gabriele Girelli
+@contact: gigi.ga90@gmail.com
+'''
 
-See:
-https://packaging.python.org/en/latest/distributing.html
-https://github.com/pypa/sampleproject
-"""
-
-# Always prefer setuptools over distutils
 from setuptools import setup, find_packages
 from distutils.util import convert_path
-
-# To use a consistent encoding
 from codecs import open
 import os
 
 here = os.path.abspath(os.path.dirname(__file__))
-bindir = os.path.join(here, 'bin/')
-
-# Get the long description from the README file
 with open(os.path.join(here, 'README.md'), encoding='utf-8') as f:
     long_description = f.read()
 
-main_ns = {}
+const_data = {}
 ver_path = convert_path('radiantkit/const.py')
-with open(ver_path) as ver_file:
-    exec(ver_file.read(), main_ns)
+with open(ver_path) as ver_file: exec(ver_file.read(), const_data)
 
 setup(name='radiantkit',
-    version=main_ns['__version__'],
+    version=const_data['__version__'],
     description='Radial Image Analysis Toolkit',
     long_description=long_description,
     long_description_content_type='text/markdown',
@@ -64,6 +55,7 @@ setup(name='radiantkit',
     entry_points={'console_scripts':[
         'czi_to_tiff = radiantkit.scripts.czi_to_tiff:main',
         'nd2_to_tiff = radiantkit.scripts.nd2_to_tiff:main',
+        'select_nuclei = radiantkit.scripts.select_nuclei:main',
         'tiff_findoof = radiantkit.scripts.tiff_findoof:main',
         'tiff_segment = radiantkit.scripts.tiff_segment:main',
         'tiff_split = radiantkit.scripts.tiff_split:main',
