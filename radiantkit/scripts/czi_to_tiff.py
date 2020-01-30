@@ -14,6 +14,10 @@ from radiantkit.string import TIFFNameTemplate as TNTemplate
 import sys
 from tqdm import tqdm
 
+logging.basicConfig(level=logging.INFO, format='%(asctime)s ' +
+    '[P%(process)s:%(module)s:%(funcName)s] %(levelname)s: %(message)s',
+    datefmt='%m/%d/%Y %I:%M:%S')
+
 def parse_arguments() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description = f'''
 Convert a czi file into single channel tiff images.

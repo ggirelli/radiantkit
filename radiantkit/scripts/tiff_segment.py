@@ -3,11 +3,11 @@
 @contact: gigi.ga90@gmail.com
 '''
 
+import logging
 import argparse
 from ggc.prompt import ask
 from ggc.args import check_threads, export_settings
 from joblib import delayed, Parallel
-import logging
 import numpy as np
 import os
 from radiantkit import const, segmentation
@@ -15,6 +15,10 @@ from radiantkit.image import Image, ImageBinary, ImageLabeled
 import re
 import sys
 from tqdm import tqdm
+
+logging.basicConfig(level=logging.INFO, format='%(asctime)s ' +
+    '[P%(process)s:%(module)s:%(funcName)s] %(levelname)s: %(message)s',
+    datefmt='%m/%d/%Y %I:%M:%S')
 
 def parse_arguments() -> argparse.Namespace:
     parser=argparse.ArgumentParser(description='''
@@ -154,6 +158,7 @@ def print_settings(args: argparse.Namespace, clear: bool = True) -> str:
            Threads :  {args.threads}
             Regexp :  {args.inreg.pattern}
              Debug :  {args.debug_mode}
+            Silent :  {args.silent}
 
     """
     if clear: print("\033[H\033[J")
@@ -172,7 +177,9 @@ def confirm_arguments(args: argparse.Namespace) -> None:
         export_settings(OH, settings_string)
 
 def run_segmentation(args: argparse.Namespace,
-    imgpath: str, imgdir: str) -> None:
+    imgpath: str, imgdir: str, loglevel: str="INFO") -> None:
+    logging.getLogger().setLevel(loglevel)
+
     I = Image.from_tiff(os.path.join(imgdir, imgpath))
     logging.info(f"Image axes: {I.axes}")
     logging.info(f"Image shape: {I.shape}")
@@ -247,7 +254,7 @@ def run(args: argparse.Namespace) -> None:
     else:
         Parallel(n_jobs = args.threads, verbose = 11)(
             delayed(run_segmentation)(
-                args, imgpath, args.input)
+                args, imgpath, args.input, logging.getLogger().level)
             for imgpath in imglist)
 
 def main():

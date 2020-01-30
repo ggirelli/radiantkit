@@ -16,6 +16,10 @@ import sys
 from tqdm import tqdm
 from typing import List, Optional
 
+logging.basicConfig(level=logging.INFO, format='%(asctime)s ' +
+    '[P%(process)s:%(module)s:%(funcName)s] %(levelname)s: %(message)s',
+    datefmt='%m/%d/%Y %I:%M:%S')
+
 def parse_arguments() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description = f'''
 Convert a nd2 file into single channel tiff images. In the case of 3+D images,

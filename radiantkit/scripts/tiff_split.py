@@ -14,6 +14,10 @@ from typing import List
 import sys
 from tqdm import tqdm
 
+logging.basicConfig(level=logging.INFO, format='%(asctime)s ' +
+    '[P%(process)s:%(module)s:%(funcName)s] %(levelname)s: %(message)s',
+    datefmt='%m/%d/%Y %I:%M:%S')
+
 def parse_arguments() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description = '''
 Split a TIFF image in smaller TIFF images of the specified side(s). If two

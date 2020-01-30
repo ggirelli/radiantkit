@@ -13,6 +13,10 @@ import radiantkit.image as imt
 import re
 import sys
 
+logging.basicConfig(level=logging.INFO, format='%(asctime)s ' +
+    '[P%(process)s:%(module)s:%(funcName)s] %(levelname)s: %(message)s',
+    datefmt='%m/%d/%Y %I:%M:%S')
+
 def parse_arguments() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description = '''
 (Un)compress TIFF images. Provide either a single input/output image paths, or

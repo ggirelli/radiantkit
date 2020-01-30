@@ -20,6 +20,10 @@ import re
 import sys
 from tqdm import tqdm
 
+logging.basicConfig(level=logging.INFO, format='%(asctime)s ' +
+    '[P%(process)s:%(module)s:%(funcName)s] %(levelname)s: %(message)s',
+    datefmt='%m/%d/%Y %I:%M:%S')
+
 def parse_arguments() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description = '''
 Calculate gradient magnitude over Z for every image in the input folder with a
