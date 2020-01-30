@@ -29,10 +29,9 @@ optimized for nuclear DNA staining and voxel size of 0.13x0.13x0.3 uM.
 The input images are first identified based on a regular expression matched to
 the file name. Then, they are re-scaled (if deconvolved with Huygens software).
 Afterwards, a global (Otsu) and local (gaussian) thresholds are applied to
-binarize the image in 3D. Finally, holes are filled in 3D and a closing
-operation is performed to remove small objects. Finally. objects are filtered
-based on XY projected and Z size. Moreover, objects touching the XY image
-borders are discarded.
+binarize the image in 3D. Finally, holes are filled in 3D and closed to remove
+small objects. Finally. objects are filtered based on volume and Z size.
+Moreover, objects touching the XY image borders are discarded.
 
 If a folder path is provided with the -2 option, any binary file with name
 matching the one of an input image will be combined to the binarized image.
@@ -173,7 +172,7 @@ def confirm_arguments(args: argparse.Namespace) -> None:
         ), f"image folder not found: {args.input}"
     if not os.path.isdir(args.output): os.mkdir(args.output)
 
-    with open(os.path.join(args.output, "tiff_segment.config.ini"), "w+") as OH:
+    with open(os.path.join(args.output, "tiff_segment.config.txt"), "w+") as OH:
         export_settings(OH, settings_string)
 
 def run_segmentation(args: argparse.Namespace,
@@ -214,9 +213,12 @@ def run_segmentation(args: argparse.Namespace,
     logging.info("labeling")
     L = M.label()
 
-    xy_size_range = (np.pi*args.radius[0]**2, np.pi*args.radius[1]**2)
-    logging.info(f"filtering XY size: {xy_size_range}")
-    L.filter_size("XY", xy_size_range)
+    if 2 == len(L.axes):
+        size_range = tuple(np.round(np.pi*np.square(args.radius), 6))
+    else:
+        size_range = tuple(np.round(4/3*np.pi*np.power(args.radius,3), 6))
+    logging.info(f"filtering total size: {size_range}")
+    L.filter_total_size(size_range)
     z_size_range = (args.min_Z*I.axis_shape("Z"), np.inf)
     logging.info(f"filtering Z size: {z_size_range}")
     L.filter_size("Z", z_size_range)
