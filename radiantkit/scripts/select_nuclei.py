@@ -5,8 +5,11 @@
 
 import argparse
 from ggc.prompt import ask
+from ggc.args import check_threads, export_settings
 import logging
 import os
+from radiantkit.const import __version__
+from radiantkit import image
 import re
 import sys
 from tqdm import tqdm
@@ -20,12 +23,47 @@ def parse_arguments() -> argparse.Namespace:
 ...
     ''', formatter_class=argparse.RawDescriptionHelpFormatter)
 
-    version="0.0.1"
+    parser.add_argument('input', type=str,
+        help='Path to folder containing deconvolved tiff images.')
+
+    parser.add_argument('--outprefix', type=str, metavar="TEXT",
+        help="""Prefix for output binarized images name.
+        Default: ''.""", default='')
+    parser.add_argument('--outsuffix', type=str, metavar="TEXT",
+        help="""Suffix for output binarized images name.
+        Default: 'mask'.""", default='mask')
+
+    parser.add_argument('--uncompressed',
+        action='store_const', dest='compressed',
+        const=False, default=True,
+        help='Generate uncompressed TIFF binary masks.')
+
+    default_inreg='^.*\.tiff?$'
+    parser.add_argument('--inreg', type=str, metavar="REGEXP",
+        help="""Regular expression to identify input TIFF images.
+        Default: '%s'""" % (default_inreg,), default=default_inreg)
+    parser.add_argument('-t', type=int, metavar="NUMBER", dest="threads",
+        help="""Number of threads for parallelization. Default: 1""",
+        default=1)
+    parser.add_argument('-y', '--do-all', action='store_const',
+        help="""Do not ask for settings confirmation and proceed.""",
+        const=True, default=False)
+
     parser.add_argument('--version', action='version',
-        version='%s %s' % (sys.argv[0], version,))
+        version='%s %s' % (sys.argv[0], __version__,))
 
     args = parser.parse_args()
-    args.version = version
+    args.version = __version__
+
+    args.inreg = re.compile(args.inreg)
+    if 0 != len(args.outprefix):
+        if '.' != args.outprefix[-1]:
+            args.outprefix = f"{args.outprefix}."
+    if 0 != len(args.outsuffix):
+        if '.' != args.outsuffix[0]:
+            args.outsuffix = f".{args.outsuffix}"
+
+    args.threads = check_threads(args.threads)
 
     return args
 
@@ -35,6 +73,14 @@ def print_settings(args: argparse.Namespace, clear: bool = True) -> str:
 
 ---------- SETTING :  VALUE ----------
 
+   Input directory :  '{args.input}'
+
+       Mask prefix :  '{args.outprefix}'
+       Mask suffix :  '{args.outsuffix}'
+        Compressed :  {args.compressed}
+
+           Threads :  {args.threads}
+            Regexp :  {args.inreg.pattern}
     """
     if clear: print("\033[H\033[J")
     print(s)
@@ -44,8 +90,43 @@ def confirm_arguments(args: argparse.Namespace) -> None:
     settings_string = print_settings(args)
     if not args.do_all: ask("Confirm settings and proceed?")
 
+    assert os.path.isdir(args.input
+        ), f"image folder not found: {args.input}"
+
+    with open(os.path.join(args.input, "select_nuclei.config.txt"), "w+") as OH:
+        export_settings(OH, settings_string)
+
+def retrieve_nuclear_features(imgdir: str, rawpath: str, maskpath: str,
+    loglevel: str="INFO"):
+    I = image.Image.from_tiff(os.path.join(imgdir, rawpath))
+    M = image.ImageBinary.from_tiff(os.path.join(imgdir, maskpath))
+    assert I.shape == M.shape
+
 def run(args: argparse.Namespace) -> None:
-    pass
+    imglist = [f for f in os.listdir(args.input) 
+        if os.path.isfile(os.path.join(args.input, f))
+        and not type(None) == type(re.match(args.inreg, f))]
+    
+    if 0 != len(args.outsuffix): imglist = [f for f in imglist
+        if os.path.splitext(f)[0].endswith(args.outsuffix)]
+    if 0 != len(args.outprefix): imglist = [f for f in imglist
+        if os.path.splitext(f)[0].startswith(args.outprefix)]
+
+    n_masks = len(imglist)
+    for imgpath in imglist:
+        imgbase, imgext = os.path.splitext(imgpath)
+        imgbase = imgbase[len(args.outprefix):-len(args.outsuffix)]
+        raw_image = f"{imgbase}{imgext}"
+        if not os.path.isfile(os.path.join(args.input, raw_image)):
+            logging.warning(f"missing raw image for mask '{imgpath}', skipped.")
+            imglist.pop(imglist.index(imgpath))
+        else:
+            imglist[imglist.index(imgpath)] = (raw_image,imgpath)
+
+    logging.info(f"working on {len(imglist)}/{n_masks} images.")
+
+    for rawpath,maskpath in tqdm(imglist):
+        retrieve_nuclear_features(args.input, rawpath, maskpath)
 
 def main():
     args = parse_arguments()
