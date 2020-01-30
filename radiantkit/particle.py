@@ -62,7 +62,7 @@ class ParticleFinder(object):
             particleClass: Type[ParticleBase] = ParticleBase
         ) -> List[Type[ParticleBase]]:
         return ParticleFinder.get_particles_from_labeled_image(
-            ImageLabeled(B), particleClass)
+            ImageLabeled(B.pixels, B.axes), particleClass)
 
     @staticmethod
     def get_particles_from_labeled_image(L: ImageLabeled,
@@ -70,7 +70,8 @@ class ParticleFinder(object):
         ) -> List[Type[ParticleBase]]:
         assert L.pixels.min() != L.pixels.max(), 'monochromatic image detected.'
         particle_list = []
-        for current_label in tqdm(range(1, L.pixels.max())):
+        for current_label in tqdm(range(1, L.pixels.max()),
+            desc=f"Extracting {particleClass.__name__}"):
             B = ImageBinary(L.pixels == current_label)
             region_of_interest = BoundingElement.from_binary_image(B)
             B = ImageBinary(region_of_interest.apply(B))

@@ -6,13 +6,15 @@
 import argparse
 from ggc.prompt import ask
 from ggc.args import check_threads, export_settings
+from joblib import delayed, Parallel
 import logging
 import os
 from radiantkit.const import __version__
-from radiantkit import image
+from radiantkit import image, particle
 import re
 import sys
 from tqdm import tqdm
+from typing import List, Type
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s ' +
     '[P%(process)s:%(module)s:%(funcName)s] %(levelname)s: %(message)s',
@@ -96,11 +98,18 @@ def confirm_arguments(args: argparse.Namespace) -> None:
     with open(os.path.join(args.input, "select_nuclei.config.txt"), "w+") as OH:
         export_settings(OH, settings_string)
 
-def retrieve_nuclear_features(imgdir: str, rawpath: str, maskpath: str,
-    loglevel: str="INFO"):
+def retrieve_nuclei(imgdir: str, maskpath: str, rawpath: str,
+    loglevel: str="INFO") -> List[Type[particle.ParticleBase]]:
+    logging.getLogger().setLevel(loglevel)
     I = image.Image.from_tiff(os.path.join(imgdir, rawpath))
     M = image.ImageBinary.from_tiff(os.path.join(imgdir, maskpath))
     assert I.shape == M.shape
+    nuclei = particle.ParticleFinder(
+        ).get_particles_from_binary_image(M, particle.Nucleus)
+
+    # cycle through nuclei and calculate features passing I
+
+    return nuclei
 
 def run(args: argparse.Namespace) -> None:
     imglist = [f for f in os.listdir(args.input) 
@@ -125,8 +134,15 @@ def run(args: argparse.Namespace) -> None:
 
     logging.info(f"working on {len(imglist)}/{n_masks} images.")
 
-    for rawpath,maskpath in tqdm(imglist):
-        retrieve_nuclear_features(args.input, rawpath, maskpath)
+    if 1 == args.threads:
+        nuclei = []
+        for rawpath,maskpath in tqdm(imglist):
+            nuclei.extend(retrieve_nuclei(args.input, rawpath, maskpath))
+    else:
+        nuclei = Parallel(n_jobs = args.threads, verbose = 11)(
+            delayed(retrieve_nuclei)(args.input, rawpath, maskpath)
+            for rawpath,maskpath in imglist)
+    logging.info(f"extracted {len(nuclei)} nuclei.")
 
 def main():
     args = parse_arguments()
