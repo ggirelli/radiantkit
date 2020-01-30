@@ -25,32 +25,32 @@ class ParticleSettings(object):
         self._region_of_interest = region_of_interest
 
     @property
-    def mask(self):
+    def mask(self) -> ImageBinary:
         return self._mask
 
     @property
-    def region_of_interest(self):
+    def region_of_interest(self) -> BoundingElement:
         return self._region_of_interest
 
     @property
-    def total_size(self):
+    def total_size(self) -> int:
         return self.mask.sum()
 
     @property
-    def sizeXY(self):
+    def sizeXY(self) -> int:
         return self.size("XY")
 
     @property
-    def sizeZ(self):
+    def sizeZ(self) -> int:
         return self.size("Z")
 
     @property
-    def volume(self):
+    def volume(self) -> int:
         if self._volume is None: self._volume = self._mask.pixels.sum()
         return self._volume
     
     @property
-    def surface(self):
+    def surface(self) -> float:
         if self._surface is None:
             M = self._mask.pixels.copy()
             shape = [1 for axis in M.shape]
@@ -75,20 +75,20 @@ class ParticleBase(ParticleSettings):
         super(ParticleBase, self).__init__(B, region_of_interest)
     
     @property
-    def intensity_sum(self):
+    def intensity_sum(self) -> float:
         if self._intensity_sum is None:
             logging.warning("run init_intensity_features " +
                 "to initialize this value")
         return self._intensity_sum
     
     @property
-    def intensity_mean(self):
+    def intensity_mean(self) -> float:
         if self._intensity_mean is None:
             logging.warning("run init_intensity_features " +
                 "to initialize this value")
         return self._intensity_mean
 
-    def init_intensity_features(self, I: Type[ImageBase]):
+    def init_intensity_features(self, I: Type[ImageBase]) -> None:
         pixels = self._region_of_interest.apply(I)[self._mask.pixels]
         self._intensity_mean = np.mean(pixels)
         self._intensity_sum = np.sum(pixels)

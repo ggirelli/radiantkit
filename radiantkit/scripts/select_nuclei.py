@@ -9,9 +9,12 @@ from ggc.args import check_threads, export_settings
 import itertools
 from joblib import delayed, Parallel
 import logging
+import numpy as np
 import os
+import pandas as pd
 from radiantkit.const import __version__
 from radiantkit import image, particle
+from radiantkit import stat
 import re
 import sys
 from tqdm import tqdm
@@ -29,6 +32,9 @@ def parse_arguments() -> argparse.Namespace:
     parser.add_argument('input', type=str,
         help='Path to folder containing deconvolved tiff images.')
 
+    parser.add_argument('--k-sigma', type=str, metavar="NUMBER",
+        help="""Suffix for output binarized images name.
+        Default: .""", default='mask')
     parser.add_argument('--outprefix', type=str, metavar="TEXT",
         help="""Prefix for output binarized images name.
         Default: ''.""", default='')
@@ -147,12 +153,31 @@ def run(args: argparse.Namespace) -> None:
         nuclei_nested = Parallel(n_jobs = args.threads, verbose = 11)(
             delayed(retrieve_nuclei)(args.input, maskpath, rawpath)
             for rawpath,maskpath in imglist)
-        print(nuclei_nested)
         nuclei = list(itertools.chain(*nuclei_nested))
     logging.info(f"extracted {len(nuclei)} nuclei.")
 
-    for n in nuclei:
-        logging.info(f"Volume: {n.volume}; Isum: {n.intensity_sum}; {n.ipath}")
+    volume_data = np.array([n.volume for n in nuclei])
+    volume_fit = (stat.sog_fit(volume_data), 'sog')
+    if volume_fit[0] is None:
+        volume_fit = (stat.gaussian_fit(volume_data), 'gaussian')
+    assert volume_fit[0] is not None
+    np.set_printoptions(formatter={'float_kind':'{:.2E}'.format})
+    logging.info(f"volume fit:\n{volume_fit}")
+
+    intensity_sum_data = np.array([n.intensity_sum for n in nuclei])
+    intensity_sum_fit = (stat.sog_fit(intensity_sum_data), 'sog')
+    if intensity_sum_fit[0] is None:
+        intensity_sum_fit = (stat.gaussian_fit(intensity_sum_data), 'gaussian')
+    assert intensity_sum_fit[0] is not None
+    np.set_printoptions(formatter={'float_kind':'{:.2E}'.format})
+    logging.info(f"intensity sum fit:\n{intensity_sum_fit}")
+
+    pd.DataFrame.from_dict({
+        'image':[n.ipath for n in nuclei],
+        'label':[n.label for n in nuclei],
+        'volume':volume_data,
+        'isum':intensity_sum_data
+    }).to_csv("nuclei_data.tsv", sep="\t", index=False)
 
 def main():
     args = parse_arguments()

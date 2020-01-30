@@ -3,13 +3,17 @@
 @contact: gigi.ga90@gmail.com
 '''
 
+from matplotlib import pyplot as plt
 import numpy as np
 from scipy.signal import convolve
-from scipy import stats
+import scipy.optimize
+import scipy.stats
+import warnings
 
 def gpartial(V: np.ndarray, d: int, sigma: float) -> np.ndarray:
     '''Calculate the partial derivative of V along dimension d using a filter
     of size sigma. Based on code by Erik Wernersson, PhD.'''
+
     w = round(8 * sigma + 2)
     if 0 == w % 2:
         w = w + 1
@@ -51,3 +55,49 @@ def gpartial(V: np.ndarray, d: int, sigma: float) -> np.ndarray:
             V = convolve(V, g.reshape([w+1, 1]), 'same')
 
     return V
+
+def gaussian(x: float, k: float, loc: float, scale: float) -> float:
+    return k*scipy.stats.norm.pdf(x, loc=loc, scale=scale)
+
+def gaussian_fit(xx: np.ndarray) -> np.ndarray:
+    df = scipy.stats.gaussian_kde(xx)
+    sd = np.std(xx)
+    params = [df(xx).max()*sd/4*np.sqrt(2*np.pi), np.mean(xx), sd]
+    with warnings.catch_warnings():
+        fitted_params,_ = scipy.optimize.curve_fit(
+            gaussian, xx, df(xx), p0=params)
+    if all(fitted_params == params): return None
+    return fitted_params
+
+def plot_gaussian_fit(xx: np.ndarray, fitted_params:np.ndarray) -> None:
+    assert 3 == len(fitted_params)
+    df = scipy.stats.gaussian_kde(xx)
+    plt.plot(xx, df(xx), '.')
+    x2 = np.linspace(xx.min(), xx.max(), 1000)
+    plt.plot(x2, gaussian(x2, *fitted_params), 'r')
+    plt.show()
+
+def sog(x: float, k1: float, loc1: float, scale1: float,
+    k2: float, loc2: float, scale2: float) -> float:
+    return gaussian(x, k1, loc1, scale1) + gaussian(x, k2, loc2, scale2)
+
+def sog_fit(xx: np.ndarray) -> np.ndarray:
+    df = scipy.stats.gaussian_kde(xx)
+    loc2 = np.mean(xx)+2.5*np.std(xx)
+    sd1 = np.std(xx)
+    params = [df(xx).max()*sd1/4*np.sqrt(2*np.pi), np.mean(xx), sd1,
+        df(loc2)[0]*sd1/4*np.sqrt(2*np.pi), loc2, sd1/4]
+    with warnings.catch_warnings():
+        fitted_params,_ = scipy.optimize.curve_fit(
+            sog, xx, df(xx), p0=params)
+    if all(fitted_params == params): return None
+    return fitted_params
+
+def plot_sog_fit(xx: np.ndarray, fitted_params:np.ndarray) -> None:
+    assert 6 == len(fitted_params)
+    df = scipy.stats.gaussian_kde(xx)
+    plt.plot(xx, df(xx), '.')
+    x2 = np.linspace(xx.min(), xx.max(), 1000)
+    plt.plot(x2, gaussian(x2, *fitted_params[:3]), 'r')
+    plt.plot(x2, gaussian(x2, *fitted_params[3:]), 'g')
+    plt.show()
