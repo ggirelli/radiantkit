@@ -5,6 +5,8 @@
 
 from enum import Enum
 
+__version__ = "0.0.1"
+
 class ProjectionType(Enum):
     SUM_PROJECTION = 'SUM_PROJECTION'
     MAX_PROJECTION = 'MAX_PROJECTION'
