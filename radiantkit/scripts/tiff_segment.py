@@ -179,12 +179,13 @@ def confirm_arguments(args: argparse.Namespace) -> None:
 def run_segmentation(args: argparse.Namespace,
     imgpath: str, imgdir: str, loglevel: str="INFO") -> None:
     logging.getLogger().setLevel(loglevel)
+    logging.info(f"Segmenting image '{imgpath}'")
 
     I = Image.from_tiff(os.path.join(imgdir, imgpath))
-    logging.info(f"Image axes: {I.axes}")
-    logging.info(f"Image shape: {I.shape}")
+    logging.info(f"image axes: {I.axes}")
+    logging.info(f"image shape: {I.shape}")
     I.rescale_factor = I.get_huygens_rescaling_factor()
-    logging.info(f"Rescaling factor: {I.rescale_factor}")
+    logging.info(f"rescaling factor: {I.rescale_factor}")
 
     binarizer = segmentation.Binarizer()
     binarizer.segmentation_type = const.SegmentationType.THREED
@@ -223,6 +224,10 @@ def run_segmentation(args: argparse.Namespace,
     if mask2d is not None:
         logging.info("recovering labels from 2D mask")
         L.inherit_labels(mask2d)
+
+    if 0 == L.pixels.max():
+        logging.warning(f"skipped image '{imgpath}' (only background)")
+        return
 
     imgbase,imgext = os.path.splitext(imgpath)
     if not args.labeled:
