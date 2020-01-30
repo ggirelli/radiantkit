@@ -4,8 +4,10 @@
 '''
 
 import logging
+import numpy as  np
 from radiantkit.image import ImageBase, ImageBinary, ImageLabeled
 from radiantkit.selection import BoundingElement
+from skimage.measure import marching_cubes_lewiner, mesh_surface_area
 from tqdm import tqdm
 from typing import List, Optional, Type, Union
 
@@ -49,6 +51,14 @@ class ParticleSettings(object):
     
     @property
     def surface(self):
+        if self._surface is None:
+            M = self._mask.pixels.copy()
+            shape = [1 for axis in M.shape]
+            shape[-2:] = M.shape[-2:]
+            M = np.vstack((np.zeros(shape), M, np.zeros(shape)))
+            verts, faces, ns, vs = marching_cubes_lewiner(
+                M, 0.0, self._mask.aspect)
+            self._surface = mesh_surface_area(verts, faces)
         return self._surface
 
     def size(self, axes: str) -> int:
@@ -64,8 +74,24 @@ class ParticleBase(ParticleSettings):
     def __init__(self, B: ImageBinary, region_of_interest: BoundingElement):
         super(ParticleBase, self).__init__(B, region_of_interest)
     
-    def calc_intensity_features(self, I: Type[ImageBase]):
-        pass
+    @property
+    def intensity_sum(self):
+        if self._intensity_sum is None:
+            logging.warning("run init_intensity_features " +
+                "to initialize this value")
+        return self._intensity_sum
+    
+    @property
+    def intensity_mean(self):
+        if self._intensity_mean is None:
+            logging.warning("run init_intensity_features " +
+                "to initialize this value")
+        return self._intensity_mean
+
+    def init_intensity_features(self, I: Type[ImageBase]):
+        pixels = self._region_of_interest.apply(I)[self._mask.pixels]
+        self._intensity_mean = np.mean(pixels)
+        self._intensity_sum = np.sum(pixels)
 
 class Nucleus(ParticleBase):
     def __init__(self, B: ImageBinary, region_of_interest: BoundingElement):
@@ -87,12 +113,17 @@ class ParticleFinder(object):
             particleClass: Type[ParticleBase] = ParticleBase
         ) -> List[Type[ParticleBase]]:
         assert L.pixels.min() != L.pixels.max(), 'monochromatic image detected.'
+
         particle_list = []
-        for current_label in range(1, L.pixels.max()):
+        for current_label in range(1, L.pixels.max()+1):
             B = ImageBinary(L.pixels == current_label)
             region_of_interest = BoundingElement.from_binary_image(B)
+
             B = ImageBinary(region_of_interest.apply(B))
+
             particle = particleClass(B, region_of_interest)
             particle.label = current_label
+
             particle_list.append(particle)
+
         return particle_list

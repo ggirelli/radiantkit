@@ -6,6 +6,7 @@
 import argparse
 from ggc.prompt import ask
 from ggc.args import check_threads, export_settings
+import itertools
 from joblib import delayed, Parallel
 import logging
 import os
@@ -101,13 +102,17 @@ def confirm_arguments(args: argparse.Namespace) -> None:
 def retrieve_nuclei(imgdir: str, maskpath: str, rawpath: str,
     loglevel: str="INFO") -> List[Type[particle.ParticleBase]]:
     logging.getLogger().setLevel(loglevel)
+    logging.info(f"Extracting nuclei from '{maskpath}'")
     I = image.Image.from_tiff(os.path.join(imgdir, rawpath))
     M = image.ImageBinary.from_tiff(os.path.join(imgdir, maskpath))
     assert I.shape == M.shape
+
     nuclei = particle.ParticleFinder(
         ).get_particles_from_binary_image(M, particle.Nucleus)
-
-    # cycle through nuclei and calculate features passing I
+    
+    for nucleus in nuclei:
+        nucleus.init_intensity_features(I)
+        nucleus.ipath = rawpath
 
     return nuclei
 
@@ -137,12 +142,17 @@ def run(args: argparse.Namespace) -> None:
     if 1 == args.threads:
         nuclei = []
         for rawpath,maskpath in tqdm(imglist):
-            nuclei.extend(retrieve_nuclei(args.input, rawpath, maskpath))
+            nuclei.extend(retrieve_nuclei(args.input, maskpath, rawpath))
     else:
-        nuclei = Parallel(n_jobs = args.threads, verbose = 11)(
-            delayed(retrieve_nuclei)(args.input, rawpath, maskpath)
+        nuclei_nested = Parallel(n_jobs = args.threads, verbose = 11)(
+            delayed(retrieve_nuclei)(args.input, maskpath, rawpath)
             for rawpath,maskpath in imglist)
+        print(nuclei_nested)
+        nuclei = list(itertools.chain(*nuclei_nested))
     logging.info(f"extracted {len(nuclei)} nuclei.")
+
+    for n in nuclei:
+        logging.info(f"Volume: {n.volume}; Isum: {n.intensity_sum}; {n.ipath}")
 
 def main():
     args = parse_arguments()
