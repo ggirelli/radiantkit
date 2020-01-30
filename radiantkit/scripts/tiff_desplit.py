@@ -5,6 +5,7 @@
 
 import argparse
 import logging
+from radiantkit.const import __version__
 import sys
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s ' +

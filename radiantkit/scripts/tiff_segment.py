@@ -10,6 +10,7 @@ from ggc.args import check_threads, export_settings
 from joblib import delayed, Parallel
 import numpy as np
 import os
+from radiantkit.const import __version__
 from radiantkit import const, segmentation
 from radiantkit.image import Image, ImageBinary, ImageLabeled
 import re
@@ -105,12 +106,11 @@ Input images that have the specified prefix and suffix are not segmented.
         help="""Do not ask for settings confirmation and proceed.""",
         const=True, default=False)
 
-    version="3.1.1"
     parser.add_argument('--version', action='version',
-        version='%s %s' % (sys.argv[0], version,))
+        version='%s %s' % (sys.argv[0], __version__,))
 
     args = parser.parse_args()
-    args.version = version
+    args.version = __version__
 
     if args.output is None: args.output = args.input
 
@@ -173,7 +173,7 @@ def confirm_arguments(args: argparse.Namespace) -> None:
         ), f"image folder not found: {args.input}"
     if not os.path.isdir(args.output): os.mkdir(args.output)
 
-    with open(os.path.join(args.output, "settings.txt"), "w+") as OH:
+    with open(os.path.join(args.output, "tiff_segment.config.ini"), "w+") as OH:
         export_settings(OH, settings_string)
 
 def run_segmentation(args: argparse.Namespace,

@@ -14,6 +14,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 import os
 import pandas as pd
+from radiantkit.const import __version__
 import radiantkit.image as imt
 from radiantkit import plot, stat
 import re
@@ -61,9 +62,8 @@ filename matching the --pattern. Use --range to change the in-focus definition.
         help = """Silent run.""",
         const = True, default = False)
 
-    version = "0.3.1"
     parser.add_argument('--version', action = 'version',
-        version = '%s %s' % (sys.argv[0], version,))
+        version = '%s %s' % (sys.argv[0], __version__,))
 
     args = parser.parse_args()
     args.threads = check_threads(args.threads)

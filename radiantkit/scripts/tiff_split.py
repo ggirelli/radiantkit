@@ -9,6 +9,7 @@ from ggc.prompt import ask
 import logging
 import numpy as np
 import os
+from radiantkit.const import __version__
 import radiantkit.image as imt
 from typing import List
 import sys
@@ -105,12 +106,11 @@ tiff_split big_image.tif split_out_dir 100 -e -O 10 20
         help = """Do not ask for settings confirmation and proceed.""",
         const = True, default = False)
 
-    version = "0.0.1"
     parser.add_argument('--version', action = 'version',
-        version = '%s %s' % (sys.argv[0], version,))
+        version = '%s %s' % (sys.argv[0], __version__,))
 
     args = parser.parse_args()
-    args.version = version
+    args.version = __version__
 
     assert os.path.isfile(args.input), "input file not found: %s" % args.input
     assert not os.path.isfile(args.outdir

@@ -7,6 +7,7 @@ import argparse
 import logging
 import os
 import pims
+from radiantkit.const import __version__
 from radiantkit.conversion import ND2Reader2
 import radiantkit.image as imt
 from radiantkit.string import MultiRange
@@ -77,10 +78,9 @@ double quotes, i.e., "\\$". Alternatively, use single quotes, i.e., '$'.
         const = True, default = False,
         help = 'Describe input data and stop.')
 
-    version = "0.0.1"
     parser.add_argument('--version', action = 'version',
-        version = f'{sys.argv[0]} {version}')
-
+        version = f'{sys.argv[0]} {__version__}')
+    
     args = parser.parse_args()
 
     if args.outdir is None:

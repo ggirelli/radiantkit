@@ -9,6 +9,7 @@ from joblib import Parallel, delayed
 import logging
 import multiprocessing
 import os
+from radiantkit.const import __version__
 import radiantkit.image as imt
 import re
 import sys
@@ -51,7 +52,7 @@ operations become the bottleneck when parallelizing.
         help = 'Compress TIFF files.')
 
     parser.add_argument('--version', action = 'version',
-        version = '%s %s' % (sys.argv[0], "0.0.1",))
+        version = '%s %s' % (sys.argv[0], __version__,))
 
     args = parser.parse_args()
     args.inreg = re.compile(args.inreg)
