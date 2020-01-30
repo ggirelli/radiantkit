@@ -122,17 +122,18 @@ def retrieve_nuclei(imgdir: str, maskpath: str, rawpath: str,
 
     return nuclei
 
-def run(args: argparse.Namespace) -> None:
+def find_images(ipath: str) -> List[str]:
     imglist = [f for f in os.listdir(args.input) 
         if os.path.isfile(os.path.join(args.input, f))
         and not type(None) == type(re.match(args.inreg, f))]
-    
+    return imglist
+
+def select_masks(imglist: List[str], prefix: Optional[str]=None, suffix) -> List[str]:
     if 0 != len(args.outsuffix): imglist = [f for f in imglist
         if os.path.splitext(f)[0].endswith(args.outsuffix)]
     if 0 != len(args.outprefix): imglist = [f for f in imglist
         if os.path.splitext(f)[0].startswith(args.outprefix)]
 
-    n_masks = len(imglist)
     for imgpath in imglist:
         imgbase, imgext = os.path.splitext(imgpath)
         imgbase = imgbase[len(args.outprefix):-len(args.outsuffix)]
@@ -143,32 +144,39 @@ def run(args: argparse.Namespace) -> None:
         else:
             imglist[imglist.index(imgpath)] = (raw_image,imgpath)
 
-    logging.info(f"working on {len(imglist)}/{n_masks} images.")
+    return imglist
+
+def cell_cycle_fit(data: np.ndarray) -> Tuple[Optional[np.ndarray],str]:
+    data = np.array([n.volume for n in nuclei])
+    fit = (stat.sog_fit(data), 'sog')
+    if fit[0] is None:
+        fit = (stat.gaussian_fit(data), 'gaussian')
+    assert fit[0] is not None
+    return fit
+
+def run(args: argparse.Namespace) -> None:
+    imglist = find_images(args.input)
+    masklist = select_masks(imglist)
+    logging.info(f"working on {len(masklist)}/{len(imglist)} images.")
 
     if 1 == args.threads:
         nuclei = []
-        for rawpath,maskpath in tqdm(imglist):
+        for rawpath,maskpath in tqdm(masklist):
             nuclei.extend(retrieve_nuclei(args.input, maskpath, rawpath))
     else:
         nuclei_nested = Parallel(n_jobs = args.threads, verbose = 11)(
             delayed(retrieve_nuclei)(args.input, maskpath, rawpath)
-            for rawpath,maskpath in imglist)
+            for rawpath,maskpath in masklist)
         nuclei = list(itertools.chain(*nuclei_nested))
     logging.info(f"extracted {len(nuclei)} nuclei.")
 
     volume_data = np.array([n.volume for n in nuclei])
-    volume_fit = (stat.sog_fit(volume_data), 'sog')
-    if volume_fit[0] is None:
-        volume_fit = (stat.gaussian_fit(volume_data), 'gaussian')
-    assert volume_fit[0] is not None
+    volume_fit = cell_cycle_fit(volume_data)
     np.set_printoptions(formatter={'float_kind':'{:.2E}'.format})
     logging.info(f"volume fit:\n{volume_fit}")
 
     intensity_sum_data = np.array([n.intensity_sum for n in nuclei])
-    intensity_sum_fit = (stat.sog_fit(intensity_sum_data), 'sog')
-    if intensity_sum_fit[0] is None:
-        intensity_sum_fit = (stat.gaussian_fit(intensity_sum_data), 'gaussian')
-    assert intensity_sum_fit[0] is not None
+    intensity_sum_fit = cell_cycle_fit(intensity_sum_data)
     np.set_printoptions(formatter={'float_kind':'{:.2E}'.format})
     logging.info(f"intensity sum fit:\n{intensity_sum_fit}")
 
