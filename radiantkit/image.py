@@ -160,8 +160,9 @@ class ImageLabeled(ImageBase):
         return self.pixels.max()
 
     @staticmethod
-    def from_tiff(self, path: str, doRelabel: bool=True) -> 'ImageLabeled':
-        return ImageLabeled(read_tiff(path), path, doRelabel)
+    def from_tiff(self, path: str, axes: Optional[str]=None,
+        doRelabel: bool=True) -> 'ImageLabeled':
+        return ImageLabeled(read_tiff(path), path, axes, doRelabel)
 
     def _relabel(self) -> None:
         self._pixels = self._pixels.copy() > self._pixels.min()
@@ -227,8 +228,9 @@ class ImageBinary(ImageBase):
         assert 1 == self.pixels.max()
 
     @staticmethod
-    def from_tiff(path: str, doRebinarize: bool=True) -> 'ImageBinary':
-        return ImageBinary(read_tiff(path), path, doRebinarize)
+    def from_tiff(path: str, axes: Optional[str]=None,
+        doRebinarize: bool=True) -> 'ImageBinary':
+        return ImageBinary(read_tiff(path), path, axes, doRebinarize)
 
     def _rebinarize(self) -> None:
         self._pixels = self.pixels > self.pixels.min()
@@ -290,8 +292,8 @@ class Image(ImageBase):
         self._pixels = self.pixels/self.rescale_factor
 
     @staticmethod
-    def from_tiff(path: str) -> 'Image':
-        return Image(read_tiff(path), path)
+    def from_tiff(path: str, axes: Optional[str]=None) -> 'Image':
+        return Image(read_tiff(path), path, axes)
 
     def get_huygens_rescaling_factor(self) -> float:
         if self._path_to_local is None: return 1.
