@@ -32,9 +32,9 @@ def parse_arguments() -> argparse.Namespace:
     parser.add_argument('input', type=str,
         help='Path to folder containing deconvolved tiff images.')
 
-    parser.add_argument('--k-sigma', type=str, metavar="NUMBER",
+    parser.add_argument('--k-sigma', type=float, metavar="NUMBER",
         help="""Suffix for output binarized images name.
-        Default: .""", default='mask')
+        Default: 2.5""", default=2.5)
     parser.add_argument('--outprefix', type=str, metavar="TEXT",
         help="""Prefix for output binarized images name.
         Default: ''.""", default='')
@@ -129,7 +129,7 @@ def find_images(ipath: str, inreg: Pattern) -> List[str]:
     return imglist
 
 def select_masks(ipath: str, imglist: List[str],
-    prefix: str="", suffix: str: "") -> List[str]:
+    prefix: str="", suffix: str= "") -> List[str]:
     if 0 != len(suffix): imglist = [f for f in imglist
         if os.path.splitext(f)[0].endswith(suffix)]
     if 0 != len(prefix): imglist = [f for f in imglist
@@ -149,8 +149,9 @@ def select_masks(ipath: str, imglist: List[str],
 
 def run(args: argparse.Namespace) -> None:
     imglist = find_images(args.input, args.inreg)
-    masklist = select_masks(args.input, imglist)
+    masklist = select_masks(args.input, imglist, args.outprefix, args.outsuffix)
     logging.info(f"working on {len(masklist)}/{len(imglist)} images.")
+    assert 0 != len(masklist)
 
     if 1 == args.threads:
         nuclei = []
@@ -168,16 +169,18 @@ def run(args: argparse.Namespace) -> None:
     assert size_fit[0] is not None
     np.set_printoptions(formatter={'float_kind':'{:.2E}'.format})
     logging.info(f"size fit:\n{size_fit}")
-    size_range = stat.range_from_fit(size_fit)
-    logging.info(f"size range:\n{size_range}")
+    size_range = stat.range_from_fit(*size_fit, args.k_sigma)
+    np.set_printoptions(formatter={'float_kind':'{:.2E}'.format})
+    logging.info(f"size range: {size_range}")
 
     intensity_sum_data = np.array([n.intensity_sum for n in nuclei])
     intensity_sum_fit = stat.cell_cycle_fit(intensity_sum_data)
     assert intensity_sum_fit[0] is not None
     np.set_printoptions(formatter={'float_kind':'{:.2E}'.format})
     logging.info(f"intensity sum fit:\n{intensity_sum_fit}")
-    intensity_sum_range = stat.range_from_fit(intensity_sum_fit)
-    logging.info(f"size range:\n{intensity_sum_range}")
+    intensity_sum_range = stat.range_from_fit(*intensity_sum_fit, args.k_sigma)
+    np.set_printoptions(formatter={'float_kind':'{:.2E}'.format})
+    logging.info(f"size range: {intensity_sum_range}")
 
     ndata = pd.DataFrame.from_dict({
         'image':[n.ipath for n in nuclei],
@@ -195,7 +198,7 @@ def run(args: argparse.Namespace) -> None:
     ndata['pass'] = np.logical_and(ndata['pass_size'], ndata['pass_isum'])
 
     ndpath = os.path.join(args.input, "nuclei_data.tsv")
-    logging.info(f"writing nuclear data to {ndpath}")
+    logging.info(f"writing nuclear data to:\n{ndpath}")
     ndata.to_csv(ndpath, sep="\t", index=False)
 
 def main():

@@ -108,7 +108,6 @@ def fwhm(xx: np.ndarray) -> Tuple[float]:
     return (xx.min(), xx.max())
 
 def cell_cycle_fit(data: np.ndarray) -> Tuple[Optional[np.ndarray],str]:
-    data = np.array([n.volume for n in nuclei])
     fit = (sog_fit(data), 'sog')
     if fit[0] is None:
         fit = (gaussian_fit(data), 'gaussian')
@@ -129,10 +128,10 @@ def gaussian_range_from_fit(fitted_params: Tuple[float],
 
 def range_from_fit(fitted_params: Tuple[float],
     fit_type: str, k_sigma: float) -> Optional[Tuple[Tuple[float]]]:
-    if "sog" == fitted_params:
+    if "sog" == fit_type:
         return sog_range_from_fit(fitted_params, fit_type, k_sigma)
-    if "gaussian" == fitted_params:
+    if "gaussian" == fit_type:
         return gaussian_range_from_fit(fitted_params, fit_type, k_sigma)
-    if "fwhm" == fitted_params:
+    if "fwhm" == fit_type:
         return fitted_params
     return None
