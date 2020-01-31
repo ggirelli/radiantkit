@@ -146,14 +146,6 @@ def select_masks(imglist: List[str], prefix: Optional[str]=None, suffix) -> List
 
     return imglist
 
-def cell_cycle_fit(data: np.ndarray) -> Tuple[Optional[np.ndarray],str]:
-    data = np.array([n.volume for n in nuclei])
-    fit = (stat.sog_fit(data), 'sog')
-    if fit[0] is None:
-        fit = (stat.gaussian_fit(data), 'gaussian')
-    assert fit[0] is not None
-    return fit
-
 def run(args: argparse.Namespace) -> None:
     imglist = find_images(args.input)
     masklist = select_masks(imglist)
@@ -171,12 +163,14 @@ def run(args: argparse.Namespace) -> None:
     logging.info(f"extracted {len(nuclei)} nuclei.")
 
     volume_data = np.array([n.volume for n in nuclei])
-    volume_fit = cell_cycle_fit(volume_data)
+    volume_fit = stat.cell_cycle_fit(volume_data)
+    assert volume_fit[0] is not None
     np.set_printoptions(formatter={'float_kind':'{:.2E}'.format})
     logging.info(f"volume fit:\n{volume_fit}")
 
     intensity_sum_data = np.array([n.intensity_sum for n in nuclei])
-    intensity_sum_fit = cell_cycle_fit(intensity_sum_data)
+    intensity_sum_fit = stat.cell_cycle_fit(intensity_sum_data)
+    assert intensity_sum_fit[0] is not None
     np.set_printoptions(formatter={'float_kind':'{:.2E}'.format})
     logging.info(f"intensity sum fit:\n{intensity_sum_fit}")
 

@@ -101,3 +101,15 @@ def plot_sog_fit(xx: np.ndarray, fitted_params:np.ndarray) -> None:
     plt.plot(x2, gaussian(x2, *fitted_params[:3]), 'r')
     plt.plot(x2, gaussian(x2, *fitted_params[3:]), 'g')
     plt.show()
+
+def fwhm(xx: np.ndarray) -> Tuple[float]:
+    return (xx.min(), xx.max())
+
+def cell_cycle_fit(data: np.ndarray) -> Tuple[Optional[np.ndarray],str]:
+    data = np.array([n.volume for n in nuclei])
+    fit = (sog_fit(data), 'sog')
+    if fit[0] is None:
+        fit = (gaussian_fit(data), 'gaussian')
+        if fit[0] is None:
+            fit = (fwhm(data), 'fwhm')
+    return fit
