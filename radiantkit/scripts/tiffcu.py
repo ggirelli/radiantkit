@@ -13,20 +13,23 @@ from radiantkit.const import __version__
 import radiantkit.image as imt
 import re
 import sys
+from typing import Optional
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s ' +
     '[P%(process)s:%(module)s:%(funcName)s] %(levelname)s: %(message)s',
     datefmt='%m/%d/%Y %I:%M:%S')
 
-def parse_arguments() -> argparse.Namespace:
-    parser = argparse.ArgumentParser(description = '''
+def init_parser(subparsers: argparse._SubParsersAction
+    ) -> argparse.ArgumentParser:
+    parser = subparsers.add_parser(__name__.split(".")[-1], description = '''
 (Un)compress TIFF images. Provide either a single input/output image paths, or
 input/output folder paths. In case of folder input/output, all tiff files in the
 input folder with file name matching the specified pattern are (un)compressed
 and saved to the output folder. When (un)compressing multiple files, the
 --threads option allows to parallelize on multiple threads. Disk read/write
-operations become the bottleneck when parallelizing.
-    ''', formatter_class = argparse.RawDescriptionHelpFormatter)
+operations become the bottleneck when parallelizing.''',
+        formatter_class = argparse.RawDescriptionHelpFormatter,
+        help = f"{__name__.split('.')[-1]} -h")
 
     parser.add_argument('input', type = str,
         help = '''Path to the TIFF image to (un)compress, or to a folder
@@ -53,8 +56,12 @@ operations become the bottleneck when parallelizing.
 
     parser.add_argument('--version', action = 'version',
         version = '%s %s' % (sys.argv[0], __version__,))
+    
+    parser.set_defaults(parse=parse_arguments, run=run)
 
-    args = parser.parse_args()
+    return parser
+
+def parse_arguments(args: argparse.Namespace) -> argparse.Namespace:
     args.inreg = re.compile(args.inreg)
 
     if not args.doCompress and not args.doUncompress:
@@ -114,6 +121,3 @@ def run(args: argparse.Namespace) -> None:
                 compress=args.doCompress) for ipath in imglist)
     else:
         export_image(args.input, args.output, args.doCompress)
-
-def main() -> None:
-    run(parse_arguments())

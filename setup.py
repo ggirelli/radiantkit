@@ -54,13 +54,6 @@ setup(name='radiantkit',
     test_suite='nose.collector',
     tests_require=['nose'],
     entry_points={'console_scripts':[
-        'czi_to_tiff = radiantkit.scripts.czi_to_tiff:main',
-        'nd2_to_tiff = radiantkit.scripts.nd2_to_tiff:main',
-        'select_nuclei = radiantkit.scripts.select_nuclei:main',
-        'tiff_findoof = radiantkit.scripts.tiff_findoof:main',
-        'tiff_segment = radiantkit.scripts.tiff_segment:main',
-        'tiff_split = radiantkit.scripts.tiff_split:main',
-        'tiff_desplit = radiantkit.scripts.tiff_desplit:main',
-        'tiffcu = radiantkit.scripts.tiffcu:main'
+        'radiant = radiantkit.scripts.radiant:main'
     ]}
 )

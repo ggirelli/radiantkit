@@ -27,10 +27,14 @@ logging.basicConfig(level=logging.INFO, format='%(asctime)s ' +
     '[P%(process)s:%(module)s:%(funcName)s] %(levelname)s: %(message)s',
     datefmt='%m/%d/%Y %I:%M:%S')
 
-def parse_arguments() -> argparse.Namespace:
-    parser=argparse.ArgumentParser(description='''
-...
-    ''', formatter_class=argparse.RawDescriptionHelpFormatter)
+def init_parser(subparsers: argparse._SubParsersAction
+    ) -> argparse.ArgumentParser:
+    parser = subparsers.add_parser(__name__.split(".")[-1], description = '''
+Lorem ipsum dolor sit amet, consectetur adipisicing elit. Commodi blanditiis
+totam delectus provident non ipsa maxime reprehenderit soluta assumenda
+accusantium. Iure eaque suscipit voluptatibus expedita adipisci, doloremque ab,
+ea magnam.''', formatter_class = argparse.RawDescriptionHelpFormatter,
+        help = f"{__name__.split('.')[-1]} -h")
 
     parser.add_argument('input', type=str,
         help='Path to folder containing deconvolved tiff images.')
@@ -64,7 +68,11 @@ def parse_arguments() -> argparse.Namespace:
     parser.add_argument('--version', action='version',
         version='%s %s' % (sys.argv[0], __version__,))
 
-    args = parser.parse_args()
+    parser.set_defaults(parse=parse_arguments, run=run)
+
+    return parser
+
+def parse_arguments(args: argparse.Namespace) -> argparse.Namespace:
     args.version = __version__
 
     args.inreg = re.compile(args.inreg)
@@ -151,6 +159,8 @@ def select_masks(ipath: str, imglist: List[str],
     return imglist
 
 def run(args: argparse.Namespace) -> None:
+    confirm_arguments(args)
+    
     imglist = find_images(args.input, args.inreg)
     masklist = select_masks(args.input, imglist, args.outprefix, args.outsuffix)
     logging.info(f"working on {len(masklist)}/{len(imglist)} images.")
@@ -212,8 +222,3 @@ def run(args: argparse.Namespace) -> None:
     report_select_nuclei(args, report_path, data=nuclei_data,
         size_range=size_range, intensity_sum_range=intensity_sum_range,
         masklist=sorted(masklist))
-
-def main():
-    args = parse_arguments()
-    confirm_arguments(args)
-    run(args)

@@ -21,8 +21,9 @@ logging.basicConfig(level=logging.INFO, format='%(asctime)s ' +
     '[P%(process)s:%(module)s:%(funcName)s] %(levelname)s: %(message)s',
     datefmt='%m/%d/%Y %I:%M:%S')
 
-def parse_arguments() -> argparse.Namespace:
-    parser=argparse.ArgumentParser(description='''
+def init_parser(subparsers: argparse._SubParsersAction
+    ) -> argparse.ArgumentParser:
+    parser = subparsers.add_parser(__name__.split(".")[-1], description = '''
 Perform automatic 3D segmentation of TIFF images. The default parameters are
 optimized for nuclear DNA staining and voxel size of 0.13x0.13x0.3 uM.
 
@@ -40,8 +41,9 @@ Use the --labeled flag to label identified objects with different intensity
 levels. By default, the script generates compressed binary tiff images; use the
 --uncompressed flag to generate normal tiff images instead.
 
-Input images that have the specified prefix and suffix are not segmented.
-    ''', formatter_class=argparse.RawDescriptionHelpFormatter)
+Input images that have the specified prefix and suffix are not segmented.''',
+        formatter_class = argparse.RawDescriptionHelpFormatter,
+        help = f"{__name__.split('.')[-1]} -h")
 
     parser.add_argument('input', type=str,
         help='Path to folder containing deconvolved tiff images.')
@@ -108,7 +110,11 @@ Input images that have the specified prefix and suffix are not segmented.
     parser.add_argument('--version', action='version',
         version='%s %s' % (sys.argv[0], __version__,))
 
-    args = parser.parse_args()
+    parser.set_defaults(parse=parse_arguments, run=run)
+
+    return parser
+
+def parse_arguments(args: argparse.Namespace) -> argparse.Namespace:
     args.version = __version__
 
     if args.output is None: args.output = args.input
@@ -130,6 +136,9 @@ Input images that have the specified prefix and suffix are not segmented.
             ), f"2D mask folder not found, '{args.mask_2d}'"
 
     args.threads = check_threads(args.threads)
+
+    if args.debug_mode: logging.getLogger().level = logging.DEBUG
+    if args.silent: logging.getLogger().level = logging.CRITICAL
 
     return args
 
@@ -245,6 +254,8 @@ def run_segmentation(args: argparse.Namespace,
             args.compressed)
 
 def run(args: argparse.Namespace) -> None:
+    confirm_arguments(args)
+
     imglist = [f for f in os.listdir(args.input) 
         if os.path.isfile(os.path.join(args.input, f))
         and not type(None) == type(re.match(args.inreg, f))]
@@ -263,10 +274,3 @@ def run(args: argparse.Namespace) -> None:
             delayed(run_segmentation)(
                 args, imgpath, args.input, logging.getLogger().level)
             for imgpath in imglist)
-
-def main():
-    args = parse_arguments()
-    if args.debug_mode: logging.getLogger().level = logging.DEBUG
-    if args.silent: logging.getLogger().level = logging.CRITICAL
-    confirm_arguments(args)
-    run(args)

@@ -19,8 +19,9 @@ logging.basicConfig(level=logging.INFO, format='%(asctime)s ' +
     '[P%(process)s:%(module)s:%(funcName)s] %(levelname)s: %(message)s',
     datefmt='%m/%d/%Y %I:%M:%S')
 
-def parse_arguments() -> argparse.Namespace:
-    parser = argparse.ArgumentParser(description = f'''
+def init_parser(subparsers: argparse._SubParsersAction
+    ) -> argparse.ArgumentParser:
+    parser = subparsers.add_parser(__name__.split('.')[-1], description = f'''
 Convert a czi file into single channel tiff images.
 
 The output tiff file names follow the specified template (-T). A template is a
@@ -38,8 +39,9 @@ Hence, when writing the 3rd series of the "a488" channel, the output file name
 would be:"a488_003.tiff".
 
 Please, remember to escape the "$" when running from command line if using
-double quotes, i.e., "\\$". Alternatively, use single quotes, i.e., '$'.
-    ''', formatter_class = argparse.RawDescriptionHelpFormatter)
+double quotes, i.e., "\\$". Alternatively, use single quotes, i.e., '$'.''',
+        formatter_class = argparse.RawDescriptionHelpFormatter,
+        help = f"{__name__.split('.')[-1]} -h")
 
     parser.add_argument('input', type = str,
         help = '''Path to the czi file to convert.''')
@@ -73,8 +75,11 @@ double quotes, i.e., "\\$". Alternatively, use single quotes, i.e., '$'.
     parser.add_argument('--version', action = 'version',
         version = f'{sys.argv[0]} {__version__}')
 
-    args = parser.parse_args()
+    parser.set_defaults(parse=parse_arguments, run=run)
 
+    return parser
+
+def parse_arguments(args: argparse.Namespace) -> argparse.Namespace:
     if args.outdir is None:
         args.outdir = os.path.splitext(os.path.basename(args.input))[0]
         args.outdir = os.path.join(os.path.dirname(args.input), args.outdir)
@@ -165,6 +170,3 @@ def run(args: argparse.Namespace) -> None:
             resolution = (1e-6/CZI.get_axis_resolution("X"),
                 1e-6/CZI.get_axis_resolution("Y")),
             inMicrons = True, ResolutionZ = CZI.get_axis_resolution("Z")*1e6)
-
-def main():
-    run(parse_arguments())

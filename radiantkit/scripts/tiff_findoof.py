@@ -25,11 +25,13 @@ logging.basicConfig(level=logging.INFO, format='%(asctime)s ' +
     '[P%(process)s:%(module)s:%(funcName)s] %(levelname)s: %(message)s',
     datefmt='%m/%d/%Y %I:%M:%S')
 
-def parse_arguments() -> argparse.Namespace:
-    parser = argparse.ArgumentParser(description = '''
+def init_parser(subparsers: argparse._SubParsersAction
+    ) -> argparse.ArgumentParser:
+    parser = subparsers.add_parser(__name__.split(".")[-1], description = '''
 Calculate gradient magnitude over Z for every image in the input folder with a
-filename matching the --pattern. Use --range to change the in-focus definition.
-    ''', formatter_class = argparse.RawDescriptionHelpFormatter)
+filename matching the --pattern. Use --range to change the in-focus
+definition.''', formatter_class = argparse.RawDescriptionHelpFormatter,
+        help = f"{__name__.split('.')[-1]} -h")
 
     parser.add_argument('imdir', type = str,
         help = 'Path to folder with tiff images.')
@@ -65,9 +67,12 @@ filename matching the --pattern. Use --range to change the in-focus definition.
     parser.add_argument('--version', action = 'version',
         version = '%s %s' % (sys.argv[0], __version__,))
 
-    args = parser.parse_args()
-    args.threads = check_threads(args.threads)
+    parser.set_defaults(parse=parse_arguments, run=run)
 
+    return parser
+
+def parse_arguments(args: argparse.Namespace) -> argparse.Namespace:
+    args.threads = check_threads(args.threads)
     return args
 
 def plot_profile(args: argparse.Namespace,
@@ -134,7 +139,14 @@ def is_OOF(args: argparse.Namespace, ipath: str,
 
     return profile_data
 
-def run(args: argparse.Namespace, logger: logging.RootLogger) -> None:
+def run(args: argparse.Namespace) -> None:
+    logger = logging.getLogger()
+    if 1 == args.threads:
+        FH = logging.FileHandler(
+            filename=f"{os.path.splitext(args.output)[0]}.log", mode="w+")
+        FH.setLevel(logging.INFO)
+        logger.addHandler(FH)
+
     if not "/" == args.imdir[-1]: args.imdir += "/"
     if not os.path.isdir(args.imdir):
         logger.error(f"image directory not found: '{args.imdir}'")
@@ -159,15 +171,3 @@ def run(args: argparse.Namespace, logger: logging.RootLogger) -> None:
     pd.concat(series_data).to_csv(args.output, '\t', index=False)
     if args.plot: plot_profile(args, series_data,
         f"{os.path.splitext(args.output)[0]}.pdf")
-
-def main():
-    args = parse_arguments()
-
-    logger = logging.getLogger()
-    if 1 == args.threads:
-        FH = logging.FileHandler(
-            filename=f"{os.path.splitext(args.output)[0]}.log", mode="w+")
-        FH.setLevel(logging.INFO)
-        logger.addHandler(FH)
-
-    run(args, logger)

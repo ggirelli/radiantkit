@@ -19,8 +19,9 @@ logging.basicConfig(level=logging.INFO, format='%(asctime)s ' +
     '[P%(process)s:%(module)s:%(funcName)s] %(levelname)s: %(message)s',
     datefmt='%m/%d/%Y %I:%M:%S')
 
-def parse_arguments() -> argparse.Namespace:
-    parser = argparse.ArgumentParser(description = '''
+def init_parser(subparsers: argparse._SubParsersAction
+    ) -> argparse.ArgumentParser:
+    parser = subparsers.add_parser(__name__.split(".")[-1], description = '''
 Split a TIFF image in smaller TIFF images of the specified side(s). If two
 different sides are provided, the smaller images will be rectangular. The first
 side corresponds to the X (columns) and the second to the Y (rows). By default,
@@ -74,8 +75,9 @@ tiff_split big_image.tif split_out_dir 100 -e -O 10
 tiff_split big_image.tif split_out_dir 100 -e -S 0.9 0.8
 tiff_split big_image.tif split_out_dir 100 -e -S 90 80
 tiff_split big_image.tif split_out_dir 100 -e -O 0.1 0.2
-tiff_split big_image.tif split_out_dir 100 -e -O 10 20
-    ''', formatter_class = argparse.RawDescriptionHelpFormatter)
+tiff_split big_image.tif split_out_dir 100 -e -O 10 20''',
+        formatter_class = argparse.RawDescriptionHelpFormatter,
+        help = f"{__name__.split('.')[-1]} -h")
 
     parser.add_argument('input', type = str,
         help = '''Path to the TIFF image to split.''')
@@ -108,8 +110,12 @@ tiff_split big_image.tif split_out_dir 100 -e -O 10 20
 
     parser.add_argument('--version', action = 'version',
         version = '%s %s' % (sys.argv[0], __version__,))
+    
+    parser.set_defaults(parse=parse_arguments, run=run)
 
-    args = parser.parse_args()
+    return parser
+
+def parse_arguments(args: argparse.Namespace) -> argparse.Namespace:
     args.version = __version__
 
     assert os.path.isfile(args.input), "input file not found: %s" % args.input
@@ -261,6 +267,10 @@ def save_settings(args: argparse.Namespace) -> None:
         config.write(CF)
 
 def run(args: argparse.Namespace) -> None:
+    print_settings(args)
+    if not args.do_all: ask("Confirm settings and proceed?")
+    save_settings(args)
+
     logging.info("Reading input image...")
     I = imt.ImageBase.from_tiff(args.input).pixels
 
@@ -298,10 +308,3 @@ def run(args: argparse.Namespace) -> None:
         imt.save_tiff(opath, sub_image, imt.get_dtype(sub_image.max()),
             compressed=False)
         image_counter += 1
-
-def main() -> None:
-    args = parse_arguments()
-    print_settings(args)
-    if not args.do_all: ask("Confirm settings and proceed?")
-    save_settings(args)
-    run(args)
