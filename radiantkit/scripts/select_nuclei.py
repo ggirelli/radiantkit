@@ -167,12 +167,16 @@ def run(args: argparse.Namespace) -> None:
     assert volume_fit[0] is not None
     np.set_printoptions(formatter={'float_kind':'{:.2E}'.format})
     logging.info(f"volume fit:\n{volume_fit}")
+    volume_range = stat.range_from_fit(volume_fit)
+    logging.info(f"volume range:\n{volume_range}")
 
     intensity_sum_data = np.array([n.intensity_sum for n in nuclei])
     intensity_sum_fit = stat.cell_cycle_fit(intensity_sum_data)
     assert intensity_sum_fit[0] is not None
     np.set_printoptions(formatter={'float_kind':'{:.2E}'.format})
     logging.info(f"intensity sum fit:\n{intensity_sum_fit}")
+    intensity_sum_range = stat.range_from_fit(intensity_sum_fit)
+    logging.info(f"volume range:\n{intensity_sum_range}")
 
     pd.DataFrame.from_dict({
         'image':[n.ipath for n in nuclei],

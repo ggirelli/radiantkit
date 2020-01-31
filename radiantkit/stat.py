@@ -103,6 +103,7 @@ def plot_sog_fit(xx: np.ndarray, fitted_params:np.ndarray) -> None:
     plt.show()
 
 def fwhm(xx: np.ndarray) -> Tuple[float]:
+    logging.warning("FWHM not implemented yet. Using full data range.")
     return (xx.min(), xx.max())
 
 def cell_cycle_fit(data: np.ndarray) -> Tuple[Optional[np.ndarray],str]:
@@ -113,3 +114,24 @@ def cell_cycle_fit(data: np.ndarray) -> Tuple[Optional[np.ndarray],str]:
         if fit[0] is None:
             fit = (fwhm(data), 'fwhm')
     return fit
+
+def sog_range_from_fit(fitted_params: Tuple[float],
+    fit_type: str, k_sigma: float) -> Tuple[Tuple[float]]:
+    assert 6 == len(fitted_params)
+    return gaussian_range_from_fit(fitted_params[:3], fit_type, k_sigma)
+
+def gaussian_range_from_fit(fitted_params: Tuple[float],
+    fit_type: str, k_sigma: float) -> Tuple[Tuple[float]]:
+    assert 3 == len(fitted_params)
+    delta = k_sigma*fitted_params[2]
+    return (fitted_params[1]-delta, fitted_params[1]+delta)
+
+def range_from_fit(fitted_params: Tuple[float],
+    fit_type: str, k_sigma: float) -> Optional[Tuple[Tuple[float]]]:
+    if "sog" == fitted_params:
+        return sog_range_from_fit(fitted_params, fit_type, k_sigma)
+    if "gaussian" == fitted_params:
+        return gaussian_range_from_fit(fitted_params, fit_type, k_sigma)
+    if "fwhm" == fitted_params:
+        return fitted_params
+    return None
