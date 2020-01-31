@@ -8,6 +8,7 @@ import numpy as np
 from scipy.signal import convolve
 import scipy.optimize
 import scipy.stats
+from typing import Optional, Tuple
 import warnings
 
 def gpartial(V: np.ndarray, d: int, sigma: float) -> np.ndarray:
