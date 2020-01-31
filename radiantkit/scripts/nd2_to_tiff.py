@@ -116,34 +116,51 @@ def export_field_3d(args: argparse.Namespace, nd2I: ND2Reader2,
     if args.deltaZ is not None: resolutionZ = args.deltaZ
     else: resolutionZ = ND2Reader2.get_resolutionZ(args.input, field_id)
 
-    if not nd2I.hasMultiChannels():
-        export_channel(args, nd2I[field_id],
-            nd2I.get_tiff_path(args.template, channel_id, field_id),
-            nd2I.metadata, resolutionZ)
-    else:
-        channels = nd2I.select_channels(channels)
-        for channel_id in range(nd2I[field_id].shape[3]):
-            channel_name = nd2I.metadata['channels'][channel_id].lower()
-            if not channel_name in channels: continue
-            export_channel(args, nd2I[field_id][:, :, :, channel_id],
+    try:
+        if not nd2I.hasMultiChannels():
+            export_channel(args, nd2I[field_id],
                 nd2I.get_tiff_path(args.template, channel_id, field_id),
                 nd2I.metadata, resolutionZ)
+        else:
+            channels = nd2I.select_channels(channels)
+            for channel_id in range(nd2I[field_id].shape[3]):
+                channel_name = nd2I.metadata['channels'][channel_id].lower()
+                if not channel_name in channels: continue
+                export_channel(args, nd2I[field_id][:, :, :, channel_id],
+                    nd2I.get_tiff_path(args.template, channel_id, field_id),
+                    nd2I.metadata, resolutionZ)
+    except ValueError as e:
+        if "could not broadcast input array from shape" in e.args[0]:
+             logging.error(f"corrupted file raised {type(e).__name__}. " +
+                "At least one frame has mismatching shape.")
+             logging.critical(f"{e.args[0]}")
+             sys.exit()
+        raise e
 
 def export_field_2d(args: argparse.Namespace, nd2I: ND2Reader2,
     field_id: int, channels: Optional[List[str]] = None) -> None:
     if channels is None: channels = nd2I.get_channel_names()
-    if not nd2I.hasMultiChannels():
-        export_channel(args, nd2I[field_id],
-            nd2I.get_tiff_path(args.template, 0, field_id),
-            nd2I.metadata)
-    else:
-        channels = nd2I.select_channels(channels)
-        for channel_id in range(nd2I[field_id].shape[3]):
-            channel_name = nd2I.metadata['channels'][channel_id].lower()
-            if not channel_name in channels: continue
-            export_channel(args, nd2I[field_id][:, :, channel_id],
-                nd2I.get_tiff_path(args.template, channel_id, field_id),
+
+    try:
+        if not nd2I.hasMultiChannels():
+            export_channel(args, nd2I[field_id],
+                nd2I.get_tiff_path(args.template, 0, field_id),
                 nd2I.metadata)
+        else:
+            channels = nd2I.select_channels(channels)
+            for channel_id in range(nd2I[field_id].shape[3]):
+                channel_name = nd2I.metadata['channels'][channel_id].lower()
+                if not channel_name in channels: continue
+                export_channel(args, nd2I[field_id][:, :, channel_id],
+                    nd2I.get_tiff_path(args.template, channel_id, field_id),
+                    nd2I.metadata)
+    except ValueError as e:
+        if "could not broadcast input array from shape" in e.args[0]:
+             logging.error(f"corrupted file raised {type(e).__name__}. " +
+                "At least one frame has mismatching shape.")
+             logging.critical(f"{e.args[0]}")
+             sys.exit()
+        raise e
 
 def run(args: argparse.Namespace) -> None:
     if args.deltaZ is not None:
