@@ -15,7 +15,7 @@ class ParticleSettings(object):
     _mask: Optional[ImageBinary] = None
     _region_of_interest: Optional[BoundingElement] = None
     label: Optional[int] = None
-    _volume: Optional[int]=None
+    _total_size: Optional[int]=None
     _surface: Optional[int]=None
 
     def __init__(self, B: ImageBinary, region_of_interest: BoundingElement):
@@ -34,7 +34,12 @@ class ParticleSettings(object):
 
     @property
     def total_size(self) -> int:
-        return self.mask.sum()
+        if self._total_size is None: self._total_size = self._mask.pixels.sum()
+        return self._total_size
+
+    @property
+    def volume(self) -> int:
+        return self.total_size
 
     @property
     def sizeXY(self) -> int:
@@ -43,11 +48,6 @@ class ParticleSettings(object):
     @property
     def sizeZ(self) -> int:
         return self.size("Z")
-
-    @property
-    def volume(self) -> int:
-        if self._volume is None: self._volume = self._mask.pixels.sum()
-        return self._volume
     
     @property
     def surface(self) -> float:

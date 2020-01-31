@@ -163,13 +163,13 @@ def run(args: argparse.Namespace) -> None:
         nuclei = list(itertools.chain(*nuclei_nested))
     logging.info(f"extracted {len(nuclei)} nuclei.")
 
-    volume_data = np.array([n.volume for n in nuclei])
-    volume_fit = stat.cell_cycle_fit(volume_data)
-    assert volume_fit[0] is not None
+    size_data = np.array([n.total_size for n in nuclei])
+    size_fit = stat.cell_cycle_fit(size_data)
+    assert size_fit[0] is not None
     np.set_printoptions(formatter={'float_kind':'{:.2E}'.format})
-    logging.info(f"volume fit:\n{volume_fit}")
-    volume_range = stat.range_from_fit(volume_fit)
-    logging.info(f"volume range:\n{volume_range}")
+    logging.info(f"size fit:\n{size_fit}")
+    size_range = stat.range_from_fit(size_fit)
+    logging.info(f"size range:\n{size_range}")
 
     intensity_sum_data = np.array([n.intensity_sum for n in nuclei])
     intensity_sum_fit = stat.cell_cycle_fit(intensity_sum_data)
@@ -177,22 +177,22 @@ def run(args: argparse.Namespace) -> None:
     np.set_printoptions(formatter={'float_kind':'{:.2E}'.format})
     logging.info(f"intensity sum fit:\n{intensity_sum_fit}")
     intensity_sum_range = stat.range_from_fit(intensity_sum_fit)
-    logging.info(f"volume range:\n{intensity_sum_range}")
+    logging.info(f"size range:\n{intensity_sum_range}")
 
     ndata = pd.DataFrame.from_dict({
         'image':[n.ipath for n in nuclei],
         'label':[n.label for n in nuclei],
-        'volume':volume_data,
+        'size':size_data,
         'isum':intensity_sum_data
     })
 
-    ndata['pass_volume'] = np.logical_and(
-        volume_data >= volume_range[0],
-        volume_data <= volume_range[1])
+    ndata['pass_size'] = np.logical_and(
+        size_data >= size_range[0],
+        size_data <= size_range[1])
     ndata['pass_isum'] = np.logical_and(
         intensity_sum_data >= intensity_sum_range[0],
         intensity_sum_data <= intensity_sum_range[1])
-    ndata['pass'] = np.logical_and(ndata['pass_volume'], ndata['pass_isum'])
+    ndata['pass'] = np.logical_and(ndata['pass_size'], ndata['pass_isum'])
 
     ndpath = os.path.join(args.input, "nuclei_data.tsv")
     logging.info(f"writing nuclear data to {ndpath}")
