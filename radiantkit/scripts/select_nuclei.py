@@ -4,6 +4,7 @@
 '''
 
 import argparse
+from distutils.util import convert_path
 from ggc.prompt import ask
 from ggc.args import check_threads, export_settings
 import itertools
@@ -14,7 +15,8 @@ import os
 import pandas as pd
 from radiantkit.const import __version__
 from radiantkit import image, particle
-from radiantkit import plot, stat
+from radiantkit import stat
+from radiantkit.report import report_select_nuclei
 import re
 import sys
 import tempfile
@@ -185,42 +187,31 @@ def run(args: argparse.Namespace) -> None:
     np.set_printoptions(formatter={'float_kind':'{:.2E}'.format})
     logging.info(f"size range: {intensity_sum_range}")
 
-    ndata = pd.DataFrame.from_dict({
+    nuclei_data = pd.DataFrame.from_dict({
         'image':[n.ipath for n in nuclei],
         'label':[n.label for n in nuclei],
         'size':size_data,
         'isum':intensity_sum_data
     })
 
-    ndata['pass_size'] = np.logical_and(
+    nuclei_data['pass_size'] = np.logical_and(
         size_data >= size_range[0],
         size_data <= size_range[1])
-    ndata['pass_isum'] = np.logical_and(
+    nuclei_data['pass_isum'] = np.logical_and(
         intensity_sum_data >= intensity_sum_range[0],
         intensity_sum_data <= intensity_sum_range[1])
-    ndata['pass'] = np.logical_and(ndata['pass_size'], ndata['pass_isum'])
+    nuclei_data['pass'] = np.logical_and(
+        nuclei_data['pass_size'], nuclei_data['pass_isum'])
 
     ndpath = os.path.join(args.input, "select_nuclei.data.tsv")
     logging.info(f"writing nuclear data to:\n{ndpath}")
-    ndata.to_csv(ndpath, sep="\t", index=False)
+    nuclei_data.to_csv(ndpath, sep="\t", index=False)
 
-    figure = plot.plot_nuclear_selection(ndata, size_range, intensity_sum_range)
-    TMP = tempfile.TemporaryFile("w+")
-    figure.write_html(TMP)
-    TMP.seek(0)
-
-    from jinja2 import Environment, PackageLoader, select_autoescape
-    env = Environment(
-        loader=PackageLoader('radiantkit', 'templates'),
-        autoescape=select_autoescape(['html', 'xml'])
-    )
-
-    t = env.get_template('select_nuclei_report_template.html')
-    hrpath = os.path.join(args.input, "select_nuclei.report.html")
-    logging.info(f"writing report to\n{hrpath}")
-    with open(hrpath, "w+") as OH:
-        OH.write(t.render(plotly_plot="".join(TMP.readlines())))
-    TMP.close()
+    report_path = os.path.join(args.input, "select_nuclei.report.html")
+    logging.info(f"writing report to\n{report_path}")
+    report_select_nuclei(args, report_path, data=nuclei_data,
+        size_range=size_range, intensity_sum_range=intensity_sum_range,
+        masklist=sorted(masklist))
 
 def main():
     args = parse_arguments()

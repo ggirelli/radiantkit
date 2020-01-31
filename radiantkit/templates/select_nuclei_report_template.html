@@ -2,9 +2,94 @@
 <html>
 <head>
 	<title>RadIAnT-Kit - Nuclei selection</title>
+	<script>{% include "include/jquery-3.4.1.min.js" %}</script>
+	<script>{% include "include/popper.min.js" %}</script>
+	<script>{% include "include/bootstrap.min.js" %}</script>
+	<style>{% include "include/bootstrap.min.css" %}</style>
+	<script>{% include "include/plotly-1.52.1.min.js" %}</script>
 </head>
-<body>
-	Lorem ipsum dolor sit amet, consectetur adipisicing elit. Veniam minus delectus, dicta placeat tempora atque, sed dignissimos omnis quisquam ipsum est debitis porro. Veniam, debitis dolor ad odit enim, accusamus!
-	<frame>{{ plotly_plot|safe }}</frame>
-</body>
+<body><div class="container">
+	<h1 class="my-5">RadIAnT-Kit - Nuclei selection</h1>
+	<div class="row">
+		<div class="col">
+			<nav>
+				<div class="nav nav-tabs" id="nav-tab" role="tablist">
+					<a class="nav-item nav-link active" id="nav-Settings-tab" data-toggle="tab" href="#nav-Settings" role="tab" aria-controls="nav-Settings" aria-selected="true">Settings</a>
+					<a class="nav-item nav-link" id="nav-plot-tab" data-toggle="tab" href="#nav-plot" role="tab" aria-controls="nav-plot" aria-selected="false">Plot</a>
+					<a class="nav-item nav-link" id="nav-list-tab" data-toggle="tab" href="#nav-list" role="tab" aria-controls="nav-list" aria-selected="false">List</a>
+				</div>
+			</nav>
+			<div class="tab-content p-3" id="nav-tabContent">
+				<div class="tab-pane fade show active" id="nav-Settings" role="tabpanel" aria-labelledby="nav-Settings-tab">
+					<table class="table table-hover table-bordered">
+						<thead class="thead-dark">
+							<tr>
+								<th scope="col">Argument</th>
+								<th scope="col">Value</th>
+							</tr>
+						</thead>
+						<tbody>
+							<tr>
+								<th scope="row">Input</th>
+								<td>{{ args.input }}</td>
+							</tr>
+							<tr>
+								<th scope="row">Prefix</th>
+								<td><code>{{ args.prefix }}</code></td>
+							</tr>
+							<tr>
+								<th scope="row">Suffix</th>
+								<td><code>{{ args.suffix }}</code></td>
+							</tr>
+							<tr>
+								<th scope="row">K-sigma</th>
+								<td>{{ args.k_sigma }}</td>
+							</tr>
+							<tr>
+								<th scope="row">Compressed</th>
+								<td>{{ args.compressed|string }}</td>
+							</tr>
+							<tr>
+								<th scope="row">Reg.exp.</th>
+								<td><code>{{ args.inreg.pattern }}</code></td>
+							</tr>
+							<tr>
+								<th scope="row">Threads</th>
+								<td>{{ args.threads }}</td>
+							</tr>
+						</tbody>
+					</table>
+				</div>
+				<div class="tab-pane fade" id="nav-plot" role="tabpanel" aria-labelledby="nav-plot-tab">
+					<div id="select_nuclei" class="mx-auto" style="width: 1000px;"></div>
+					<script>
+						CONTAINER = document.getElementById('select_nuclei');
+						PLOT_JSON = {{ plot_json|safe }};
+						Plotly.newPlot( CONTAINER, PLOT_JSON.data, PLOT_JSON.layout, {"responsive":true})
+					</script>
+				</div>
+				<div class="tab-pane fade" id="nav-list" role="tabpanel" aria-labelledby="nav-list-tab">
+					<h3 class="my-4">Parsed images</h3>
+					<table class="table table-hover text-center">
+						<thead class="thead-dark">
+							<th scope="col">Raw image</th>
+							<th scope="col">Mask</th>
+						</thead>
+						<tbody>
+							{% for maskpath in masklist: %}
+							<tr>
+								<td>{{ maskpath[0] }}</td>
+								<td>{{ maskpath[1] }}</td>
+							</tr>
+							{% endfor %}
+						</tbody>
+					</table>
+				</div>
+			</div>
+		</div>
+	</div>
+	<div class="row p-2">
+		<p><small>Report generated on {{ now }}.</small></p>
+	</div>
+</div></body>
 </html>
