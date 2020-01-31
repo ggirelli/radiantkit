@@ -200,25 +200,26 @@ def run(args: argparse.Namespace) -> None:
         intensity_sum_data <= intensity_sum_range[1])
     ndata['pass'] = np.logical_and(ndata['pass_size'], ndata['pass_isum'])
 
-    ndpath = os.path.join(args.input, "nuclei_data.tsv")
+    ndpath = os.path.join(args.input, "select_nuclei.data.tsv")
     logging.info(f"writing nuclear data to:\n{ndpath}")
     ndata.to_csv(ndpath, sep="\t", index=False)
 
     figure = plot.plot_nuclear_selection(ndata, size_range, intensity_sum_range)
-    TMP = tempfile.TemporaryFile("wr+")
+    TMP = tempfile.TemporaryFile("w+")
     figure.write_html(TMP)
+    TMP.seek(0)
 
-    from jinja2 import Environment, PacakgeLoader, select_autoescape
+    from jinja2 import Environment, PackageLoader, select_autoescape
     env = Environment(
-        loader=PacakgeLoader('radiantkit', 'templates'),
+        loader=PackageLoader('radiantkit', 'templates'),
         autoescape=select_autoescape(['html', 'xml'])
     )
 
     t = env.get_template('select_nuclei_report_template.html')
-    hrpath = os.path.join(args.input, "nuclei_selection.html")
+    hrpath = os.path.join(args.input, "select_nuclei.report.html")
     logging.info(f"writing report to\n{hrpath}")
     with open(hrpath, "w+") as OH:
-        OH.write(t.render(plotlyplot="".join(TMP.readlines())))
+        OH.write(t.render(plotly_plot="".join(TMP.readlines())))
     TMP.close()
 
 def main():
