@@ -18,7 +18,7 @@ from radiantkit import stat
 import re
 import sys
 from tqdm import tqdm
-from typing import List, Type
+from typing import List, Pattern, Type
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s ' +
     '[P%(process)s:%(module)s:%(funcName)s] %(levelname)s: %(message)s',
@@ -122,23 +122,24 @@ def retrieve_nuclei(imgdir: str, maskpath: str, rawpath: str,
 
     return nuclei
 
-def find_images(ipath: str) -> List[str]:
-    imglist = [f for f in os.listdir(args.input) 
-        if os.path.isfile(os.path.join(args.input, f))
-        and not type(None) == type(re.match(args.inreg, f))]
+def find_images(ipath: str, inreg: Pattern) -> List[str]:
+    imglist = [f for f in os.listdir(ipath) 
+        if os.path.isfile(os.path.join(ipath, f))
+        and not type(None) == type(re.match(inreg, f))]
     return imglist
 
-def select_masks(imglist: List[str], prefix: Optional[str]=None, suffix) -> List[str]:
-    if 0 != len(args.outsuffix): imglist = [f for f in imglist
-        if os.path.splitext(f)[0].endswith(args.outsuffix)]
-    if 0 != len(args.outprefix): imglist = [f for f in imglist
-        if os.path.splitext(f)[0].startswith(args.outprefix)]
+def select_masks(ipath: str, imglist: List[str],
+    prefix: str="", suffix: str: "") -> List[str]:
+    if 0 != len(suffix): imglist = [f for f in imglist
+        if os.path.splitext(f)[0].endswith(suffix)]
+    if 0 != len(prefix): imglist = [f for f in imglist
+        if os.path.splitext(f)[0].startswith(prefix)]
 
     for imgpath in imglist:
         imgbase, imgext = os.path.splitext(imgpath)
-        imgbase = imgbase[len(args.outprefix):-len(args.outsuffix)]
+        imgbase = imgbase[len(prefix):-len(suffix)]
         raw_image = f"{imgbase}{imgext}"
-        if not os.path.isfile(os.path.join(args.input, raw_image)):
+        if not os.path.isfile(os.path.join(ipath, raw_image)):
             logging.warning(f"missing raw image for mask '{imgpath}', skipped.")
             imglist.pop(imglist.index(imgpath))
         else:
@@ -147,8 +148,8 @@ def select_masks(imglist: List[str], prefix: Optional[str]=None, suffix) -> List
     return imglist
 
 def run(args: argparse.Namespace) -> None:
-    imglist = find_images(args.input)
-    masklist = select_masks(imglist)
+    imglist = find_images(args.input, args.inreg)
+    masklist = select_masks(args.input, imglist)
     logging.info(f"working on {len(masklist)}/{len(imglist)} images.")
 
     if 1 == args.threads:
@@ -178,12 +179,24 @@ def run(args: argparse.Namespace) -> None:
     intensity_sum_range = stat.range_from_fit(intensity_sum_fit)
     logging.info(f"volume range:\n{intensity_sum_range}")
 
-    pd.DataFrame.from_dict({
+    ndata = pd.DataFrame.from_dict({
         'image':[n.ipath for n in nuclei],
         'label':[n.label for n in nuclei],
         'volume':volume_data,
         'isum':intensity_sum_data
-    }).to_csv("nuclei_data.tsv", sep="\t", index=False)
+    })
+
+    ndata['pass_volume'] = np.logical_and(
+        volume_data >= volume_range[0],
+        volume_data <= volume_range[1])
+    ndata['pass_isum'] = np.logical_and(
+        intensity_sum_data >= intensity_sum_range[0],
+        intensity_sum_data <= intensity_sum_range[1])
+    ndata['pass'] = np.logical_and(ndata['pass_volume'], ndata['pass_isum'])
+
+    ndpath = os.path.join(args.input, "nuclei_data.tsv")
+    logging.info(f"writing nuclear data to {ndpath}")
+    ndata.to_csv(ndpath, sep="\t", index=False)
 
 def main():
     args = parse_arguments()
