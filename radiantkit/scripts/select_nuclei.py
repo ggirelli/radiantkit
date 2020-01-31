@@ -14,9 +14,10 @@ import os
 import pandas as pd
 from radiantkit.const import __version__
 from radiantkit import image, particle
-from radiantkit import stat
+from radiantkit import plot, stat
 import re
 import sys
+import tempfile
 from tqdm import tqdm
 from typing import List, Pattern, Type
 
@@ -169,7 +170,8 @@ def run(args: argparse.Namespace) -> None:
     assert size_fit[0] is not None
     np.set_printoptions(formatter={'float_kind':'{:.2E}'.format})
     logging.info(f"size fit:\n{size_fit}")
-    size_range = stat.range_from_fit(*size_fit, args.k_sigma)
+    size_range = stat.range_from_fit(
+        size_data, *size_fit, args.k_sigma)
     np.set_printoptions(formatter={'float_kind':'{:.2E}'.format})
     logging.info(f"size range: {size_range}")
 
@@ -178,7 +180,8 @@ def run(args: argparse.Namespace) -> None:
     assert intensity_sum_fit[0] is not None
     np.set_printoptions(formatter={'float_kind':'{:.2E}'.format})
     logging.info(f"intensity sum fit:\n{intensity_sum_fit}")
-    intensity_sum_range = stat.range_from_fit(*intensity_sum_fit, args.k_sigma)
+    intensity_sum_range = stat.range_from_fit(
+        intensity_sum_data, *intensity_sum_fit, args.k_sigma)
     np.set_printoptions(formatter={'float_kind':'{:.2E}'.format})
     logging.info(f"size range: {intensity_sum_range}")
 
@@ -200,6 +203,23 @@ def run(args: argparse.Namespace) -> None:
     ndpath = os.path.join(args.input, "nuclei_data.tsv")
     logging.info(f"writing nuclear data to:\n{ndpath}")
     ndata.to_csv(ndpath, sep="\t", index=False)
+
+    figure = plot.plot_nuclear_selection(ndata, size_range, intensity_sum_range)
+    TMP = tempfile.TemporaryFile("wr+")
+    figure.write_html(TMP)
+
+    from jinja2 import Environment, PacakgeLoader, select_autoescape
+    env = Environment(
+        loader=PacakgeLoader('radiantkit', 'templates'),
+        autoescape=select_autoescape(['html', 'xml'])
+    )
+
+    t = env.get_template('select_nuclei_report_template.html')
+    hrpath = os.path.join(args.input, "nuclei_selection.html")
+    logging.info(f"writing report to\n{hrpath}")
+    with open(hrpath, "w+") as OH:
+        OH.write(t.render(plotlyplot="".join(TMP.readlines())))
+    TMP.close()
 
 def main():
     args = parse_arguments()

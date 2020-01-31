@@ -115,23 +115,24 @@ def cell_cycle_fit(data: np.ndarray) -> Tuple[Optional[np.ndarray],str]:
             fit = (fwhm(data), 'fwhm')
     return fit
 
-def sog_range_from_fit(fitted_params: Tuple[float],
+def sog_range_from_fit(data: np.ndarray, fitted_params: Tuple[float],
     fit_type: str, k_sigma: float) -> Tuple[Tuple[float]]:
     assert 6 == len(fitted_params)
-    return gaussian_range_from_fit(fitted_params[:3], fit_type, k_sigma)
+    return gaussian_range_from_fit(data, fitted_params[:3], fit_type, k_sigma)
 
-def gaussian_range_from_fit(fitted_params: Tuple[float],
+def gaussian_range_from_fit(data: np.ndarray, fitted_params: Tuple[float],
     fit_type: str, k_sigma: float) -> Tuple[Tuple[float]]:
     assert 3 == len(fitted_params)
     delta = k_sigma*fitted_params[2]
-    return (fitted_params[1]-delta, fitted_params[1]+delta)
+    return (max(fitted_params[1]-delta, data.min()),
+        min(fitted_params[1]+delta, data.max()))
 
-def range_from_fit(fitted_params: Tuple[float],
+def range_from_fit(data: np.ndarray, fitted_params: Tuple[float],
     fit_type: str, k_sigma: float) -> Optional[Tuple[Tuple[float]]]:
     if "sog" == fit_type:
-        return sog_range_from_fit(fitted_params, fit_type, k_sigma)
+        return sog_range_from_fit(data, fitted_params, fit_type, k_sigma)
     if "gaussian" == fit_type:
-        return gaussian_range_from_fit(fitted_params, fit_type, k_sigma)
+        return gaussian_range_from_fit(data, fitted_params, fit_type, k_sigma)
     if "fwhm" == fit_type:
         return fitted_params
     return None
