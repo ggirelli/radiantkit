@@ -4,8 +4,12 @@
 '''
 
 import argparse
+from ggc.prompt import ask
+from ggc.args import check_threads, export_settings
 import logging
-from radiantkit.const import __version__
+import os
+from radiantkit import const
+import re
 import sys
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s ' +
@@ -15,21 +19,21 @@ logging.basicConfig(level=logging.INFO, format='%(asctime)s ' +
 def init_parser(subparsers: argparse._SubParsersAction
     ) -> argparse.ArgumentParser:
     parser = subparsers.add_parser(__name__.split('.')[-1], description = f'''
-Long description''',
+Analyze a multi-condition YFISH experiment.''',
         formatter_class = argparse.RawDescriptionHelpFormatter,
-        help="Analyze YFISH experiments.")
+        help="Analyze a multi-condition YFISH experiment.")
 
     parser.add_argument('input', type = str,
         help = '''Path to root folder (see description for details).''')
-    parser.add_argument('input', type = str,
+    parser.add_argument('output', type = str,
         help = '''Path to output folder.''')
 
     parser.add_argument('--version', action = 'version',
-        version = f'{sys.argv[0]} {__version__}')
+        version = f'{sys.argv[0]} {const.__version__}')
 
     critical = parser.add_argument_group("Critical arguments")
     critical.add_argument('--aspect', type=float, nargs=3, help="""Physical size
-    of Z, Y and X voxel sides. Default: 300.0 216.6 216.6""",
+    of Z, Y and X voxel sides in nm. Default: 300.0 216.6 216.6""",
     metavar=('Z','Y','X'), default=[300., 216.6, 216.6])
     critical.add_argument('--ref', metavar = "CHANNEL_NAME",
     	type = str, help = """Name of reference channel. Must have been
@@ -40,12 +44,25 @@ Long description''',
     critical.add_argument('--mask-suffix', type=str, metavar="TEXT",
         help="""Suffix for output binarized images name.
         Default: 'mask'.""", default='mask')
-    critical.add_argument('--method', type=str, metavar="TEXT",
-        help="""""", default=None)
-    critical.add_argument('--midsection', type=str, metavar="TEXT",
-        help="""""", default=None)
-    critical.add_argument('--distance', type=str, metavar="TEXT",
-        help="""""", default=None)
+    critical.add_argument('--method', type=str,
+        help=f"""Analysis method. One of:
+        Default: '{const.AnalysisType.get_default().value}'""",
+        default=const.AnalysisType.get_default(),
+        choices=[e.value for e in const.AnalysisType])
+    critical.add_argument('--midsection', type=str,
+        help=f"""Midsection type. One of:
+        Default: '{const.MidsectionType.get_default().value}'""",
+        default=const.MidsectionType.get_default(),
+        choices=[e.value for e in const.MidsectionType])
+    critical.add_argument('--distance', type=str,
+        help=f"""Radial distance type. One of:
+        Default: '{const.LaminaDistanceType.get_default().value}'""",
+        default=const.LaminaDistanceType.get_default(),
+        choices=[e.value for e in const.LaminaDistanceType])
+    critical.add_argument('--dist-quant',
+        type=float, default=None, metavar="NUMBER",
+        help=f"""Quantile (fraction) for CENTER_TOP_QUANTILE distance type.
+        Defaults to 0.01 for 2D, and 0.001 for 3D analysis types.""")
 
     nuclear_selection = parser.add_argument_group("Nuclei selection")
     nuclear_selection.add_argument('--k-sigma', type=float, metavar="NUMBER",
@@ -56,13 +73,11 @@ Long description''',
         help='Skip selection of G1 nuclei.')
 
     minor = parser.add_argument_group("Minor arguments")
-    minor.add_argument('--unit', type = str, metavar="STRING", default="nm",
-        help="""Unit of measure for the aspect. Default: nm""")
     minor.add_argument('--description', type=str, nargs='*', metavar="STRING",
         help = """Space separated 'condition:description' couples.
         'condition' is the name of a condition folder. 'description' is a
-        descriptive label that replace folder names in the report.
-        Use '--' after the last one.""")
+        descriptive label that replaces the corresponding folder name in the
+        final report. Use '--' after the last one.""")
     minor.add_argument('--note', type=str, help="""A short description of the
         dataset. Included in the final report. Use double quotes.""")
 
@@ -78,10 +93,12 @@ Long description''',
     advanced.add_argument('--debug',
         action='store_const', dest='debug_mode',
         const=True, default=False, help='Log also debugging messages.')
-    default_inreg='^.*\.tiff?$'
+    default_inreg ="^(?P<channel_name>[^/]*)_(?P<series_id>series[0-9]+)"
+    default_inreg+="(?P<ext>(_cmle)?\\.tif)$"
     advanced.add_argument('--inreg', type=str, metavar="REGEXP",
-        help="""Regular expression to identify input TIFF images.
-        Default: '%s'""" % (default_inreg,), default=default_inreg)
+        help=f"""Regular expression to identify input TIFF images.
+        Must contain 'channel_name' and 'series_id' fields.
+        Default: '{default_inreg}'""", default=default_inreg)
     advanced.add_argument('-t', type=int, metavar="NUMBER", dest="threads",
         help="""Number of threads for parallelization. Default: 1""",
         default=1)
@@ -91,7 +108,73 @@ Long description''',
     return parser
 
 def parse_arguments(args: argparse.Namespace) -> argparse.Namespace:
+    assert os.path.isdir(args.input)
+    assert not os.path.isfile(args.output)
+    assert all([v >= 0 for v in args.aspect])
+    assert args.dist_quant >= 0 and args.dist_quant <= 1
+    assert args.k_sigma >= 0
+
+    assert '(?p<channel_name>' in args.inreg
+    assert '(?p<series_id>' in args.inreg
+    args.inreg = re.compile(args.inreg)
+
+    if 0 != len(args.outprefix):
+        if '.' != args.outprefix[-1]:
+            args.outprefix = f"{args.outprefix}."
+    if 0 != len(args.outsuffix):
+        if '.' != args.outsuffix[0]:
+            args.outsuffix = f".{args.outsuffix}"
+
+    args.threads = check_threads(args.threads)
+
+    if args.debug_mode: logging.getLogger().level = logging.DEBUG
+
+    if args.description is not None:
+        assert all([1 == s.count(":") for s in args.description])
+        args.description = [s.split(":") for s in args.description]
+        args.readable_description = ("\n "*21).join([f"{c} => {v}"
+            for (c,v) in args.description])
+    else:
+        args.readable_description = "*NONE*"
+
     return args
+
+def print_settings(args: argparse.Namespace, clear: bool = True) -> str:
+
+    s = f"""
+# YFISH analysis v{args.version}
+
+---------- SETTING :  VALUE ----------
+
+   Input directory : '{args.input}'
+  Output directory : '{args.output}'
+
+Voxel aspect (ZYX) : {args.aspect}
+ Reference channel : {args.ref}
+
+       Mask prefix : '{args.outprefix}'
+       Mask suffix : '{args.outsuffix}'
+
+            Method : {args.method}
+        Midsection : {args.midsection}
+          Distance : {args.distance}
+          Quantile : {args.dist_quant}
+
+           K sigma : {args.k_sigma}
+     Select nuclei : {not args.skip_nuclear_selection}
+
+              Note : {args.note}
+       Description : {readable_description}
+
+        Use labels : {args.labeled}
+           Rescale : {args.do_rescaling}
+             Debug : {args.debug_mode}
+            Regexp : {args.inreg.pattern}
+           Threads : {args.threads}
+    """
+    if clear: print("\033[H\033[J")
+    print(s)
+    return(s)
 
 def run(args: argparse.Namespace) -> None:
 	pass
