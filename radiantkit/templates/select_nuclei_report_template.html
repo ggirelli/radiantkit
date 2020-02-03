@@ -76,10 +76,10 @@
 							<th scope="col">Mask</th>
 						</thead>
 						<tbody>
-							{% for maskpath in masklist: %}
+							{% for rawpath,maskpath in raw_mask_pairs: %}
 							<tr>
-								<td>{{ maskpath[0] }}</td>
-								<td>{{ maskpath[1] }}</td>
+								<td>{{ rawpath }}</td>
+								<td>{{ maskpath }}</td>
 							</tr>
 							{% endfor %}
 						</tbody>

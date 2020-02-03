@@ -4,24 +4,18 @@
 '''
 
 import argparse
-from distutils.util import convert_path
 from ggc.prompt import ask
 from ggc.args import check_threads, export_settings
-import itertools
-from joblib import delayed, Parallel
 import logging
 import numpy as np
 import os
-import pandas as pd
 from radiantkit.const import __version__
-from radiantkit import image, particle
-from radiantkit import stat
+from radiantkit import particle
+from radiantkit import path
 from radiantkit.report import report_select_nuclei
 import re
 import sys
-import tempfile
-from tqdm import tqdm
-from typing import List, Pattern, Type
+from typing import List
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s ' +
     '[P%(process)s:%(module)s:%(funcName)s] %(levelname)s: %(message)s',
@@ -116,77 +110,31 @@ def confirm_arguments(args: argparse.Namespace) -> None:
     with open(os.path.join(args.input, "select_nuclei.config.txt"), "w+") as OH:
         export_settings(OH, settings_string)
 
-def find_images(ipath: str, inreg: Pattern) -> List[str]:
-    imglist = [f for f in os.listdir(ipath) 
-        if os.path.isfile(os.path.join(ipath, f))
-        and not type(None) == type(re.match(inreg, f))]
-    return imglist
-
-def select_masks(ipath: str, imglist: List[str],
-    prefix: str="", suffix: str= "") -> List[str]:
-    if 0 != len(suffix): imglist = [f for f in imglist
-        if os.path.splitext(f)[0].endswith(suffix)]
-    if 0 != len(prefix): imglist = [f for f in imglist
-        if os.path.splitext(f)[0].startswith(prefix)]
-
-    for imgpath in imglist:
-        imgbase, imgext = os.path.splitext(imgpath)
-        imgbase = imgbase[len(prefix):-len(suffix)]
-        raw_image = f"{imgbase}{imgext}"
-        if not os.path.isfile(os.path.join(ipath, raw_image)):
-            logging.warning(f"missing raw image for mask '{imgpath}', skipped.")
-            imglist.pop(imglist.index(imgpath))
-        else:
-            imglist[imglist.index(imgpath)] = (raw_image,imgpath)
-
-    return imglist
-
 def run(args: argparse.Namespace) -> None:
     confirm_arguments(args)
     
-    imglist = find_images(args.input, args.inreg)
-    masklist = select_masks(args.input, imglist, args.outprefix, args.outsuffix)
-    logging.info(f"working on {len(masklist)}/{len(imglist)} images.")
-    assert 0 != len(masklist)
+    imglist = path.find_re(args.input, args.inreg)
+    masklist = path.select_by_prefix_and_suffix(
+        args.input, imglist, args.outprefix, args.outsuffix)
+    raw_mask_pairs = path.pair_raw_mask_images(
+        args.input, masklist, args.outprefix, args.outsuffix)
+    logging.info(f"working on {len(raw_mask_pairs)}/{len(imglist)} images.")
+    assert 0 != len(raw_mask_pairs)
 
-    nuclei = extract_nuclei_from_masks(masklist, args.input, args.threads)
+    nuclei = particle.NucleiList.from_multiple_fields_of_view(
+        raw_mask_pairs, args.input, args.threads)
     logging.info(f"extracted {len(nuclei)} nuclei.")
 
-    size_data = np.array([n.total_size for n in nuclei])
-    size_fit = stat.cell_cycle_fit(size_data)
-    assert size_fit[0] is not None
-    np.set_printoptions(formatter={'float_kind':'{:.2E}'.format})
-    logging.info(f"size fit:\n{size_fit}")
-    size_range = stat.range_from_fit(
-        size_data, *size_fit, args.k_sigma)
-    np.set_printoptions(formatter={'float_kind':'{:.2E}'.format})
-    logging.info(f"size range: {size_range}")
+    nuclei_data, details = nuclei.select_G1(args.k_sigma)
 
-    intensity_sum_data = np.array([n.intensity_sum for n in nuclei])
-    intensity_sum_fit = stat.cell_cycle_fit(intensity_sum_data)
-    assert intensity_sum_fit[0] is not None
     np.set_printoptions(formatter={'float_kind':'{:.2E}'.format})
-    logging.info(f"intensity sum fit:\n{intensity_sum_fit}")
-    intensity_sum_range = stat.range_from_fit(
-        intensity_sum_data, *intensity_sum_fit, args.k_sigma)
+    logging.info(f"size fit:\n{details['size']['fit']}")
     np.set_printoptions(formatter={'float_kind':'{:.2E}'.format})
-    logging.info(f"size range: {intensity_sum_range}")
-
-    nuclei_data = pd.DataFrame.from_dict({
-        'image':[n.ipath for n in nuclei],
-        'label':[n.label for n in nuclei],
-        'size':size_data,
-        'isum':intensity_sum_data
-    })
-
-    nuclei_data['pass_size'] = np.logical_and(
-        size_data >= size_range[0],
-        size_data <= size_range[1])
-    nuclei_data['pass_isum'] = np.logical_and(
-        intensity_sum_data >= intensity_sum_range[0],
-        intensity_sum_data <= intensity_sum_range[1])
-    nuclei_data['pass'] = np.logical_and(
-        nuclei_data['pass_size'], nuclei_data['pass_isum'])
+    logging.info(f"size range: {details['size']['range']}")
+    np.set_printoptions(formatter={'float_kind':'{:.2E}'.format})
+    logging.info(f"intensity sum fit:\n{details['isum']['fit']}")
+    np.set_printoptions(formatter={'float_kind':'{:.2E}'.format})
+    logging.info(f"intensity sum range: {details['isum']['range']}")
 
     ndpath = os.path.join(args.input, "select_nuclei.data.tsv")
     logging.info(f"writing nuclear data to:\n{ndpath}")
@@ -195,5 +143,6 @@ def run(args: argparse.Namespace) -> None:
     report_path = os.path.join(args.input, "select_nuclei.report.html")
     logging.info(f"writing report to\n{report_path}")
     report_select_nuclei(args, report_path, data=nuclei_data,
-        size_range=size_range, intensity_sum_range=intensity_sum_range,
-        masklist=sorted(masklist))
+        size_range=details['size']['range'],
+        intensity_sum_range=details['isum']['range'],
+        raw_mask_pairs=sorted(raw_mask_pairs))

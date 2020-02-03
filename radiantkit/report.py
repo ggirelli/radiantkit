@@ -34,6 +34,6 @@ def report_select_nuclei(args: argparse.Namespace,
     figure = plot.plot_nuclear_selection(kwargs['data'],
         kwargs['size_range'], kwargs['intensity_sum_range'])
 
-    report.render(opath, args=args, masklist=kwargs['masklist'],
+    report.render(opath, args=args, raw_mask_pairs=kwargs['raw_mask_pairs'],
         plot_json=figure.to_json(), now = str(datetime.now()))
 

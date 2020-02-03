@@ -3,22 +3,28 @@
 @contact: gigi.ga90@gmail.com
 '''
 
+import itertools
+from joblib import delayed, Parallel
 import logging
 import numpy as  np
-from radiantkit.image import ImageBase, ImageBinary, ImageLabeled
-from radiantkit.selection import BoundingElement
+import os
+import pandas as pd
+from radiantkit.image import Image, ImageBase, ImageBinary, ImageLabeled
+from radiantkit import selection
+from radiantkit import stat
 from skimage.measure import marching_cubes_lewiner, mesh_surface_area
 from tqdm import tqdm
-from typing import List, Optional, Type, Union
+from typing import Dict, List, Optional, Tuple, Type, Union
 
 class ParticleSettings(object):
     _mask: Optional[ImageBinary] = None
-    _region_of_interest: Optional[BoundingElement] = None
+    _region_of_interest: Optional[selection.BoundingElement] = None
     label: Optional[int] = None
     _total_size: Optional[int]=None
     _surface: Optional[int]=None
 
-    def __init__(self, B: ImageBinary, region_of_interest: BoundingElement):
+    def __init__(self, B: ImageBinary,
+        region_of_interest: selection.BoundingElement):
         super(ParticleSettings, self).__init__()
         assert B.shape == region_of_interest.shape
         self._mask = B
@@ -29,7 +35,7 @@ class ParticleSettings(object):
         return self._mask
 
     @property
-    def region_of_interest(self) -> BoundingElement:
+    def region_of_interest(self) -> selection.BoundingElement:
         return self._region_of_interest
 
     @property
@@ -71,7 +77,8 @@ class ParticleBase(ParticleSettings):
     _intensity_sum: Optional[float]=None
     _intensity_mean: Optional[float]=None
 
-    def __init__(self, B: ImageBinary, region_of_interest: BoundingElement):
+    def __init__(self, B: ImageBinary,
+        region_of_interest: selection.BoundingElement):
         super(ParticleBase, self).__init__(B, region_of_interest)
     
     @property
@@ -94,7 +101,8 @@ class ParticleBase(ParticleSettings):
         self._intensity_sum = np.sum(pixels)
 
 class Nucleus(ParticleBase):
-    def __init__(self, B: ImageBinary, region_of_interest: BoundingElement):
+    def __init__(self, B: ImageBinary,
+        region_of_interest: selection.BoundingElement):
         super(Nucleus, self).__init__(B, region_of_interest)
 
 class NucleiList(object):
@@ -102,11 +110,15 @@ class NucleiList(object):
         super(NucleiList, self).__init__()
         self.__nuclei = nuclei
 
+    @property
+    def nuclei(self):
+        return self.__nuclei.copy()
+    
     @staticmethod
     def from_field_of_view(imgdir: str, maskpath: str,
-        rawpath: str, loglevel: str="INFO") -> List[Nuclei]:
-        I = image.Image.from_tiff(os.path.join(imgdir, rawpath))
-        M = image.ImageBinary.from_tiff(os.path.join(imgdir, maskpath))
+        rawpath: str, loglevel: str="INFO") -> List[Nucleus]:
+        I = Image.from_tiff(os.path.join(imgdir, rawpath))
+        M = ImageBinary.from_tiff(os.path.join(imgdir, maskpath))
         assert I.shape == M.shape
 
         nuclei = ParticleFinder().get_particles_from_binary_image(M, Nucleus)
@@ -117,20 +129,58 @@ class NucleiList(object):
         return NucleiList(nuclei)
 
     @staticmethod
-    def from_masks(masklist: Tuple[str], ipath: str,
-        threads: int=1) -> List[NucleiList]:
+    def from_multiple_fields_of_view(masklist: Tuple[str], ipath: str,
+        threads: int=1) -> List['NucleiList']:
         if 1 == threads:
             nuclei = []
             for rawpath,maskpath in tqdm(masklist):
-                nuclei.extend(retrieve_nuclei__from_field_of_view(
+                nuclei.append(NucleiList.from_field_of_view(
                     ipath, maskpath, rawpath))
         else:
-            nuclei_nested = Parallel(n_jobs = threads, verbose = 11)(
-                delayed(retrieve_nuclei__from_field_of_view)(
+            nuclei = Parallel(n_jobs = threads, verbose = 11)(
+                delayed(NucleiList.from_field_of_view)(
                     ipath, maskpath, rawpath) for rawpath,maskpath in masklist)
-            nuclei = list(itertools.chain(*nuclei_nested))
 
-        return NucleiList(nuclei)
+        return NucleiList.concat(nuclei)
+
+    @staticmethod
+    def concat(lists: List['NucleiList']) -> 'NucleiList':
+        return NucleiList(list(itertools.chain(*[nl.nuclei for nl in lists])))
+
+    def __len__(self):
+        return len(self.__nuclei)
+
+    def select_G1(self, k_sigma: float=2.5) -> Tuple[pd.DataFrame,Dict]:
+        size_data = np.array([n.total_size for n in self.nuclei])
+        size_fit = stat.cell_cycle_fit(size_data)
+        assert size_fit[0] is not None
+        size_range = stat.range_from_fit(
+            size_data, *size_fit, k_sigma)
+
+        intensity_sum_data = np.array([n.intensity_sum for n in self.nuclei])
+        intensity_sum_fit = stat.cell_cycle_fit(intensity_sum_data)
+        assert intensity_sum_fit[0] is not None
+        intensity_sum_range = stat.range_from_fit(
+            intensity_sum_data, *intensity_sum_fit, k_sigma)
+
+        nuclei_data = pd.DataFrame.from_dict({
+            'image':[n.ipath for n in self.nuclei],
+            'label':[n.label for n in self.nuclei],
+            'size':size_data,
+            'isum':intensity_sum_data
+        })
+
+        nuclei_data['pass_size'] = np.logical_and(
+            size_data >= size_range[0],
+            size_data <= size_range[1])
+        nuclei_data['pass_isum'] = np.logical_and(
+            intensity_sum_data >= intensity_sum_range[0],
+            intensity_sum_data <= intensity_sum_range[1])
+        nuclei_data['pass'] = np.logical_and(
+            nuclei_data['pass_size'], nuclei_data['pass_isum'])
+
+        return (nuclei_data, {'size':{'range':size_range,'fit':size_fit},
+            'isum':{'range':intensity_sum_range,'fit':intensity_sum_fit}})
 
 class ParticleFinder(object):
     def __init__(self):
@@ -152,7 +202,7 @@ class ParticleFinder(object):
         particle_list = []
         for current_label in range(1, L.pixels.max()+1):
             B = ImageBinary(L.pixels == current_label)
-            region_of_interest = BoundingElement.from_binary_image(B)
+            region_of_interest = selection.BoundingElement.from_binary_image(B)
 
             B = ImageBinary(region_of_interest.apply(B))
 
