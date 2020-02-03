@@ -3,11 +3,11 @@
 @contact: gigi.ga90@gmail.com
 '''
 
+import itertools
 import logging
 import os
-from radiantkit import image
-from radiantkit.particle import ParticleBase, ParticleFinder
-from radiantkit import path
+from radiantkit import const, image, path
+from radiantkit import particle
 import re
 import sys
 from typing import Dict, List, Tuple
@@ -15,7 +15,7 @@ from typing import Callable, Iterator, Optional, Pattern, Type
 
 class SeriesSettings(object):
     _ID: int=0
-    _channel_data: Dict[str, Type[image.Image]]={}
+    _channel_data: Dict[str, Type[image.Image]]=None
     _mask_data: Optional[Dict]=None
     _ref: Optional[str]=None
     labeled: bool=False
@@ -28,12 +28,14 @@ class SeriesSettings(object):
         assert ref in channel_paths
 
         self._ID = ID
+        self._channel_data = {}
         for channel_name in channel_paths:
             self._channel_data[channel_name] = dict(
                 path=channel_paths[channel_name])
         if mask_path is not None:
             self._mask_data = dict(path=mask_path)
             self._ref = ref
+
 
     @property
     def ID(self) -> int:
@@ -75,6 +77,17 @@ class SeriesSettings(object):
             else: self._mask_data['I'
                 ] = image.ImageBinary.from_tiff(self.mask_path)
 
+    def init_channel(self, channel_name: str) -> None:
+        if channel_name in self._channel_data:
+            if not "I" in self._channel_data[channel_name]:
+                self._channel_data[channel_name]['I'] = image.Image.from_tiff(
+                    self._channel_data[channel_name]['path'])
+
+    def get_channel(self, channel_name: str) -> Optional[image.Image]:
+        if channel_name in self._channel_data:
+            if 'I' in self._channel_data[channel_name]:
+                return self._channel_data[channel_name]['I']
+
     def __str__(self) -> str:
         s = f"Series #{self._ID} with {len(self.channel_names)} channels."
         if not self.has_ref(): s += " No reference."
@@ -87,7 +100,7 @@ class SeriesSettings(object):
         return s
 
 class Series(SeriesSettings):
-    _particles: Optional[List[Type[ParticleBase]]]=None
+    _particles: Optional[List[Type[particle.ParticleBase]]]=None
 
     def __init__(self, ID: int, channel_paths: Dict[str,str],
         mask_path: Optional[str]=None, inreg: Optional[Pattern]=None):
@@ -103,17 +116,31 @@ class Series(SeriesSettings):
         return self._particles
     
     def extract_particles(self,
-        particleClass: Type[ParticleBase]) -> None:
+        particleClass: Type[particle.ParticleBase]) -> None:
         if not self.has_mask():
             logging.warning("mask is missing, no particles extracted.")
             return
+
         if self.labeled:
-            self._particles = ParticleFinder.get_particles_from_labeled_image(
-                self.mask, particleClass)
+            fextract = particle.ParticleFinder.get_particles_from_labeled_image
         else:
-            self._particles = ParticleFinder.get_particles_from_binary_image(
-                self.mask, particleClass)
+            fextract = particle.ParticleFinder.get_particles_from_binary_image
+
+        self._particles = fextract(self.mask, particleClass)
+        for pbody in self._particles: pbody.source = self.mask_path
+
         self.mask.unload()
+
+    @staticmethod
+    def static_extract_particles(s: 'Series', channel: str) -> 'Series':
+        s.extract_particles(particle.Nucleus)
+        logging.info(f"{len(s.particles)} nuclei in series '{s.ID}'")
+
+        s.init_channel(channel)
+        for pbody in s.particles:
+            pbody.init_intensity_features(s.get_channel(channel), channel)
+        s.get_channel(channel).unload()
+        return s
 
     def __str__(self):
         s = super(Series, self).__str__()
@@ -122,13 +149,17 @@ class Series(SeriesSettings):
             s += f"[{type(self._particles[0]).__name__}]."
         return s
 
-
 class SeriesList(object):
-    _series = List[Series]
+    _series: List[Series]=None
 
     def __init__(self, series_list: List[Series]):
         super(SeriesList, self).__init__()
         self._series = series_list
+
+    @property
+    def channel_names(self):
+        return list(set(itertools.chain(*[series.channel_names
+            for series in self._series])))
 
     @staticmethod
     def from_directory(dpath: str, inreg: Pattern, ref: Optional[str]=None,

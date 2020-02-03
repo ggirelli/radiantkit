@@ -76,10 +76,10 @@
 							<th scope="col">Mask</th>
 						</thead>
 						<tbody>
-							{% for rawpath,maskpath in raw_mask_pairs: %}
+							{% for series in series_list: %}
 							<tr>
-								<td>{{ rawpath }}</td>
-								<td>{{ maskpath }}</td>
+								<td>{{ series.channel_data[series.ref]['path'] }}</td>
+								<td>{{ series.mask_path }}</td>
 							</tr>
 							{% endfor %}
 						</tbody>

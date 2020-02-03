@@ -7,6 +7,9 @@ from enum import Enum
 
 __version__ = "0.0.1"
 
+default_inreg ="^([^\\.]*\\.)?(?P<channel_name>[^/]*)_(?P<series_id>[0-9]+)"
+default_inreg+="(?P<ext>(_cmle)?(\\.[^\\.]*)?\\.tiff?)$"
+
 class ProjectionType(Enum):
     SUM_PROJECTION = 'SUM_PROJECTION'
     MAX_PROJECTION = 'MAX_PROJECTION'

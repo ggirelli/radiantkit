@@ -74,31 +74,51 @@ class ParticleSettings(object):
         return self.mask.pixels.max(axes_ids).sum()
 
 class ParticleBase(ParticleSettings):
-    _intensity_sum: Optional[float]=None
-    _intensity_mean: Optional[float]=None
+    _intensity_sum: Dict[str,float]=None
+    _intensity_mean: Dict[str,float]=None
 
     def __init__(self, B: ImageBinary,
         region_of_interest: selection.BoundingElement):
         super(ParticleBase, self).__init__(B, region_of_interest)
+        self._intensity_sum = {}
+        self._intensity_mean = {}
     
     @property
     def intensity_sum(self) -> float:
-        if self._intensity_mean is None: self.__warn_init_intensity_features()
         return self._intensity_sum
     
     @property
     def intensity_mean(self) -> float:
-        if self._intensity_mean is None: self.__warn_init_intensity_features()
         return self._intensity_mean
 
-    def __warn_init_intensity_features(self):
-        logging.warning("run init_intensity_features " +
-            "to initialize this value")
+    @property
+    def channels(self):
+        channels = list(self._intensity_sum.keys())
+        channels.extend(self._intensity_mean.keys())
+        return list(set(channels))
 
-    def init_intensity_features(self, I: Type[ImageBase]) -> None:
+    def get_intensity_sum(self, channel_name: str) -> Optional[float]:
+        if channel_name in self.intensity_sum:
+            return self.intensity_sum[channel_name]
+        else: return np.nam
+
+    def get_intensity_mean(self, channel_name: str) -> Optional[float]:
+        if channel_name in self.intensity_mean:
+            return self.intensity_mean[channel_name]
+        else: return np.nan
+
+    def init_intensity_features(self,
+        I: Type[ImageBase], channel_name: str='unknown') -> None:
+        if channel_name in self._intensity_mean:
+            logging.warning("overwriting intensity mean of channel '%s'." % (
+                channel_name,))
+        if channel_name in self._intensity_sum:
+            logging.warning("overwriting intensity sum of channel '%s'." % (
+                channel_name,))
+
         pixels = self._region_of_interest.apply(I)[self._mask.pixels]
-        self._intensity_mean = np.mean(pixels)
-        self._intensity_sum = np.sum(pixels)
+        self._intensity_mean[channel_name] = np.mean(pixels)
+        self._intensity_sum[channel_name] = np.sum(pixels)
 
 class Nucleus(ParticleBase):
     def __init__(self, B: ImageBinary,
@@ -124,7 +144,7 @@ class NucleiList(object):
         nuclei = ParticleFinder().get_particles_from_binary_image(M, Nucleus)
         for nucleus in nuclei:
             nucleus.init_intensity_features(I)
-            nucleus.ipath = rawpath
+            nucleus.source = rawpath
 
         return NucleiList(nuclei)
 
@@ -153,39 +173,47 @@ class NucleiList(object):
         return len(self.__nuclei)
 
     def get_data(self):
-        return pd.DataFrame.from_dict({
-            'image':[n.ipath for n in self.nuclei],
+        ndata = pd.DataFrame.from_dict({
+            'image':[n.source for n in self.nuclei],
             'label':[n.label for n in self.nuclei],
-            'size':[n.total_size for n in self.nuclei],
-            'isum':[n.intensity_sum for n in self.nuclei]
+            'size':[n.total_size for n in self.nuclei]
         })
+        channels = list(set(itertools.chain(*[n.channels
+            for n in self.nuclei])))
+        for channel in channels:
+            ndata[f'isum_{channel}'] = [n.get_intensity_sum(channel)
+                for n in self.nuclei]
+        return ndata
 
-    def select_G1(self, k_sigma: float=2.5) -> Tuple[pd.DataFrame,Dict]:
+    def select_G1(self, k_sigma: float=2.5,
+        channel: str='unknown') -> Tuple[pd.DataFrame,Dict]:
         ndata = self.get_data()
 
-        size_data = np.array([n.total_size for n in self.nuclei])
         size_fit = stat.cell_cycle_fit(ndata['size'].values)
         assert size_fit[0] is not None
         size_range = stat.range_from_fit(
             ndata['size'].values, *size_fit, k_sigma)
 
-        ndata['isum'].values = np.array([n.intensity_sum for n in self.nuclei])
-        intensity_sum_fit = stat.cell_cycle_fit(ndata['isum'].values)
+        intensity_sum_fit = stat.cell_cycle_fit(ndata[f'isum_{channel}'].values)
         assert intensity_sum_fit[0] is not None
         intensity_sum_range = stat.range_from_fit(
-            ndata['isum'].values, *intensity_sum_fit, k_sigma)
+            ndata[f'isum_{channel}'].values, *intensity_sum_fit, k_sigma)
 
         ndata['pass_size'] = np.logical_and(
             ndata['size'].values >= size_range[0],
             ndata['size'].values <= size_range[1])
         ndata['pass_isum'] = np.logical_and(
-            ndata['isum'].values >= intensity_sum_range[0],
-            ndata['isum'].values <= intensity_sum_range[1])
+            ndata[f'isum_{channel}'].values >= intensity_sum_range[0],
+            ndata[f'isum_{channel}'].values <= intensity_sum_range[1])
         ndata['pass'] = np.logical_and(
             ndata['pass_size'], ndata['pass_isum'])
+        ndata['ref'] = channel
 
-        return (ndata, {'size':{'range':size_range,'fit':size_fit},
-            'isum':{'range':intensity_sum_range,'fit':intensity_sum_fit}})
+        return (ndata, {
+            'size':{
+                'range':size_range,'fit':size_fit},
+            f'isum':{
+                'range':intensity_sum_range,'fit':intensity_sum_fit}})
 
 class ParticleFinder(object):
     def __init__(self):

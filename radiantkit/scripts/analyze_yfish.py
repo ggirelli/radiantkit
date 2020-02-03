@@ -98,12 +98,10 @@ def init_parser(subparsers: argparse._SubParsersAction
     advanced.add_argument('--debug',
         action='store_const', dest='debug_mode',
         const=True, default=False, help='Log also debugging messages.')
-    default_inreg ="^([^\\.]*\\.)?(?P<channel_name>[^/]*)_(?P<series_id>[0-9]+)"
-    default_inreg+="(?P<ext>(_cmle)?(\\.[^\\.]*)?\\.tiff?)$"
     advanced.add_argument('--inreg', type=str, metavar="REGEXP",
         help=f"""Regular expression to identify input TIFF images.
         Must contain 'channel_name' and 'series_id' fields.
-        Default: '{default_inreg}'""", default=default_inreg)
+        Default: '{const.default_inreg}'""", default=const.default_inreg)
     advanced.add_argument('-t', type=int, metavar="NUMBER", dest="threads",
         help="""Number of threads for parallelization. Default: 1""",
         default=1)
@@ -224,22 +222,17 @@ def build_conditions(args: argparse.Namespace) -> Dict:
 
     return conditions
     
-def run_series(series: series.Series) -> series.Series:
-    series.extract_particles(particle.Nucleus)
-    logging.info(f"Extracted {len(series.particles)} nuclei " +
-        f"from series '{series.ID}'")
-    return series
-
 def run(args: argparse.Namespace) -> None:
     confirm_arguments(args)
 
     for name,condition in build_conditions(args).items():
         if 1 == args.threads:
-            condition['series'] = [run_series(series)
+            condition['series'] = [series.static_extract_particles(series)
                 for series in tqdm(condition['series'])]
         else:
             condition['series'] = Parallel(n_jobs=args.threads, verbose=11)(
-                delayed(run_series)(series) for series in condition['series'])
+                delayed(series.static_extract_particles)(series)
+                for series in condition['series'])
 
         ndata, details = particle.NucleiList(list(itertools.chain(
             *[s.particles for s in condition['series']]))

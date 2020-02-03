@@ -24,12 +24,12 @@ def export(path: str, exp_format: str = 'pdf') -> None:
     else:
         plt.savefig(path, format=exp_format)
 
-def plot_nuclear_selection(data: pd.DataFrame,
+def plot_nuclear_selection(data: pd.DataFrame, ref: str,
 	size_range: Tuple[float], isum_range: Tuple[float]) -> go.Figure:
 	assert all([x in data.columns
-		for x in ["size", "isum", "pass", "label", "image"]])
+		for x in ["size", f"isum_{ref}", "pass", "label", "image"]])
 	x_data = data['size'].values
-	y_data = data['isum'].values
+	y_data = data[f"isum_{ref}"].values
 
 	xdf = gaussian_kde(x_data)
 	ydf = gaussian_kde(y_data)
