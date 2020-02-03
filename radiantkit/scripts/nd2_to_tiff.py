@@ -120,7 +120,11 @@ def export_field_3d(args: argparse.Namespace, nd2I: ND2Reader2,
     field_id: int, channels: Optional[List[str]] = None) -> None:
     if channels is None: channels = nd2I.get_channel_names()
     if args.deltaZ is not None: resolutionZ = args.deltaZ
-    else: resolutionZ = ND2Reader2.get_resolutionZ(args.input, field_id)
+    else:
+        resolutionZ = ND2Reader2.get_resolutionZ(args.input, field_id)
+        assert 1 == len(resolutionZ
+            ), f"Z resolution is not constant: {resolutionZ}"
+        resolutionZ = list(resolutionZ)[0]
 
     try:
         if not nd2I.hasMultiChannels():
