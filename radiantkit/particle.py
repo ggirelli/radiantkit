@@ -83,17 +83,17 @@ class ParticleBase(ParticleSettings):
     
     @property
     def intensity_sum(self) -> float:
-        if self._intensity_sum is None:
-            logging.warning("run init_intensity_features " +
-                "to initialize this value")
+        if self._intensity_mean is None: self.__warn_init_intensity_features()
         return self._intensity_sum
     
     @property
     def intensity_mean(self) -> float:
-        if self._intensity_mean is None:
-            logging.warning("run init_intensity_features " +
-                "to initialize this value")
+        if self._intensity_mean is None: self.__warn_init_intensity_features()
         return self._intensity_mean
+
+    def __warn_init_intensity_features(self):
+        logging.warning("run init_intensity_features " +
+            "to initialize this value")
 
     def init_intensity_features(self, I: Type[ImageBase]) -> None:
         pixels = self._region_of_interest.apply(I)[self._mask.pixels]
@@ -150,36 +150,39 @@ class NucleiList(object):
     def __len__(self):
         return len(self.__nuclei)
 
-    def select_G1(self, k_sigma: float=2.5) -> Tuple[pd.DataFrame,Dict]:
-        size_data = np.array([n.total_size for n in self.nuclei])
-        size_fit = stat.cell_cycle_fit(size_data)
-        assert size_fit[0] is not None
-        size_range = stat.range_from_fit(
-            size_data, *size_fit, k_sigma)
-
-        intensity_sum_data = np.array([n.intensity_sum for n in self.nuclei])
-        intensity_sum_fit = stat.cell_cycle_fit(intensity_sum_data)
-        assert intensity_sum_fit[0] is not None
-        intensity_sum_range = stat.range_from_fit(
-            intensity_sum_data, *intensity_sum_fit, k_sigma)
-
-        nuclei_data = pd.DataFrame.from_dict({
+    def get_data(self):
+        return pd.DataFrame.from_dict({
             'image':[n.ipath for n in self.nuclei],
             'label':[n.label for n in self.nuclei],
-            'size':size_data,
-            'isum':intensity_sum_data
+            'size':[n.total_size for n in self.nuclei],
+            'isum':[n.intensity_sum for n in self.nuclei]
         })
 
-        nuclei_data['pass_size'] = np.logical_and(
-            size_data >= size_range[0],
-            size_data <= size_range[1])
-        nuclei_data['pass_isum'] = np.logical_and(
-            intensity_sum_data >= intensity_sum_range[0],
-            intensity_sum_data <= intensity_sum_range[1])
-        nuclei_data['pass'] = np.logical_and(
-            nuclei_data['pass_size'], nuclei_data['pass_isum'])
+    def select_G1(self, k_sigma: float=2.5) -> Tuple[pd.DataFrame,Dict]:
+        ndata = self.get_data()
 
-        return (nuclei_data, {'size':{'range':size_range,'fit':size_fit},
+        size_data = np.array([n.total_size for n in self.nuclei])
+        size_fit = stat.cell_cycle_fit(ndata['size'].values)
+        assert size_fit[0] is not None
+        size_range = stat.range_from_fit(
+            ndata['size'].values, *size_fit, k_sigma)
+
+        ndata['isum'].values = np.array([n.intensity_sum for n in self.nuclei])
+        intensity_sum_fit = stat.cell_cycle_fit(ndata['isum'].values)
+        assert intensity_sum_fit[0] is not None
+        intensity_sum_range = stat.range_from_fit(
+            ndata['isum'].values, *intensity_sum_fit, k_sigma)
+
+        ndata['pass_size'] = np.logical_and(
+            ndata['size'].values >= size_range[0],
+            ndata['size'].values <= size_range[1])
+        ndata['pass_isum'] = np.logical_and(
+            ndata['isum'].values >= intensity_sum_range[0],
+            ndata['isum'].values <= intensity_sum_range[1])
+        ndata['pass'] = np.logical_and(
+            ndata['pass_size'], ndata['pass_isum'])
+
+        return (ndata, {'size':{'range':size_range,'fit':size_fit},
             'isum':{'range':intensity_sum_range,'fit':intensity_sum_fit}})
 
 class ParticleFinder(object):
