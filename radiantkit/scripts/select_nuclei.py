@@ -67,6 +67,10 @@ interactive data visualization.
         action='store_const', dest='compressed',
         const=False, default=True,
         help='Generate uncompressed TIFF binary masks.')
+    advanced.add_argument('--no-rescaling',
+        action='store_const', dest='do_rescaling',
+        const=False, default=True,
+        help='Do not rescale image even if deconvolved.')
     default_inreg='^.*\.tiff?$'
     advanced.add_argument('--inreg', type=str, metavar="REGEXP",
         help="""Regular expression to identify input TIFF images.
@@ -101,16 +105,17 @@ def print_settings(args: argparse.Namespace, clear: bool = True) -> str:
     s = f"""
 # Nuclei selection v{args.version}
 
----------- SETTING :  VALUE ----------
+---------- SETTING : VALUE ----------
 
-   Input directory :  '{args.input}'
+   Input directory : '{args.input}'
 
-       Mask prefix :  '{args.mask_prefix}'
-       Mask suffix :  '{args.mask_suffix}'
-        Compressed :  {args.compressed}
+       Mask prefix : '{args.mask_prefix}'
+       Mask suffix : '{args.mask_suffix}'
+        Compressed : {args.compressed}
 
-           Threads :  {args.threads}
-            Regexp :  {args.inreg.pattern}
+           Rescale : {do_rescaling}
+           Threads : {args.threads}
+            Regexp : {args.inreg.pattern}
     """
     if clear: print("\033[H\033[J")
     print(s)
@@ -138,7 +143,7 @@ def run(args: argparse.Namespace) -> None:
     assert 0 != len(raw_mask_pairs)
 
     nuclei = particle.NucleiList.from_multiple_fields_of_view(
-        raw_mask_pairs, args.input, args.threads)
+        raw_mask_pairs, args.input, args.do_rescaling, args.threads)
     logging.info(f"extracted {len(nuclei)} nuclei.")
 
     nuclei_data, details = nuclei.select_G1(args.k_sigma)

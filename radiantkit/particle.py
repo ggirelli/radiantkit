@@ -115,10 +115,10 @@ class NucleiList(object):
         return self.__nuclei.copy()
     
     @staticmethod
-    def from_field_of_view(imgdir: str, maskpath: str,
-        rawpath: str, loglevel: str="INFO") -> List[Nucleus]:
-        I = Image.from_tiff(os.path.join(imgdir, rawpath))
-        M = ImageBinary.from_tiff(os.path.join(imgdir, maskpath))
+    def from_field_of_view(maskpath: str, rawpath: str,
+        doRescale: bool=True) -> List[Nucleus]:
+        I = Image.from_tiff(rawpath, doRescale=doRescale)
+        M = ImageBinary.from_tiff(maskpath)
         assert I.shape == M.shape
 
         nuclei = ParticleFinder().get_particles_from_binary_image(M, Nucleus)
@@ -130,16 +130,18 @@ class NucleiList(object):
 
     @staticmethod
     def from_multiple_fields_of_view(masklist: Tuple[str], ipath: str,
-        threads: int=1) -> List['NucleiList']:
+        doRescale: bool=True, threads: int=1) -> List['NucleiList']:
         if 1 == threads:
             nuclei = []
             for rawpath,maskpath in tqdm(masklist):
                 nuclei.append(NucleiList.from_field_of_view(
-                    ipath, maskpath, rawpath))
+                    os.path.join(ipath, maskpath),
+                    os.path.join(ipath, rawpath), doRescale))
         else:
             nuclei = Parallel(n_jobs = threads, verbose = 11)(
                 delayed(NucleiList.from_field_of_view)(
-                    ipath, maskpath, rawpath) for rawpath,maskpath in masklist)
+                    os.path.join(ipath, maskpath), os.path.join(ipath, rawpath),
+                    doRescale) for rawpath,maskpath in masklist)
 
         return NucleiList.concat(nuclei)
 

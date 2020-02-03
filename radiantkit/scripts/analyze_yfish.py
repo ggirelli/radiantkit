@@ -156,7 +156,7 @@ def print_settings(args: argparse.Namespace, clear: bool = True) -> str:
     s = f"""
     # YFISH analysis v{args.version}
     
-    ---------- SETTING :  VALUE ----------
+    ---------- SETTING : VALUE ----------
     
        Input directory : '{args.input}'
       Output directory : '{args.output}'
