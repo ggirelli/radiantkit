@@ -6,12 +6,14 @@
 import argparse
 from ggc.prompt import ask
 from ggc.args import check_threads, export_settings
+from joblib import delayed, Parallel
 import logging
 import os
 from radiantkit import const, path
-from radiantkit import series
+from radiantkit import particle, series
 import re
 import sys
+from tqdm import tqdm
 from typing import Dict
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s ' +
@@ -203,7 +205,7 @@ def build_conditions(args: argparse.Namespace) -> Dict:
     conditions = {}
     for condition_name in os.listdir(args.input):
         condition_folder = os.path.join(args.input, condition_name)
-        conditions[condition_name] = dict(series=series.Series.from_directory(
+        conditions[condition_name] = dict(series=series.SeriesList.from_directory(
             condition_folder, args.inreg, args.ref,
             (args.mask_prefix, args.mask_suffix)))
         logging.info(f"parsed {len(conditions[condition_name])} series from " +
@@ -221,6 +223,19 @@ def build_conditions(args: argparse.Namespace) -> Dict:
 
     return conditions
     
+def run_series(series: series.Series) -> series.Series:
+    series.extract_particles(particle.Nucleus)
+    print(series)
+    return series
+
 def run(args: argparse.Namespace) -> None:
     confirm_arguments(args)
-    conditions = parse_input(args)
+
+    for name,condition in build_conditions(args).items():
+        if 1 == args.threads:
+            condition['series'] = [run_series(series)
+                for series in tqdm(condition['series'])]
+        else:
+            condition['series'] = Parallel(n_jobs=args.threads, verbose=11)(
+                delayed(run_series)(series) for series in condition['series'])
+        print(condition['series'])
