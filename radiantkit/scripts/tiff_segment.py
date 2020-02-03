@@ -43,7 +43,7 @@ levels. By default, the script generates compressed binary tiff images; use the
 
 Input images that have the specified prefix and suffix are not segmented.''',
         formatter_class = argparse.RawDescriptionHelpFormatter,
-        help = f"{__name__.split('.')[-1]} -h")
+        help = "Segment tiff images (default optimized for DAPI staining).")
 
     parser.add_argument('input', type=str,
         help='Path to folder containing deconvolved tiff images.')

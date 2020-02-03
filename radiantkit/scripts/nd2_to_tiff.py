@@ -24,11 +24,12 @@ logging.basicConfig(level=logging.INFO, format='%(asctime)s ' +
 def init_parser(subparsers: argparse._SubParsersAction
     ) -> argparse.ArgumentParser:
     parser = subparsers.add_parser(__name__.split(".")[-1], description = '''
-Convert a nd2 file into single channel tiff images. In the case of 3+D images,
-the script also checks for consistent deltaZ distance across consecutive 2D
-slices (i.e., dZ). If the distance is consitent, it is used to set the tiff
-image dZ metadata. Otherwise, the script stops. Use the -Z argument to disable
-this check and provide a single dZ value to be used.
+Convert a nd2 file into single channel tiff images.
+
+In the case of 3+D images, the script also checks for consistent deltaZ distance
+across consecutive 2D slices (i.e., dZ). If the distance is consitent, it is
+used to set the tiff image dZ metadata. Otherwise, the script stops. Use the -Z
+argument to disable this check and provide a single dZ value to be used.
 
 The output tiff file names follow the specified template (-T). A template is a
 string including a series of "seeds" that are replaced by the corresponding
@@ -47,7 +48,7 @@ would be:"a488_003.tiff".
 Please, remember to escape the "$" when running from command line if using
 double quotes, i.e., "\\$". Alternatively, use single quotes, i.e., '$'.''',
         formatter_class = argparse.RawDescriptionHelpFormatter,
-        help = f"{__name__.split('.')[-1]} -h")
+        help = "Convert a nd2 file into single channel tiff images.")
 
     parser.add_argument('input', type = str,
         help = '''Path to the nd2 file to convert.''')

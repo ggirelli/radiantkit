@@ -31,7 +31,7 @@ def init_parser(subparsers: argparse._SubParsersAction
 Calculate gradient magnitude over Z for every image in the input folder with a
 filename matching the --pattern. Use --range to change the in-focus
 definition.''', formatter_class = argparse.RawDescriptionHelpFormatter,
-        help = f"{__name__.split('.')[-1]} -h")
+        help = "Find out of focus fields of view.")
 
     parser.add_argument('imdir', type = str,
         help = 'Path to folder with tiff images.')

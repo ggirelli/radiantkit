@@ -22,11 +22,12 @@ logging.basicConfig(level=logging.INFO, format='%(asctime)s ' +
 def init_parser(subparsers: argparse._SubParsersAction
     ) -> argparse.ArgumentParser:
     parser = subparsers.add_parser(__name__.split(".")[-1], description = '''
-Split a TIFF image in smaller TIFF images of the specified side(s). If two
-different sides are provided, the smaller images will be rectangular. The first
-side corresponds to the X (columns) and the second to the Y (rows). By default,
-only one side is required, which is used by the script for both X and Y sides.
-In other words, square smaller images are produced.
+Split a TIFF image in smaller TIFF images of the specified side(s).
+
+If two different sides are provided, the smaller images will be rectangular.
+The first side corresponds to the X (columns) and the second to the Y (rows).
+By default, only one side is required, which is used by the script for both X
+and Y sides. In other words, square smaller images are produced.
 
 If the original dimensions are not multiples of the specified side, a portion of
 the image is lost, unless the --enlarge option is used. In that case, the
@@ -77,7 +78,7 @@ tiff_split big_image.tif split_out_dir 100 -e -S 90 80
 tiff_split big_image.tif split_out_dir 100 -e -O 0.1 0.2
 tiff_split big_image.tif split_out_dir 100 -e -O 10 20''',
         formatter_class = argparse.RawDescriptionHelpFormatter,
-        help = f"{__name__.split('.')[-1]} -h")
+        help="Split a TIFF image in smaller images of the specified side(s).")
 
     parser.add_argument('input', type = str,
         help = '''Path to the TIFF image to split.''')

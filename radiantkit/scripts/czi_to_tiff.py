@@ -41,7 +41,7 @@ would be:"a488_003.tiff".
 Please, remember to escape the "$" when running from command line if using
 double quotes, i.e., "\\$". Alternatively, use single quotes, i.e., '$'.''',
         formatter_class = argparse.RawDescriptionHelpFormatter,
-        help = f"{__name__.split('.')[-1]} -h")
+        help = "Convert a czi file into single channel tiff images.")
 
     parser.add_argument('input', type = str,
         help = '''Path to the czi file to convert.''')

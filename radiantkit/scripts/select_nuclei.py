@@ -44,7 +44,7 @@ A tabulation-separated table is generated with the nuclear features and whether
 they pass the filter(s). Alongside it, an html report is generated with
 interactive data visualization.
 ''', formatter_class = argparse.RawDescriptionHelpFormatter,
-        help = f"{__name__.split('.')[-1]} -h")
+        help = "Select G1 nuclei.")
 
     parser.add_argument('input', type=str,
         help='Path to folder containing deconvolved tiff images.')

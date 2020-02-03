@@ -12,16 +12,22 @@ def default_parser(*args) -> None:
     sys.exit()
 
 def main():
-    parser = argparse.ArgumentParser(description = '''
-Lorem ipsum dolor sit amet, consectetur adipisicing elit. Hic dignissimos atque
-laboriosam placeat velit ut commodi nulla voluptatum quae, pariatur. Nam,
-voluptate ut non deleniti saepe nesciunt, nihil et nemo.''',
+    parser = argparse.ArgumentParser(description = f'''
+Version:    {ra.const.__version__}
+Author:     Gabriele Girelli
+Docs:       http://ggirelli.github.io/radiantkit
+Code:       http://github.com/ggirelli/radiantkit
+
+Radial Image Analisys Toolkit (RadIAnTkit) is a Python3.6+ package containing
+tools for radial analysis of microscopy image.
+''',
         formatter_class = argparse.RawDescriptionHelpFormatter)
     parser.set_defaults(parse=default_parser)
     parser.add_argument('--version', action = 'version',
         version = f'{sys.argv[0]} {ra.const.__version__}')
 
-    subparsers = parser.add_subparsers(help='sub-command -h')
+    subparsers = parser.add_subparsers(title="sub-commands",
+        help='Access the help page for a sub-command with: sub-command -h')
     
     ra.scripts.czi_to_tiff.init_parser(subparsers)
     ra.scripts.nd2_to_tiff.init_parser(subparsers)
