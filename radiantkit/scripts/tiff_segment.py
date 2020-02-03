@@ -91,6 +91,10 @@ Input images that have the specified prefix and suffix are not segmented.''',
         action='store_const', dest='compressed',
         const=False, default=True,
         help='Generate uncompressed TIFF binary masks.')
+    advanced.add_argument('--no-rescaling',
+        action='store_const', dest='do_rescaling',
+        const=False, default=True,
+        help='Do not rescale image even if deconvolved.')
     advanced.add_argument('--debug',
         action='store_const', dest='debug_mode',
         const=True, default=False,
@@ -146,27 +150,28 @@ def print_settings(args: argparse.Namespace, clear: bool = True) -> str:
     s = f"""
 # Automatic 3D segmentation v{args.version}
 
----------- SETTING :  VALUE ----------
+---------- SETTING : VALUE ----------
 
-   Input directory :  '{args.input}'
-  Output directory :  '{args.output}'
+   Input directory : '{args.input}'
+  Output directory : '{args.output}'
 
-       Mask prefix :  '{args.outprefix}'
-       Mask suffix :  '{args.outsuffix}'
-     Neighbourhood :  {args.neighbour}
+       Mask prefix : '{args.outprefix}'
+       Mask suffix : '{args.outsuffix}'
+     Neighbourhood : {args.neighbour}
           2D masks : '{args.mask_2d}'
-           Labeled :  {args.labeled}
-        Compressed :  {args.compressed}
+           Labeled : {args.labeled}
+        Compressed : {args.compressed}
 
- Dilate-fill-erode :  {args.dilate_fill_erode}
- Minimum Z portion :  {args.min_Z:.2f}
-    Minimum radius :  [{args.radius[0]:.2f}, {args.radius[1]:.2f}] vx
-           Clear Z :  {args.do_clear_Z}
+ Dilate-fill-erode : {args.dilate_fill_erode}
+ Minimum Z portion : {args.min_Z:.2f}
+    Minimum radius : [{args.radius[0]:.2f}, {args.radius[1]:.2f}] vx
+           Clear Z : {args.do_clear_Z}
 
-           Threads :  {args.threads}
-            Regexp :  {args.inreg.pattern}
-             Debug :  {args.debug_mode}
-            Silent :  {args.silent}
+           Rescale : {do_rescaling}
+           Threads : {args.threads}
+            Regexp : {args.inreg.pattern}
+             Debug : {args.debug_mode}
+            Silent : {args.silent}
 
     """
     if clear: print("\033[H\033[J")
@@ -189,11 +194,11 @@ def run_segmentation(args: argparse.Namespace,
     logging.getLogger().setLevel(loglevel)
     logging.info(f"Segmenting image '{imgpath}'")
 
-    I = image.Image.from_tiff(os.path.join(imgdir, imgpath))
+    I = image.Image.from_tiff(os.path.join(imgdir, imgpath),
+        doRescale=args.do_rescaling)
     logging.info(f"image axes: {I.axes}")
     logging.info(f"image shape: {I.shape}")
-    I.rescale_factor = I.get_huygens_rescaling_factor()
-    logging.info(f"rescaling factor: {I.rescale_factor}")
+    if args.do_rescaling: logging.info(f"rescaling factor: {I.rescale_factor}")
 
     binarizer = segmentation.Binarizer()
     binarizer.segmentation_type = const.SegmentationType.THREED

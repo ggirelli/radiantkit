@@ -292,8 +292,11 @@ class Image(ImageBase):
         self._pixels = self.pixels/self.rescale_factor
 
     @staticmethod
-    def from_tiff(path: str, axes: Optional[str]=None) -> 'Image':
-        return Image(read_tiff(path), path, axes)
+    def from_tiff(path: str, axes: Optional[str]=None,
+        doRescale: bool=True) -> 'Image':
+        I = Image(read_tiff(path), path, axes)
+        if doRescale: I.rescale_factor = I.get_huygens_rescaling_factor()
+        return I
 
     def get_huygens_rescaling_factor(self) -> float:
         if self._path_to_local is None: return 1.
