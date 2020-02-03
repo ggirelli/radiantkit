@@ -32,6 +32,7 @@ tools for radial analysis of microscopy image.
     ra.scripts.czi_to_tiff.init_parser(subparsers)
     ra.scripts.nd2_to_tiff.init_parser(subparsers)
 
+    ra.scripts.analyze_yfish.init_parser(subparsers)
     ra.scripts.select_nuclei.init_parser(subparsers)
 
     ra.scripts.tiff_findoof.init_parser(subparsers)
