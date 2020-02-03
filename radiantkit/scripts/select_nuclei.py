@@ -116,23 +116,6 @@ def confirm_arguments(args: argparse.Namespace) -> None:
     with open(os.path.join(args.input, "select_nuclei.config.txt"), "w+") as OH:
         export_settings(OH, settings_string)
 
-def retrieve_nuclei(imgdir: str, maskpath: str, rawpath: str,
-    loglevel: str="INFO") -> List[Type[particle.ParticleBase]]:
-    logging.getLogger().setLevel(loglevel)
-    logging.info(f"Extracting nuclei from '{maskpath}'")
-    I = image.Image.from_tiff(os.path.join(imgdir, rawpath))
-    M = image.ImageBinary.from_tiff(os.path.join(imgdir, maskpath))
-    assert I.shape == M.shape
-
-    nuclei = particle.ParticleFinder(
-        ).get_particles_from_binary_image(M, particle.Nucleus)
-    
-    for nucleus in nuclei:
-        nucleus.init_intensity_features(I)
-        nucleus.ipath = rawpath
-
-    return nuclei
-
 def find_images(ipath: str, inreg: Pattern) -> List[str]:
     imglist = [f for f in os.listdir(ipath) 
         if os.path.isfile(os.path.join(ipath, f))
@@ -166,15 +149,7 @@ def run(args: argparse.Namespace) -> None:
     logging.info(f"working on {len(masklist)}/{len(imglist)} images.")
     assert 0 != len(masklist)
 
-    if 1 == args.threads:
-        nuclei = []
-        for rawpath,maskpath in tqdm(masklist):
-            nuclei.extend(retrieve_nuclei(args.input, maskpath, rawpath))
-    else:
-        nuclei_nested = Parallel(n_jobs = args.threads, verbose = 11)(
-            delayed(retrieve_nuclei)(args.input, maskpath, rawpath)
-            for rawpath,maskpath in masklist)
-        nuclei = list(itertools.chain(*nuclei_nested))
+    nuclei = extract_nuclei_from_masks(masklist, args.input, args.threads)
     logging.info(f"extracted {len(nuclei)} nuclei.")
 
     size_data = np.array([n.total_size for n in nuclei])

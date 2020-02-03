@@ -97,6 +97,41 @@ class Nucleus(ParticleBase):
     def __init__(self, B: ImageBinary, region_of_interest: BoundingElement):
         super(Nucleus, self).__init__(B, region_of_interest)
 
+class NucleiList(object):
+    def __init__(self, nuclei: List[Nucleus]):
+        super(NucleiList, self).__init__()
+        self.__nuclei = nuclei
+
+    @staticmethod
+    def from_field_of_view(imgdir: str, maskpath: str,
+        rawpath: str, loglevel: str="INFO") -> List[Nuclei]:
+        I = image.Image.from_tiff(os.path.join(imgdir, rawpath))
+        M = image.ImageBinary.from_tiff(os.path.join(imgdir, maskpath))
+        assert I.shape == M.shape
+
+        nuclei = ParticleFinder().get_particles_from_binary_image(M, Nucleus)
+        for nucleus in nuclei:
+            nucleus.init_intensity_features(I)
+            nucleus.ipath = rawpath
+
+        return NucleiList(nuclei)
+
+    @staticmethod
+    def from_masks(masklist: Tuple[str], ipath: str,
+        threads: int=1) -> List[NucleiList]:
+        if 1 == threads:
+            nuclei = []
+            for rawpath,maskpath in tqdm(masklist):
+                nuclei.extend(retrieve_nuclei__from_field_of_view(
+                    ipath, maskpath, rawpath))
+        else:
+            nuclei_nested = Parallel(n_jobs = threads, verbose = 11)(
+                delayed(retrieve_nuclei__from_field_of_view)(
+                    ipath, maskpath, rawpath) for rawpath,maskpath in masklist)
+            nuclei = list(itertools.chain(*nuclei_nested))
+
+        return NucleiList(nuclei)
+
 class ParticleFinder(object):
     def __init__(self):
         super(ParticleFinder, self).__init__()
