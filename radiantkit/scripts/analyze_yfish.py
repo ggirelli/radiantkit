@@ -8,7 +8,8 @@ from ggc.prompt import ask
 from ggc.args import check_threads, export_settings
 import logging
 import os
-from radiantkit import const
+from radiantkit import const, path
+from radiantkit import series
 import re
 import sys
 
@@ -18,8 +19,8 @@ logging.basicConfig(level=logging.INFO, format='%(asctime)s ' +
 
 def init_parser(subparsers: argparse._SubParsersAction
     ) -> argparse.ArgumentParser:
-    parser = subparsers.add_parser(__name__.split('.')[-1], description = f'''
-Analyze a multi-condition YFISH experiment.''',
+    parser = subparsers.add_parser(__name__.split('.')[-1],
+        description = f'''Analyze a multi-condition YFISH experiment.''',
         formatter_class = argparse.RawDescriptionHelpFormatter,
         help="Analyze a multi-condition YFISH experiment.")
 
@@ -36,8 +37,8 @@ Analyze a multi-condition YFISH experiment.''',
     of Z, Y and X voxel sides in nm. Default: 300.0 216.6 216.6""",
     metavar=('Z','Y','X'), default=[300., 216.6, 216.6])
     critical.add_argument('--ref', metavar = "CHANNEL_NAME",
-    	type = str, help = """Name of reference channel. Must have been
-    	previously segmented. Default: 'dapi'""", default = "dapi")
+        type = str, help = """Name of reference channel. Must have been
+        previously segmented. Default: 'dapi'""", default = "dapi")
     critical.add_argument('--mask-prefix', type=str, metavar="TEXT",
         help="""Prefix for output binarized images name.
         Default: ''.""", default='')
@@ -47,17 +48,17 @@ Analyze a multi-condition YFISH experiment.''',
     critical.add_argument('--method', type=str,
         help=f"""Analysis method. One of:
         Default: '{const.AnalysisType.get_default().value}'""",
-        default=const.AnalysisType.get_default(),
+        default=const.AnalysisType.get_default().value,
         choices=[e.value for e in const.AnalysisType])
     critical.add_argument('--midsection', type=str,
         help=f"""Midsection type. One of:
         Default: '{const.MidsectionType.get_default().value}'""",
-        default=const.MidsectionType.get_default(),
+        default=const.MidsectionType.get_default().value,
         choices=[e.value for e in const.MidsectionType])
     critical.add_argument('--distance', type=str,
         help=f"""Radial distance type. One of:
         Default: '{const.LaminaDistanceType.get_default().value}'""",
-        default=const.LaminaDistanceType.get_default(),
+        default=const.LaminaDistanceType.get_default().value,
         choices=[e.value for e in const.LaminaDistanceType])
     critical.add_argument('--dist-quant',
         type=float, default=None, metavar="NUMBER",
@@ -93,8 +94,8 @@ Analyze a multi-condition YFISH experiment.''',
     advanced.add_argument('--debug',
         action='store_const', dest='debug_mode',
         const=True, default=False, help='Log also debugging messages.')
-    default_inreg ="^(?P<channel_name>[^/]*)_(?P<series_id>series[0-9]+)"
-    default_inreg+="(?P<ext>(_cmle)?\\.tif)$"
+    default_inreg ="^([^\\.]*\\.)?(?P<channel_name>[^/]*)_(?P<series_id>[0-9]+)"
+    default_inreg+="(?P<ext>(_cmle)?(\\.[^\\.]*)?\\.tiff?)$"
     advanced.add_argument('--inreg', type=str, metavar="REGEXP",
         help=f"""Regular expression to identify input TIFF images.
         Must contain 'channel_name' and 'series_id' fields.
@@ -102,28 +103,38 @@ Analyze a multi-condition YFISH experiment.''',
     advanced.add_argument('-t', type=int, metavar="NUMBER", dest="threads",
         help="""Number of threads for parallelization. Default: 1""",
         default=1)
+    advanced.add_argument('-y', '--do-all', action='store_const',
+        help="""Do not ask for settings confirmation and proceed.""",
+        const=True, default=False)
     
     parser.set_defaults(parse=parse_arguments, run=run)
 
     return parser
 
 def parse_arguments(args: argparse.Namespace) -> argparse.Namespace:
-    assert os.path.isdir(args.input)
+    args.version = const.__version__
+
     assert not os.path.isfile(args.output)
     assert all([v >= 0 for v in args.aspect])
-    assert args.dist_quant >= 0 and args.dist_quant <= 1
     assert args.k_sigma >= 0
 
-    assert '(?p<channel_name>' in args.inreg
-    assert '(?p<series_id>' in args.inreg
+    if args.dist_quant is None:
+        if args.method is const.AnalysisType.THREED:
+            args.dist_quant = 1e-3
+        else:
+            args.dist_quant = 1e-2
+    assert args.dist_quant >= 0 and args.dist_quant <= 1
+
+    assert '(?P<channel_name>' in args.inreg
+    assert '(?P<series_id>' in args.inreg
     args.inreg = re.compile(args.inreg)
 
-    if 0 != len(args.outprefix):
-        if '.' != args.outprefix[-1]:
-            args.outprefix = f"{args.outprefix}."
-    if 0 != len(args.outsuffix):
-        if '.' != args.outsuffix[0]:
-            args.outsuffix = f".{args.outsuffix}"
+    if 0 != len(args.mask_prefix):
+        if '.' != args.mask_prefix[-1]:
+            args.mask_prefix = f"{args.mask_prefix}."
+    if 0 != len(args.mask_suffix):
+        if '.' != args.mask_suffix[0]:
+            args.mask_suffix = f".{args.mask_suffix}"
 
     args.threads = check_threads(args.threads)
 
@@ -132,7 +143,7 @@ def parse_arguments(args: argparse.Namespace) -> argparse.Namespace:
     if args.description is not None:
         assert all([1 == s.count(":") for s in args.description])
         args.description = [s.split(":") for s in args.description]
-        args.readable_description = ("\n "*21).join([f"{c} => {v}"
+        args.readable_description = ("\n"+" "*21).join([f"{c} => {v}"
             for (c,v) in args.description])
     else:
         args.readable_description = "*NONE*"
@@ -142,39 +153,61 @@ def parse_arguments(args: argparse.Namespace) -> argparse.Namespace:
 def print_settings(args: argparse.Namespace, clear: bool = True) -> str:
 
     s = f"""
-# YFISH analysis v{args.version}
-
----------- SETTING :  VALUE ----------
-
-   Input directory : '{args.input}'
-  Output directory : '{args.output}'
-
-Voxel aspect (ZYX) : {args.aspect}
- Reference channel : {args.ref}
-
-       Mask prefix : '{args.outprefix}'
-       Mask suffix : '{args.outsuffix}'
-
-            Method : {args.method}
-        Midsection : {args.midsection}
-          Distance : {args.distance}
-          Quantile : {args.dist_quant}
-
-           K sigma : {args.k_sigma}
-     Select nuclei : {not args.skip_nuclear_selection}
-
-              Note : {args.note}
-       Description : {readable_description}
-
-        Use labels : {args.labeled}
-           Rescale : {args.do_rescaling}
-             Debug : {args.debug_mode}
-            Regexp : {args.inreg.pattern}
-           Threads : {args.threads}
-    """
+    # YFISH analysis v{args.version}
+    
+    ---------- SETTING :  VALUE ----------
+    
+       Input directory : '{args.input}'
+      Output directory : '{args.output}'
+    
+    Voxel aspect (ZYX) : {args.aspect}
+     Reference channel : {args.ref}
+    
+           Mask prefix : '{args.mask_prefix}'
+           Mask suffix : '{args.mask_suffix}'
+    
+                Method : {args.method}
+            Midsection : {args.midsection}
+              Distance : {args.distance}
+              Quantile : {args.dist_quant}
+    
+               K sigma : {args.k_sigma}
+         Select nuclei : {not args.skip_nuclear_selection}
+    
+                  Note : {args.note}
+           Description : {args.readable_description}
+    
+            Use labels : {args.labeled}
+               Rescale : {args.do_rescaling}
+                 Debug : {args.debug_mode}
+                Regexp : {args.inreg.pattern}
+               Threads : {args.threads}
+        """
     if clear: print("\033[H\033[J")
     print(s)
     return(s)
 
+def confirm_arguments(args: argparse.Namespace) -> None:
+    settings_string = print_settings(args)
+    if not args.do_all: ask("Confirm settings and proceed?")
+
+    assert os.path.isdir(args.input), f"input folder not found: {args.input}"
+    if not os.path.isdir(args.output): os.mkdir(args.output)
+
+    with open(os.path.join(args.output,
+        "analyze_yfish.config.txt"), "w+") as OH:
+        export_settings(OH, settings_string)
+
+def parse_input(args: argparse.Namespace) -> None:
+    conditions = {}
+    for condition_name in os.listdir(args.input):
+        condition_folder = os.path.join(args.input, condition_name)
+        conditions[condition_name] = series.Series.from_directory(
+            condition_folder, args.inreg, args.ref,
+            (args.mask_prefix, args.mask_suffix))
+        logging.info(f"parsed {len(conditions[condition_name])} series from " +
+            f"condition '{condition_name}'")
+    
 def run(args: argparse.Namespace) -> None:
-	pass
+    confirm_arguments(args)
+    parse_input(args)

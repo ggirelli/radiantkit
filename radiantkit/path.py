@@ -22,13 +22,14 @@ def find_re(ipath: str, ireg: Pattern) -> List[str]:
         and not type(None) == type(re.match(ireg, f))]
     return flist
 
-def select_by_prefix_and_suffix(dpath: str, flist: List[str],
+def select_by_prefix_and_suffix(dpath: str, ilist: List[str],
     prefix: str="", suffix: str= "") -> List[str]:
-    if 0 != len(suffix): flist = [f for f in flist
+    olist = ilist.copy()
+    if 0 != len(suffix): olist = [f for f in olist
         if os.path.splitext(f)[0].endswith(suffix)]
-    if 0 != len(prefix): flist = [f for f in flist
+    if 0 != len(prefix): olist = [f for f in olist
         if os.path.splitext(f)[0].startswith(prefix)]
-    return flist
+    return (olist, [x for x in ilist if x not in olist])
 
 def pair_raw_mask_images(dpath: str, flist: List[str],
     prefix: str="", suffix: str="") -> List[Tuple[str]]:
@@ -42,3 +43,7 @@ def pair_raw_mask_images(dpath: str, flist: List[str],
         else:
             flist[flist.index(fpath)] = (raw_image,fpath)
     return flist
+
+def get_image_details(path: str, inreg: Pattern):
+    finfo = re.match(inreg, os.path.basename(path)).groupdict()
+    return (int(finfo['series_id']), finfo['channel_name'])

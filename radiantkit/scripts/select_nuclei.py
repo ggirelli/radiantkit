@@ -130,7 +130,7 @@ def run(args: argparse.Namespace) -> None:
     confirm_arguments(args)
     
     imglist = path.find_re(args.input, args.inreg)
-    masklist = path.select_by_prefix_and_suffix(
+    masklist,_ = path.select_by_prefix_and_suffix(
         args.input, imglist, args.mask_prefix, args.mask_suffix)
     raw_mask_pairs = path.pair_raw_mask_images(
         args.input, masklist, args.mask_prefix, args.mask_suffix)
