@@ -48,6 +48,8 @@ class ImageBase(ImageSettings):
             self._axes_order = axes
         else:
             self._axes_order = self._ALLOWED_AXES[-len(self.shape):]
+        if path is not None:
+            if os.path.isfile(path): self._path_to_local = path
 
     @property
     def shape(self) -> Tuple[int]:
@@ -133,7 +135,7 @@ class ImageBase(ImageSettings):
 
     def unload(self) -> None:
         if self._path_to_local is None:
-            logging.error("cannot unload Image without path_to_local.")
+            logging.error("cannot unload ImageBase without path_to_local.")
             return
         if not os.path.isfile(self._path_to_local):
             logging.error("path_to_local not found, cannot unload: " +
