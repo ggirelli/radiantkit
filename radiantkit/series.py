@@ -58,7 +58,7 @@ class SeriesSettings(object):
     def has_mask(self):
         return self._mask_data is not None
 
-    def __repr__(self):
+    def __str__(self) -> str:
         s = f"Series #{self._ID} with {len(self._channel_data)} channels."
         if not self.has_ref():
             s += " No reference."

@@ -12,6 +12,7 @@ from radiantkit import const, path
 from radiantkit import series
 import re
 import sys
+from typing import Dict
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s ' +
     '[P%(process)s:%(module)s:%(funcName)s] %(levelname)s: %(message)s',
@@ -142,9 +143,9 @@ def parse_arguments(args: argparse.Namespace) -> argparse.Namespace:
 
     if args.description is not None:
         assert all([1 == s.count(":") for s in args.description])
-        args.description = [s.split(":") for s in args.description]
+        args.description = dict([s.split(":") for s in args.description])
         args.readable_description = ("\n"+" "*21).join([f"{c} => {v}"
-            for (c,v) in args.description])
+            for (c,v) in args.description.items()])
     else:
         args.readable_description = "*NONE*"
 
@@ -198,16 +199,28 @@ def confirm_arguments(args: argparse.Namespace) -> None:
         "analyze_yfish.config.txt"), "w+") as OH:
         export_settings(OH, settings_string)
 
-def parse_input(args: argparse.Namespace) -> None:
+def build_conditions(args: argparse.Namespace) -> Dict:
     conditions = {}
     for condition_name in os.listdir(args.input):
         condition_folder = os.path.join(args.input, condition_name)
-        conditions[condition_name] = series.Series.from_directory(
+        conditions[condition_name] = dict(series=series.Series.from_directory(
             condition_folder, args.inreg, args.ref,
-            (args.mask_prefix, args.mask_suffix))
+            (args.mask_prefix, args.mask_suffix)))
         logging.info(f"parsed {len(conditions[condition_name])} series from " +
             f"condition '{condition_name}'")
+
+    if args.description is not None:
+        for condition_name in conditions:
+            if condition_name in args.description:
+                conditions[condition_name]['label'
+                    ] = args.description[condition_name]
+            else: conditions[condition_name]['label'] = condition_name
+    else:
+        for condition_name in conditions:
+            conditions[condition_name]['label'] = condition_name
+
+    return conditions
     
 def run(args: argparse.Namespace) -> None:
     confirm_arguments(args)
-    parse_input(args)
+    conditions = parse_input(args)
