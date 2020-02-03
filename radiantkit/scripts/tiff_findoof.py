@@ -16,7 +16,7 @@ import os
 import pandas as pd
 from radiantkit.const import __version__
 import radiantkit.image as imt
-from radiantkit import plot, stat
+from radiantkit import path, plot, stat
 import re
 import sys
 from tqdm import tqdm
@@ -152,12 +152,7 @@ def run(args: argparse.Namespace) -> None:
         logger.error(f"image directory not found: '{args.imdir}'")
         sys.exit()
 
-    flist = []
-    for (dirpath, dirnames, filenames) in os.walk(args.imdir):
-        flist.extend(filenames)
-        break
-    imlist = [f for f in flist if (
-        not type(None) == type(re.match(args.pattern, f)))]
+    imlist = path.find_re(args.imdir, args.pattern)
 
     if 1 == args.threads:
         if args.silent: t = imlist

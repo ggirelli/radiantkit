@@ -10,7 +10,7 @@ import logging
 import multiprocessing
 import os
 from radiantkit.const import __version__
-import radiantkit.image as imt
+from radiantkit import image, path
 import re
 import sys
 from typing import Optional
@@ -89,7 +89,7 @@ def export_image(ipath: str, opath: str, compress: bool=None) -> str:
     opath = os.path.basename(opath)
 
     if compress is None: compress = False
-    I = imt.ImageBase.from_tiff(os.path.join(idir, ipath))
+    I = image.ImageBase.from_tiff(os.path.join(idir, ipath))
     if opath is None: opath = ipath
     
     if not compress:
@@ -111,9 +111,7 @@ def run(args: argparse.Namespace) -> None:
         if not os.path.isdir(args.output):
             os.mkdir(args.output)
 
-        imglist = [f for f in os.listdir(args.input) 
-            if os.path.isfile(os.path.join(args.input, f))
-            and not type(None) == type(re.match(args.inreg, f))]
+        imglist = path.find_re(args.input, args.inreg)
 
         Parallel(n_jobs = args.threads)(
             delayed(export_image)(os.path.join(args.input, ipath),

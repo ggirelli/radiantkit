@@ -11,8 +11,8 @@ from joblib import delayed, Parallel
 import numpy as np
 import os
 from radiantkit.const import __version__
-from radiantkit import const, segmentation
-from radiantkit.image import Image, ImageBinary, ImageLabeled
+from radiantkit import const, path
+from radiantkit import image, segmentation
 import re
 import sys
 from tqdm import tqdm
@@ -189,7 +189,7 @@ def run_segmentation(args: argparse.Namespace,
     logging.getLogger().setLevel(loglevel)
     logging.info(f"Segmenting image '{imgpath}'")
 
-    I = Image.from_tiff(os.path.join(imgdir, imgpath))
+    I = image.Image.from_tiff(os.path.join(imgdir, imgpath))
     logging.info(f"image axes: {I.axes}")
     logging.info(f"image shape: {I.shape}")
     I.rescale_factor = I.get_huygens_rescaling_factor()
@@ -207,7 +207,7 @@ def run_segmentation(args: argparse.Namespace,
             mask2_path = os.path.join(
                 args.manual_2d_masks, os.path.basename(imgpath))
             if os.path.isfile(mask2d_path):
-                mask2d = ImageLabeled.from_tiff(mask2_path, axes="YX",
+                mask2d = image.ImageLabeled.from_tiff(mask2_path, axes="YX",
                     doRelabel=False)
 
     M = binarizer.run(I, mask2d)
@@ -243,7 +243,7 @@ def run_segmentation(args: argparse.Namespace,
     imgbase,imgext = os.path.splitext(imgpath)
     if not args.labeled:
         logging.info("writing binary output")
-        M = ImageBinary(L.pixels)
+        M = image.ImageBinary(L.pixels)
         M.to_tiff(os.path.join(args.output,
             f"{args.outprefix}{imgbase}{args.outsuffix}{imgext}"),
             args.compressed)
@@ -255,10 +255,7 @@ def run_segmentation(args: argparse.Namespace,
 
 def run(args: argparse.Namespace) -> None:
     confirm_arguments(args)
-
-    imglist = [f for f in os.listdir(args.input) 
-        if os.path.isfile(os.path.join(args.input, f))
-        and not type(None) == type(re.match(args.inreg, f))]
+    imglist = path.find_re(args.input, args.inreg)
     
     if 0 != len(args.outsuffix): imglist = [f for f in imglist
         if not os.path.splitext(f)[0].endswith(args.outsuffix)]
