@@ -24,10 +24,26 @@ logging.basicConfig(level=logging.INFO, format='%(asctime)s ' +
 def init_parser(subparsers: argparse._SubParsersAction
     ) -> argparse.ArgumentParser:
     parser = subparsers.add_parser(__name__.split(".")[-1], description = '''
-Lorem ipsum dolor sit amet, consectetur adipisicing elit. Commodi blanditiis
-totam delectus provident non ipsa maxime reprehenderit soluta assumenda
-accusantium. Iure eaque suscipit voluptatibus expedita adipisci, doloremque ab,
-ea magnam.''', formatter_class = argparse.RawDescriptionHelpFormatter,
+Select nuclei (objects) from segmented images based on their size (volume in 3D,
+area in 2D) and integral of intensity from raw image.
+
+To achieve this, the script looks for mask/raw image pairs in the input folder.
+Mask images are identified by the specified prefix/suffix. For example, a pair
+with suffix "mask" would be:
+    [RAW] "dapi_001.tiff" and [MASK] "dapi_001.mask.tiff".
+
+Nuclei are extracted and size and integral of intensity are calculated. Then,
+their density profile is calculated across all images. A sum of Gaussian is fit
+to the profiles and a range of +-k_sigma around the peak of the first Gaussian
+is selected. If the fit fails, a single Gaussian is fitted and the range is 
+selected in the same manner around its peak. If this fit fails, the selected
+range corresponds to the FWHM range around the first peak of the profiles. In
+the last scenario, k_sigma is ignored.
+
+A tabulation-separated table is generated with the nuclear features and whether
+they pass the filter(s). Alongside it, an html report is generated with
+interactive data visualization.
+''', formatter_class = argparse.RawDescriptionHelpFormatter,
         help = f"{__name__.split('.')[-1]} -h")
 
     parser.add_argument('input', type=str,
