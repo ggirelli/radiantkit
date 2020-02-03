@@ -88,30 +88,32 @@ tiff_split big_image.tif split_out_dir 100 -e -O 10 20''',
         help = '''One or two (XY) sides,
         used to specify the smaller images dimensions.''')
 
-    parser.add_argument('-S', '--step', metavar = "step", type = float,
+    parser.add_argument('--step', metavar = "NUMBER", type = float,
         nargs = '+', help = """Step for splitting, defined as a fraction of the
         specified side(s).""")
-    parser.add_argument('-O', '--overlap', metavar = "overlap", type = float,
+    parser.add_argument('--overlap', metavar = "NUMBER", type = float,
         help = """Overlap fraction of splitted images, defined as a fraction of
         the specified side(s).""", nargs = '+')
-    parser.add_argument('-s', '--slice', metavar = "slice", type = int,
+    parser.add_argument('--slice', metavar = "NUMBER", type = int,
         help = """ID of slice to be extracted from Z-stacks, 1-indexed.""")
 
-    parser.add_argument('-e', '--enlarge',
+    parser.add_argument('--enlarge',
         action = 'store_const', dest = 'enlarge',
         const = True, default = False,
         help = 'Expand to avoid pixel loss.')
-    parser.add_argument('-I', '--invert',
-        action = 'store_const', dest = 'inverted',
-        const = True, default = False,
-        help = '''Split top-to-bottom, left-to-right.''')
-    parser.add_argument('-y', '--do-all', action = 'store_const',
-        help = """Do not ask for settings confirmation and proceed.""",
-        const = True, default = False)
 
     parser.add_argument('--version', action = 'version',
         version = '%s %s' % (sys.argv[0], __version__,))
     
+    advanced = parser.add_argument_group("Advanced")
+    advanced.add_argument('--invert',
+        action = 'store_const', dest = 'inverted',
+        const = True, default = False,
+        help = '''Split top-to-bottom, left-to-right.''')
+    advanced.add_argument('-y', '--do-all', action = 'store_const',
+        help = """Do not ask for settings confirmation and proceed.""",
+        const = True, default = False)
+
     parser.set_defaults(parse=parse_arguments, run=run)
 
     return parser

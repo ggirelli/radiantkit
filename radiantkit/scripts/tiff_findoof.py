@@ -38,34 +38,34 @@ definition.''', formatter_class = argparse.RawDescriptionHelpFormatter,
     parser.add_argument('output', type = str,
         help = 'Path to output tsv file.')
 
-    parser.add_argument('-r', '--range', type = float, metavar = 'range',
-        help = '''Specify %% of stack where the maximum of intensity
-        distribution over Z is expected for an in-focus field of view.
-        Default: 50%%''',
-        default = .5)
-    parser.add_argument('-p', '--pattern', type = str, metavar = 'regexp',
-        help = '''Provide a regular expression pattern matching the images in
-        the image folder that you want to check. Default: "^.*\.tif(f)$"''',
-        default = "^.*\.tif(f)$")
-    parser.add_argument('-t', '--threads', metavar = "nthreads", type = int,
-        help = """Number of threads for parallelization. Default: 1""",
-        default = 1)
+    parser.add_argument('--range', type = float, metavar = 'NUMBER',
+        help = '''Fraction of stack (middle-centered) for an in-focus field of
+        view. Default: .5''', default = .5)
 
-    parser.add_argument('-P', '--plot', action = 'store_const',
+    parser.add_argument('--plot', action = 'store_const',
         help = """Generate pdf plot of intensity sum per Z-slice.""",
-        const = True, default = False)
-    parser.add_argument('-S', '--intensity-sum', action = 'store_const',
-        help = """Use intensity sum instead of gradient magnitude.""",
-        const = True, default = False)
-    parser.add_argument('-R', '--rename', action = 'store_const',
-        help = """Rename out-of-focus images by adding the '.old' suffix.""",
-        const = True, default = False)
-    parser.add_argument('-s', '--silent', action = 'store_const',
-        help = """Silent run.""",
         const = True, default = False)
 
     parser.add_argument('--version', action = 'version',
         version = '%s %s' % (sys.argv[0], __version__,))
+
+    advanced = parser.add_argument_group("Advanced")
+    default_inreg='^.*\.tiff?$'
+    advanced.add_argument('--inreg', type=str, metavar="REGEXP",
+        help="""Regular expression to identify input TIFF images.
+        Default: '%s'""" % (default_inreg,), default=default_inreg)
+    advanced.add_argument('--threads', metavar = "NUMBER", type = int,
+        help = """Number of threads for parallelization. Default: 1""",
+        default = 1)
+    advanced.add_argument('--intensity-sum', action = 'store_const',
+        help = """Use intensity sum instead of gradient magnitude.""",
+        const = True, default = False)
+    advanced.add_argument('--rename', action = 'store_const',
+        help = """Rename out-of-focus images by adding the '.old' suffix.""",
+        const = True, default = False)
+    advanced.add_argument('--silent', action = 'store_const',
+        help = """Silent run.""",
+        const = True, default = False)
 
     parser.set_defaults(parse=parse_arguments, run=run)
 
@@ -109,7 +109,7 @@ def plot_profile(args: argparse.Namespace,
 
 def is_OOF(args: argparse.Namespace, ipath: str,
     logger: logging.RootLogger) -> pd.DataFrame:
-    I = imt.Image.from_tiff(os.path.join(args.imdir, ipath)).pixels
+    I = imt.Image.from_tiff(os.path.join(args.input, ipath)).pixels
 
     slice_descriptors = []
     for zi in range(I.shape[0]):
@@ -134,8 +134,8 @@ def is_OOF(args: argparse.Namespace, ipath: str,
     profile_data['response'] = response
 
     if "out-of-focus" == response and args.rename:
-        os.rename(os.path.join(args.imdir, ipath),
-            os.path.join(args.imdir, ipath))
+        os.rename(os.path.join(args.input, ipath),
+            os.path.join(args.input, ipath))
 
     return profile_data
 
@@ -147,16 +147,16 @@ def run(args: argparse.Namespace) -> None:
         FH.setLevel(logging.INFO)
         logger.addHandler(FH)
 
-    if not "/" == args.imdir[-1]: args.imdir += "/"
-    if not os.path.isdir(args.imdir):
-        logger.error(f"image directory not found: '{args.imdir}'")
+    if not "/" == args.input[-1]: args.input += "/"
+    if not os.path.isdir(args.input):
+        logger.error(f"image directory not found: '{args.input}'")
         sys.exit()
 
-    imlist = path.find_re(args.imdir, args.pattern)
+    imlist = path.find_re(args.input, args.pattern)
 
     if 1 == args.threads:
         if args.silent: t = imlist
-        else: t = tqdm(imlist, desc = os.path.dirname(args.imdir))
+        else: t = tqdm(imlist, desc = os.path.dirname(args.input))
         series_data = [is_OOF(args, impath, logger) for impath in t]
     else:
         verbosity = 11 if not args.silent else 0

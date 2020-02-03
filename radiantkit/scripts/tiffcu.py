@@ -40,14 +40,6 @@ bottleneck when parallelizing.''',
         help = '''Path to output TIFF image, or output folder if the input is a
         folder.''')
 
-    default_inreg = '^.*\.tiff?$'
-    parser.add_argument('--inreg', type = str, default = default_inreg,
-        help = """Regular expression to identify image files, when the input is
-        a folder. Default: '%s'""" % (default_inreg,))
-    parser.add_argument('--threads', '-t', type = int, default = 1,
-        help = """Number of threads for parallelization. Used only to
-        (un)compress multiple images (i.e., input is a folder). Default: 1""")
-
     parser.add_argument('-u', const = True, default = False,
         action = 'store_const', dest = 'doUncompress',
         help = 'Uncompress TIFF files.')
@@ -58,6 +50,15 @@ bottleneck when parallelizing.''',
     parser.add_argument('--version', action = 'version',
         version = '%s %s' % (sys.argv[0], __version__,))
     
+    advanced = parser.add_argument_group("Advanced")
+    default_inreg='^.*\.tiff?$'
+    advanced.add_argument('--inreg', type=str, metavar="REGEXP",
+        help="""Regular expression to identify input TIFF images.
+        Default: '%s'""" % (default_inreg,), default=default_inreg)
+    parser.add_argument('--threads', type = int, default = 1, metavar="NUMBER",
+        help = """Number of threads for parallelization. Used only to
+        (un)compress multiple images (i.e., input is a folder). Default: 1""")
+
     parser.set_defaults(parse=parse_arguments, run=run)
 
     return parser

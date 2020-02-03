@@ -48,9 +48,9 @@ Input images that have the specified prefix and suffix are not segmented.''',
     parser.add_argument('input', type=str,
         help='Path to folder containing deconvolved tiff images.')
 
-    parser.add_argument('-o', type=str, metavar="DIRPATH", dest="output",
-        help='''Path to output folder where to save binarized images (created
-        if missing). Defaults to the input folder.''')
+    parser.add_argument('-o', metavar = "DIRPATH", type = str,
+        help = """Path to output TIFF folder. Defaults to the input file
+        basename.""", default = None)
     parser.add_argument('--outprefix', type=str, metavar="TEXT",
         help="""Prefix for output binarized images name.
         Default: ''.""", default='')
@@ -69,46 +69,46 @@ Input images that have the specified prefix and suffix are not segmented.''',
     parser.add_argument('--mask-2d', type=str, metavar="DIRPATH",
         help="""Path to folder with 2D masks with matching name,
         to combine with 3D masks.""")
-    parser.add_argument('--dilate-fill-erode', type=int, metavar="NUMBER",
-        help="""Number of pixels for dilation/erosion steps
-        in a dilate-fill-erode operation. Default: 0. Set to 0 to skip.""",
-        default=0)
 
     parser.add_argument('--clear-Z',
         action='store_const', dest='do_clear_Z',
         const=True, default=False,
         help="""Remove objects touching the bottom/top of the stack.""",)
-    parser.add_argument('--labeled',
-        action='store_const', dest='labeled',
-        const=True, default=False,
-        help='Export masks as labeled instead of binary.')
-    parser.add_argument('--uncompressed',
-        action='store_const', dest='compressed',
-        const=False, default=True,
-        help='Generate uncompressed TIFF binary masks.')
-    
-    parser.add_argument('--debug',
-        action='store_const', dest='debug_mode',
-        const=True, default=False,
-        help='Log also debugging messages. Silenced by --silent.')
-    parser.add_argument('--silent',
-        action='store_const', dest='silent',
-        const=True, default=False,
-        help='Limits logs to critical events only.')
-    
-    default_inreg='^.*\.tiff?$'
-    parser.add_argument('--inreg', type=str, metavar="REGEXP",
-        help="""Regular expression to identify input TIFF images.
-        Default: '%s'""" % (default_inreg,), default=default_inreg)
-    parser.add_argument('-t', type=int, metavar="NUMBER", dest="threads",
-        help="""Number of threads for parallelization. Default: 1""",
-        default=1)
-    parser.add_argument('-y', '--do-all', action='store_const',
-        help="""Do not ask for settings confirmation and proceed.""",
-        const=True, default=False)
 
     parser.add_argument('--version', action='version',
         version='%s %s' % (sys.argv[0], __version__,))
+
+    advanced = parser.add_argument_group("Advanced")
+    advanced.add_argument('--dilate-fill-erode', type=int, metavar="NUMBER",
+        help="""Number of pixels for dilation/erosion steps
+        in a dilate-fill-erode operation. Default: 0. Set to 0 to skip.""",
+        default=0)
+    advanced.add_argument('--labeled',
+        action='store_const', dest='labeled',
+        const=True, default=False,
+        help='Export masks as labeled instead of binary.')
+    advanced.add_argument('--uncompressed',
+        action='store_const', dest='compressed',
+        const=False, default=True,
+        help='Generate uncompressed TIFF binary masks.')
+    advanced.add_argument('--debug',
+        action='store_const', dest='debug_mode',
+        const=True, default=False,
+        help='Log also debugging messages. Silenced by --silent.')
+    advanced.add_argument('--silent',
+        action='store_const', dest='silent',
+        const=True, default=False,
+        help='Limits logs to critical events only.')
+    default_inreg='^.*\.tiff?$'
+    advanced.add_argument('--inreg', type=str, metavar="REGEXP",
+        help="""Regular expression to identify input TIFF images.
+        Default: '%s'""" % (default_inreg,), default=default_inreg)
+    advanced.add_argument('-t', type=int, metavar="NUMBER", dest="threads",
+        help="""Number of threads for parallelization. Default: 1""",
+        default=1)
+    advanced.add_argument('-y', '--do-all', action='store_const',
+        help="""Do not ask for settings confirmation and proceed.""",
+        const=True, default=False)
 
     parser.set_defaults(parse=parse_arguments, run=run)
 

@@ -52,31 +52,31 @@ interactive data visualization.
     parser.add_argument('--k-sigma', type=float, metavar="NUMBER",
         help="""Suffix for output binarized images name.
         Default: 2.5""", default=2.5)
-    parser.add_argument('--outprefix', type=str, metavar="TEXT",
+    parser.add_argument('--mask-prefix', type=str, metavar="TEXT",
         help="""Prefix for output binarized images name.
         Default: ''.""", default='')
-    parser.add_argument('--outsuffix', type=str, metavar="TEXT",
+    parser.add_argument('--mask-suffix', type=str, metavar="TEXT",
         help="""Suffix for output binarized images name.
         Default: 'mask'.""", default='mask')
 
-    parser.add_argument('--uncompressed',
+    parser.add_argument('--version', action='version',
+        version='%s %s' % (sys.argv[0], __version__,))
+
+    advanced = parser.add_argument_group("Advanced")
+    advanced.add_argument('--uncompressed',
         action='store_const', dest='compressed',
         const=False, default=True,
         help='Generate uncompressed TIFF binary masks.')
-
     default_inreg='^.*\.tiff?$'
-    parser.add_argument('--inreg', type=str, metavar="REGEXP",
+    advanced.add_argument('--inreg', type=str, metavar="REGEXP",
         help="""Regular expression to identify input TIFF images.
         Default: '%s'""" % (default_inreg,), default=default_inreg)
-    parser.add_argument('-t', type=int, metavar="NUMBER", dest="threads",
+    advanced.add_argument('-t', type=int, metavar="NUMBER", dest="threads",
         help="""Number of threads for parallelization. Default: 1""",
         default=1)
-    parser.add_argument('-y', '--do-all', action='store_const',
+    advanced.add_argument('-y', '--do-all', action='store_const',
         help="""Do not ask for settings confirmation and proceed.""",
         const=True, default=False)
-
-    parser.add_argument('--version', action='version',
-        version='%s %s' % (sys.argv[0], __version__,))
 
     parser.set_defaults(parse=parse_arguments, run=run)
 
@@ -86,12 +86,12 @@ def parse_arguments(args: argparse.Namespace) -> argparse.Namespace:
     args.version = __version__
 
     args.inreg = re.compile(args.inreg)
-    if 0 != len(args.outprefix):
-        if '.' != args.outprefix[-1]:
-            args.outprefix = f"{args.outprefix}."
-    if 0 != len(args.outsuffix):
-        if '.' != args.outsuffix[0]:
-            args.outsuffix = f".{args.outsuffix}"
+    if 0 != len(args.mask_prefix):
+        if '.' != args.mask_prefix[-1]:
+            args.mask_prefix = f"{args.mask_prefix}."
+    if 0 != len(args.mask_suffix):
+        if '.' != args.mask_suffix[0]:
+            args.mask_suffix = f".{args.mask_suffix}"
 
     args.threads = check_threads(args.threads)
 
@@ -105,8 +105,8 @@ def print_settings(args: argparse.Namespace, clear: bool = True) -> str:
 
    Input directory :  '{args.input}'
 
-       Mask prefix :  '{args.outprefix}'
-       Mask suffix :  '{args.outsuffix}'
+       Mask prefix :  '{args.mask_prefix}'
+       Mask suffix :  '{args.mask_suffix}'
         Compressed :  {args.compressed}
 
            Threads :  {args.threads}
@@ -131,9 +131,9 @@ def run(args: argparse.Namespace) -> None:
     
     imglist = path.find_re(args.input, args.inreg)
     masklist = path.select_by_prefix_and_suffix(
-        args.input, imglist, args.outprefix, args.outsuffix)
+        args.input, imglist, args.mask_prefix, args.mask_suffix)
     raw_mask_pairs = path.pair_raw_mask_images(
-        args.input, masklist, args.outprefix, args.outsuffix)
+        args.input, masklist, args.mask_prefix, args.mask_suffix)
     logging.info(f"working on {len(raw_mask_pairs)}/{len(imglist)} images.")
     assert 0 != len(raw_mask_pairs)
 
