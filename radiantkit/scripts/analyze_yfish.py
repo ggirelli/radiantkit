@@ -6,6 +6,7 @@
 import argparse
 from ggc.prompt import ask
 from ggc.args import check_threads, export_settings
+import itertools
 from joblib import delayed, Parallel
 import logging
 import os
@@ -205,11 +206,11 @@ def build_conditions(args: argparse.Namespace) -> Dict:
     conditions = {}
     for condition_name in os.listdir(args.input):
         condition_folder = os.path.join(args.input, condition_name)
-        conditions[condition_name] = dict(series=series.SeriesList.from_directory(
-            condition_folder, args.inreg, args.ref,
-            (args.mask_prefix, args.mask_suffix)))
-        logging.info(f"parsed {len(conditions[condition_name])} series from " +
-            f"condition '{condition_name}'")
+        conditions[condition_name] = dict(
+            series=series.SeriesList.from_directory(condition_folder,
+                args.inreg, args.ref, (args.mask_prefix, args.mask_suffix)))
+        logging.info(f"parsed {len(conditions[condition_name]['series'])} " +
+            f"series from condition '{condition_name}'")
 
     if args.description is not None:
         for condition_name in conditions:
@@ -225,7 +226,8 @@ def build_conditions(args: argparse.Namespace) -> Dict:
     
 def run_series(series: series.Series) -> series.Series:
     series.extract_particles(particle.Nucleus)
-    print(series)
+    logging.info(f"Extracted {len(series.particles)} nuclei " +
+        f"from series '{series.ID}'")
     return series
 
 def run(args: argparse.Namespace) -> None:
@@ -238,4 +240,10 @@ def run(args: argparse.Namespace) -> None:
         else:
             condition['series'] = Parallel(n_jobs=args.threads, verbose=11)(
                 delayed(run_series)(series) for series in condition['series'])
-        print(condition['series'])
+
+        ndata, details = particle.NucleiList(list(itertools.chain(
+            *[s.particles for s in condition['series']]))
+            ).select_G1(args.k_sigma)
+
+        print(ndata)
+        print(details)
