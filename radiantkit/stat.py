@@ -3,6 +3,7 @@
 @contact: gigi.ga90@gmail.com
 '''
 
+from enum import Enum
 from matplotlib import pyplot as plt
 import numpy as np
 from scipy.signal import convolve
@@ -10,6 +11,11 @@ import scipy.optimize
 import scipy.stats
 from typing import Optional, Tuple
 import warnings
+
+class FitType(Enum):
+    SOG = "sum_of_gaussians"
+    GAUSSIAN = "gaussian"
+    FWHM = "full_width_half_maximum"
 
 def gpartial(V: np.ndarray, d: int, sigma: float) -> np.ndarray:
     '''Calculate the partial derivative of V along dimension d using a filter
@@ -110,11 +116,11 @@ def fwhm(xx: np.ndarray) -> Tuple[float]:
     return (xx.min(), xx.max())
 
 def cell_cycle_fit(data: np.ndarray) -> Tuple[Optional[np.ndarray],str]:
-    fit = (sog_fit(data), 'sog')
+    fit = (sog_fit(data), FitType.SOG)
     if fit[0] is None:
-        fit = (gaussian_fit(data), 'gaussian')
+        fit = (gaussian_fit(data), FitType.GAUSSIAN)
         if fit[0] is None:
-            fit = (fwhm(data), 'fwhm')
+            fit = (fwhm(data), FitType.FWHM)
     return fit
 
 def sog_range_from_fit(data: np.ndarray, fitted_params: Tuple[float],
@@ -131,10 +137,10 @@ def gaussian_range_from_fit(data: np.ndarray, fitted_params: Tuple[float],
 
 def range_from_fit(data: np.ndarray, fitted_params: Tuple[float],
     fit_type: str, k_sigma: float) -> Optional[Tuple[Tuple[float]]]:
-    if "sog" == fit_type:
+    if FitType.SOG == fit_type:
         return sog_range_from_fit(data, fitted_params, fit_type, k_sigma)
-    if "gaussian" == fit_type:
+    if FitType.GAUSSIAN == fit_type:
         return gaussian_range_from_fit(data, fitted_params, fit_type, k_sigma)
-    if "fwhm" == fit_type:
+    if FitType.FWHM == fit_type:
         return fitted_params
     return None

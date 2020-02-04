@@ -10,9 +10,9 @@ import pandas as pd
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
 import plotly.figure_factory as ff
-from radiantkit import path as pt
+from radiantkit import path as pt, stat
 from scipy.stats import gaussian_kde
-from typing import Tuple
+from typing import Optional, Tuple
 
 def export(path: str, exp_format: str = 'pdf') -> None:
     assert exp_format in ['pdf', 'png', 'jpg']
@@ -25,7 +25,10 @@ def export(path: str, exp_format: str = 'pdf') -> None:
         plt.savefig(path, format=exp_format)
 
 def plot_nuclear_selection(data: pd.DataFrame, ref: str,
-	size_range: Tuple[float], isum_range: Tuple[float]) -> go.Figure:
+	size_range: Tuple[float], isum_range: Tuple[float],
+	size_fit: Optional[Tuple[np.ndarray, str]]=None,
+	isum_fit: Optional[Tuple[np.ndarray, str]]=None,
+	npoints: int=1000) -> go.Figure:
 	assert all([x in data.columns
 		for x in ["size", f"isum_{ref}", "pass", "label", "image"]])
 	x_data = data['size'].values
@@ -36,6 +39,9 @@ def plot_nuclear_selection(data: pd.DataFrame, ref: str,
 
 	x_data_sorted = sorted(set(x_data))
 	y_data_sorted = sorted(set(y_data))
+
+	xx_linspace = np.linspace(x_data.min(), x_data.max(), npoints)
+	yy_linspace = np.linspace(y_data.min(), y_data.max(), npoints)
 
 	passed = data['pass']
 	not_passed = np.logical_not(passed)
@@ -56,13 +62,30 @@ def plot_nuclear_selection(data: pd.DataFrame, ref: str,
 		hovertemplate='Size=%{x}<br>Intensity sum=%{y}<br>' +
 			'Label=%{customdata[0]}<br>Image="%{customdata[1]}"')
 	contour_y = go.Scatter(name="intensity sum",
-		x=ydf(y_data_sorted), y=y_data_sorted,
+		x=ydf(yy_linspace), y=yy_linspace,
 		xaxis="x2", yaxis="y", line=dict(color="#33a02c"))
 	contour_x = go.Scatter(name="size",
-		x=x_data_sorted, y=xdf(sorted(set(x_data_sorted))),
+		x=xx_linspace, y=xdf(xx_linspace),
 		xaxis="x", yaxis="y3", line=dict(color="#ff7f00"))
 
 	data = [scatter_selected, scatter_filtered, contour_x, contour_y]
+
+	if size_fit is not None:
+		data.append(go.Scatter(name="size_gauss1",
+			x=xx_linspace, y=stat.gaussian(xx_linspace, *size_fit[0][:3]),
+			xaxis="x", yaxis="y3", line=dict(color="#969696")))
+		if stat.FitType.SOG == size_fit[1]:
+			data.append(go.Scatter(name="size_gauss2",
+				x=xx_linspace, y=stat.gaussian(xx_linspace, *size_fit[0][3:]),
+				xaxis="x", yaxis="y3", line=dict(color="#454545")))
+	if isum_fit is not None:
+		data.append(go.Scatter(name="isum_gauss1",
+			y=yy_linspace, x=stat.gaussian(yy_linspace, *isum_fit[0][:3]),
+			xaxis="x2", yaxis="y", line=dict(color="#969696")))
+		if stat.FitType.SOG == isum_fit[1]:
+			data.append(go.Scatter(name="isum_gauss2",
+				y=yy_linspace, x=stat.gaussian(yy_linspace, *isum_fit[0][3:]),
+				xaxis="x2", yaxis="y", line=dict(color="#454545")))
 
 	layout = go.Layout(
 	    xaxis=dict(domain=[.19, 1], title="size"),

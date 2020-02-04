@@ -177,6 +177,4 @@ def run(args: Namespace) -> None:
     report_path = path_join(args.input, "select_nuclei.report.html")
     logging.info(f"writing report to\n{report_path}")
     report_select_nuclei(args, report_path, data=nuclei_data,
-        size_range=details['size']['range'],
-        intensity_sum_range=details['isum']['range'],
-        series_list=series_list, ref=args.dna_channel)
+        details=details, series_list=series_list, ref=args.dna_channel)
