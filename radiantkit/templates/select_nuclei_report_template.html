@@ -61,7 +61,7 @@
 					</table>
 				</div>
 				<div class="tab-pane fade" id="nav-plot" role="tabpanel" aria-labelledby="nav-plot-tab">
-					<h4>{{ data['pass'].sum() }} nuclei out of {{ data.shape[0] }} ({{ data['pass'].sum()/data.shape[0]*100 }}%) pass the filter</h4>
+					<h4>{{ data['pass'].sum() }} nuclei out of {{ data.shape[0] }} ({{ "%.2f"|format(data['pass'].sum()/data.shape[0]*100|float) }}%) pass the filter</h4>
 					<div id="select_nuclei" class="mx-auto" style="width: 1000px;"></div>
 					<script>
 						CONTAINER = document.getElementById('select_nuclei');
@@ -73,14 +73,18 @@
 					<h3 class="my-4">Parsed images</h3>
 					<table class="table table-hover text-center">
 						<thead class="thead-dark">
+							<th scope="col">Directory</th>
 							<th scope="col">Raw image</th>
 							<th scope="col">Mask</th>
+							<th scope="col"># Nuclei</th>
 						</thead>
 						<tbody>
 							{% for series in series_list: %}
 							<tr>
-								<td>{{ series.channels[series.ref].path }}</td>
-								<td>{{ series.mask.path }}</td>
+								<td>{{ series.channels[series.ref].path|dirname }}</td>
+								<td>{{ series.channels[series.ref].path|basename }}</td>
+								<td>{{ series.mask.path|basename }}</td>
+								<td>{{ len(series.particles) }}</td>
 							</tr>
 							{% endfor %}
 						</tbody>

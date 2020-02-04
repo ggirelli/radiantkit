@@ -6,21 +6,26 @@
 import argparse
 from datetime import datetime
 from jinja2 import PackageLoader
-from jinja2 import Environment, select_autoescape
-import os
+from jinja2 import Environment, Template, select_autoescape
+from os.path import basename, dirname
 from radiantkit import plot
 import tempfile
 from typing import Optional
 
 class Report(object):
-    _template: Optional[Environment]=None
+    _env: Optional[Environment]=None
+    _template: Optional[Template]=None
 
     def __init__(self, template: str):
         super(Report, self).__init__()
-        self._template = Environment(
+        self._env = Environment(
                 loader=PackageLoader('radiantkit', 'templates'),
                 autoescape=select_autoescape(['html', 'xml'])
-            ).get_template(template)
+            )
+        self._env.filters['basename'] = basename
+        self._env.filters['dirname'] = dirname
+        self._template = self._env.get_template(template)
+        print((type(self._env),type(self._template)))
 
     def render(self, path: str, **kwargs) -> None:
         with open(path, "w+") as OH:
