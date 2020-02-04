@@ -13,13 +13,12 @@ import logging
 from numpy import set_printoptions
 from os.path import isdir, join as path_join
 from radiantkit.const import __version__, default_inreg
-from radiantkit.particle import NucleiList
+from radiantkit.particle import NucleiList, Nucleus
 from radiantkit.series import Series, SeriesList
 from radiantkit.report import report_select_nuclei
 from re import compile as re_compile
 from sys import argv as sys_argv
 from tqdm import tqdm
-from typing import List
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s ' +
     '[P%(process)s:%(module)s:%(funcName)s] %(levelname)s: %(message)s',
@@ -150,11 +149,11 @@ def run(args: Namespace) -> None:
         f": {series_list.channel_names}")
 
     if 1 == args.threads:
-        series_list = [Series.static_extract_particles(s, args.dna_channel)
+        series_list = [Series.extract_particles(s, args.dna_channel, Nucleus)
             for s in tqdm(series_list)]
     else:
         series_list = Parallel(n_jobs=args.threads, verbose=11)(
-            delayed(Series.static_extract_particles)(s, args.dna_channel)
+            delayed(Series.extract_particles)(s, args.dna_channel, Nucleus)
             for s in series_list)
 
     nuclei = NucleiList(list(chain(*[s.particles for s in series_list])))

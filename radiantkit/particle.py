@@ -3,28 +3,29 @@
 @contact: gigi.ga90@gmail.com
 '''
 
-import itertools
+from itertools import chain
 from joblib import delayed, Parallel
 import logging
-import numpy as  np
-import os
-import pandas as pd
+from numpy import mean as np_mean, sum as np_sum, nan
+from numpy import mean as zeros, logical_and, vstack
+from os.path import join as path_join
+from pandas import DataFrame
 from radiantkit.image import Image, ImageBase, ImageBinary, ImageLabeled
-from radiantkit import selection
-from radiantkit import stat
+from radiantkit.selection import BoundingElement
+from radiantkit.stat import cell_cycle_fit, range_from_fit
 from skimage.measure import marching_cubes_lewiner, mesh_surface_area
 from tqdm import tqdm
-from typing import Dict, List, Optional, Tuple, Type, Union
+from typing import Dict, List, Optional, Tuple, Type
 
 class ParticleSettings(object):
     _mask: Optional[ImageBinary] = None
-    _region_of_interest: Optional[selection.BoundingElement] = None
+    _region_of_interest: Optional[BoundingElement] = None
     label: Optional[int] = None
     _total_size: Optional[int]=None
     _surface: Optional[int]=None
 
     def __init__(self, B: ImageBinary,
-        region_of_interest: selection.BoundingElement):
+        region_of_interest: BoundingElement):
         super(ParticleSettings, self).__init__()
         assert B.shape == region_of_interest.shape
         self._mask = B
@@ -35,7 +36,7 @@ class ParticleSettings(object):
         return self._mask
 
     @property
-    def region_of_interest(self) -> selection.BoundingElement:
+    def region_of_interest(self) -> BoundingElement:
         return self._region_of_interest
 
     @property
@@ -61,7 +62,7 @@ class ParticleSettings(object):
             M = self._mask.pixels.copy()
             shape = [1 for axis in M.shape]
             shape[-2:] = M.shape[-2:]
-            M = np.vstack((np.zeros(shape), M, np.zeros(shape)))
+            M = vstack((zeros(shape), M, zeros(shape)))
             verts, faces, ns, vs = marching_cubes_lewiner(
                 M, 0.0, self._mask.aspect)
             self._surface = mesh_surface_area(verts, faces)
@@ -74,55 +75,39 @@ class ParticleSettings(object):
         return self.mask.pixels.max(axes_ids).sum()
 
 class ParticleBase(ParticleSettings):
-    _intensity_sum: Dict[str,float]=None
-    _intensity_mean: Dict[str,float]=None
+    _intensity: Dict[str, Dict[str, float]]=None
 
     def __init__(self, B: ImageBinary,
-        region_of_interest: selection.BoundingElement):
+        region_of_interest: BoundingElement):
         super(ParticleBase, self).__init__(B, region_of_interest)
-        self._intensity_sum = {}
-        self._intensity_mean = {}
-    
-    @property
-    def intensity_sum(self) -> float:
-        return self._intensity_sum
-    
-    @property
-    def intensity_mean(self) -> float:
-        return self._intensity_mean
+        self._intensity = {}
 
     @property
-    def channels(self):
-        channels = list(self._intensity_sum.keys())
-        channels.extend(self._intensity_mean.keys())
-        return list(set(channels))
+    def channel_names(self):
+        return list(self._intensity.keys())
 
     def get_intensity_sum(self, channel_name: str) -> Optional[float]:
-        if channel_name in self.intensity_sum:
-            return self.intensity_sum[channel_name]
-        else: return np.nam
+        if channel_name in self._intensity:
+            return self._intensity[channel_name]['sum']
+        else: return nan
 
     def get_intensity_mean(self, channel_name: str) -> Optional[float]:
-        if channel_name in self.intensity_mean:
-            return self.intensity_mean[channel_name]
-        else: return np.nan
+        if channel_name in self._intensity:
+            return self._intensity[channel_name]['mean']
+        else: return nan
 
     def init_intensity_features(self,
         I: Type[ImageBase], channel_name: str='unknown') -> None:
-        if channel_name in self._intensity_mean:
-            logging.warning("overwriting intensity mean of channel '%s'." % (
-                channel_name,))
-        if channel_name in self._intensity_sum:
-            logging.warning("overwriting intensity sum of channel '%s'." % (
-                channel_name,))
-
+        if channel_name in self._intensity: logging.warning(
+            f"overwriting intensity mean of channel '{channel_name}'.")
+        else: self._intensity[channel_name] = {}
         pixels = self._region_of_interest.apply(I)[self._mask.pixels]
-        self._intensity_mean[channel_name] = np.mean(pixels)
-        self._intensity_sum[channel_name] = np.sum(pixels)
+        self._intensity[channel_name]['mean'] = np_mean(pixels)
+        self._intensity[channel_name]['sum'] = np_sum(pixels)
 
 class Nucleus(ParticleBase):
     def __init__(self, B: ImageBinary,
-        region_of_interest: selection.BoundingElement):
+        region_of_interest: BoundingElement):
         super(Nucleus, self).__init__(B, region_of_interest)
 
 class NucleiList(object):
@@ -155,30 +140,30 @@ class NucleiList(object):
             nuclei = []
             for rawpath,maskpath in tqdm(masklist):
                 nuclei.append(NucleiList.from_field_of_view(
-                    os.path.join(ipath, maskpath),
-                    os.path.join(ipath, rawpath), doRescale))
+                    path_join(ipath, maskpath),
+                    path_join(ipath, rawpath), doRescale))
         else:
             nuclei = Parallel(n_jobs = threads, verbose = 11)(
                 delayed(NucleiList.from_field_of_view)(
-                    os.path.join(ipath, maskpath), os.path.join(ipath, rawpath),
+                    path_join(ipath, maskpath), path_join(ipath, rawpath),
                     doRescale) for rawpath,maskpath in masklist)
 
         return NucleiList.concat(nuclei)
 
     @staticmethod
     def concat(lists: List['NucleiList']) -> 'NucleiList':
-        return NucleiList(list(itertools.chain(*[nl.nuclei for nl in lists])))
+        return NucleiList(list(chain(*[nl.nuclei for nl in lists])))
 
     def __len__(self):
         return len(self.__nuclei)
 
     def get_data(self):
-        ndata = pd.DataFrame.from_dict({
+        ndata = DataFrame.from_dict({
             'image':[n.source for n in self.nuclei],
             'label':[n.label for n in self.nuclei],
             'size':[n.total_size for n in self.nuclei]
         })
-        channels = list(set(itertools.chain(*[n.channels
+        channels = list(set(chain(*[n.channel_names
             for n in self.nuclei])))
         for channel in channels:
             ndata[f'isum_{channel}'] = [n.get_intensity_sum(channel)
@@ -186,34 +171,32 @@ class NucleiList(object):
         return ndata
 
     def select_G1(self, k_sigma: float=2.5,
-        channel: str='unknown') -> Tuple[pd.DataFrame,Dict]:
+        channel: str='unknown') -> Tuple[DataFrame,Dict]:
         ndata = self.get_data()
+        isum_label = f'isum_{channel}'
 
-        size_fit = stat.cell_cycle_fit(ndata['size'].values)
+        size_fit = cell_cycle_fit(ndata['size'].values)
         assert size_fit[0] is not None
-        size_range = stat.range_from_fit(
+        size_range = range_from_fit(
             ndata['size'].values, *size_fit, k_sigma)
 
-        intensity_sum_fit = stat.cell_cycle_fit(ndata[f'isum_{channel}'].values)
-        assert intensity_sum_fit[0] is not None
-        intensity_sum_range = stat.range_from_fit(
-            ndata[f'isum_{channel}'].values, *intensity_sum_fit, k_sigma)
+        isum_fit = cell_cycle_fit(ndata[isum_label].values)
+        assert isum_fit[0] is not None
+        isum_range = range_from_fit(
+            ndata[isum_label].values, *isum_fit, k_sigma)
 
-        ndata['pass_size'] = np.logical_and(
+        ndata['pass_size'] = logical_and(
             ndata['size'].values >= size_range[0],
             ndata['size'].values <= size_range[1])
-        ndata['pass_isum'] = np.logical_and(
-            ndata[f'isum_{channel}'].values >= intensity_sum_range[0],
-            ndata[f'isum_{channel}'].values <= intensity_sum_range[1])
-        ndata['pass'] = np.logical_and(
-            ndata['pass_size'], ndata['pass_isum'])
+        ndata['pass_isum'] = logical_and(
+            ndata[isum_label].values >= isum_range[0],
+            ndata[isum_label].values <= isum_range[1])
+        ndata['pass'] = logical_and(ndata['pass_size'], ndata['pass_isum'])
         ndata['ref'] = channel
 
         return (ndata, {
-            'size':{
-                'range':size_range,'fit':size_fit},
-            f'isum':{
-                'range':intensity_sum_range,'fit':intensity_sum_fit}})
+            'size':{'range':size_range,'fit':size_fit},
+            'isum':{'range':isum_range,'fit':isum_fit}})
 
 class ParticleFinder(object):
     def __init__(self):
@@ -235,7 +218,7 @@ class ParticleFinder(object):
         particle_list = []
         for current_label in range(1, L.pixels.max()+1):
             B = ImageBinary(L.pixels == current_label)
-            region_of_interest = selection.BoundingElement.from_binary_image(B)
+            region_of_interest = BoundingElement.from_binary_image(B)
 
             B = ImageBinary(region_of_interest.apply(B))
 

@@ -61,6 +61,7 @@
 					</table>
 				</div>
 				<div class="tab-pane fade" id="nav-plot" role="tabpanel" aria-labelledby="nav-plot-tab">
+					<h4>{{ data['pass'].sum() }} nuclei out of {{ data.shape[0] }} ({{ data['pass'].sum()/data.shape[0]*100 }}%) pass the filter</h4>
 					<div id="select_nuclei" class="mx-auto" style="width: 1000px;"></div>
 					<script>
 						CONTAINER = document.getElementById('select_nuclei');
@@ -78,8 +79,8 @@
 						<tbody>
 							{% for series in series_list: %}
 							<tr>
-								<td>{{ series.channel_data[series.ref]['path'] }}</td>
-								<td>{{ series.mask_path }}</td>
+								<td>{{ series.channels[series.ref].path }}</td>
+								<td>{{ series.mask.path }}</td>
 							</tr>
 							{% endfor %}
 						</tbody>
