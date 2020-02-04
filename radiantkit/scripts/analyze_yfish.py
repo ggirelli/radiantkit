@@ -153,9 +153,7 @@ def parse_arguments(args: argparse.Namespace) -> argparse.Namespace:
     return args
 
 def print_settings(args: argparse.Namespace, clear: bool = True) -> str:
-
-    s = f"""
-    # YFISH analysis v{args.version}
+    s = f"""# YFISH analysis v{args.version}
     
     ---------- SETTING : VALUE ----------
     
@@ -201,42 +199,43 @@ def confirm_arguments(args: argparse.Namespace) -> None:
         export_settings(OH, settings_string)
 
 def build_conditions(args: argparse.Namespace) -> Dict:
-    conditions = {}
+    conditions = []
     for condition_name in os.listdir(args.input):
         condition_folder = os.path.join(args.input, condition_name)
-        conditions[condition_name] = dict(
-            series=series.SeriesList.from_directory(condition_folder,
-                args.inreg, args.ref, (args.mask_prefix, args.mask_suffix)))
-        logging.info(f"parsed {len(conditions[condition_name]['series'])} " +
+        condition = series.SeriesList.from_directory(condition_folder,
+                args.inreg, args.ref, (args.mask_prefix, args.mask_suffix))
+
+        logging.info(f"parsed {len(condition)} " +
             f"series from condition '{condition_name}'")
 
-    if args.description is not None:
-        for condition_name in conditions:
+        if args.description is not None:
             if condition_name in args.description:
-                conditions[condition_name]['label'
-                    ] = args.description[condition_name]
-            else: conditions[condition_name]['label'] = condition_name
-    else:
-        for condition_name in conditions:
-            conditions[condition_name]['label'] = condition_name
+                condition.label = args.description[condition_name]
+            else: condition.label = condition_name
+        else: condition.label = condition_name
+        conditions.append(condition)
 
-    return conditions
+    return sorted(conditions, key=lambda x: x.label)
     
 def run(args: argparse.Namespace) -> None:
     confirm_arguments(args)
 
-    for name,condition in build_conditions(args).items():
+    for condition in build_conditions(args):
+        logging.info("extracting nuclei")
         if 1 == args.threads:
-            condition['series'] = [series.static_extract_particles(series)
-                for series in tqdm(condition['series'])]
+            condition.series = [series.extract_particles(series, args.ref,
+                particleClass=particle.Nucleus)
+                for series in tqdm(condition)]
         else:
-            condition['series'] = Parallel(n_jobs=args.threads, verbose=11)(
-                delayed(series.static_extract_particles)(series)
-                for series in condition['series'])
+            condition.series = Parallel(n_jobs=args.threads, verbose=11)(
+                delayed(series.extract_particles)(series, args.ref,
+                    particleClass=particle.Nucleus) for series in condition)
 
-        ndata, details = particle.NucleiList(list(itertools.chain(
-            *[s.particles for s in condition['series']]))
-            ).select_G1(args.k_sigma)
+        if not args.skip_nuclear_selection:
+            logging.info("selecting G1 nuclei")
+            ndata, details = particle.NucleiList(list(itertools.chain(
+                *[s.particles for s in condition]))
+                ).select_G1(args.k_sigma, args.ref)
 
-        print(ndata)
-        print(details)
+            print(ndata)
+            print(details)

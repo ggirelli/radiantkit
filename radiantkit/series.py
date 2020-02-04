@@ -5,11 +5,11 @@
 
 from itertools import chain
 import logging
-from os.path import isfile, join as path_join
+from os.path import isdir, isfile, join as path_join
 from radiantkit.image import Image, ImageBase, ImageBinary, ImageLabeled
 from radiantkit.path import find_re, get_image_details
 from radiantkit.path import select_by_prefix_and_suffix
-from radiantkit.particle import ParticleBase, ParticleFinder, Nucleus
+from radiantkit.particle import ParticleBase, ParticleFinder
 from sys import exit as sys_exit
 from typing import Dict, List, Tuple
 from typing import Iterator, Optional, Pattern, Type, Union
@@ -114,7 +114,7 @@ class Series(SeriesSettings):
         return self._particles
     
     def init_particles(self, channel: Optional[str]=None,
-        particleClass: Type[ParticleBase]=Nucleus) -> None:
+        particleClass: Type[ParticleBase]=ParticleBase) -> None:
         if not self.has_mask():
             logging.warning("mask is missing, no particles extracted.")
             return
@@ -129,12 +129,13 @@ class Series(SeriesSettings):
         if channel is not None:
             assert channel in self.channel_names
             for pbody in self._particles:
-                pbody.init_intensity_features(self.get_channel(channel), channel)
+                pbody.init_intensity_features(
+                    self.get_channel(channel), channel)
             self.get_channel(channel).unload()
 
     @staticmethod
-    def extract_particles(series: 'Series', channel: str,
-        particleClass: Type[ParticleBase]) -> 'Series':
+    def extract_particles(series: 'Series', channel: Optional[str]=None,
+        particleClass: Type[ParticleBase]=ParticleBase) -> 'Series':
         series.init_particles(channel, particleClass)
         return series
 
@@ -146,16 +147,25 @@ class Series(SeriesSettings):
         return s
 
 class SeriesList(object):
-    _series: List[Series]=None
+    series: List[Series]=None
+    _path: Optional[str]=None
+    label: Optional[str]=None
 
-    def __init__(self, series_list: List[Series]):
+    def __init__(self, series_list: List[Series], path: Optional[str]=None):
         super(SeriesList, self).__init__()
-        self._series = series_list
+        self.series = series_list
+        if path is not None:
+            assert isdir(path)
+            self._path = path
+
+    @property
+    def path(self):
+        return self._path
 
     @property
     def channel_names(self):
         return list(set(chain(*[series.channel_names
-            for series in self._series])))
+            for series in self.series])))
 
     @staticmethod
     def from_directory(dpath: str, inreg: Pattern, ref: Optional[str]=None,
@@ -164,19 +174,20 @@ class SeriesList(object):
         mask_list, channel_list = select_by_prefix_and_suffix(
             dpath, channel_list, *maskfix)
         
-        mask_data = {}
-        for mask_path in mask_list:
-            series_id, channel_name = get_image_details(mask_path,inreg)
-            if channel_name != ref:
-                logging.warning("skipping mask for channel " +
-                    f"'{channel_name}', not reference ({ref}).")
-                continue
-            if series_id in mask_data:
-                logging.warning("found multiple masks for reference channel " +
-                    f"in series {series_id}. " +
-                    f"Skipping '{mask_path}'.")
-                continue
-            mask_data[series_id] = path_join(dpath, mask_path)
+        if ref is not None:
+            mask_data = {}
+            for mask_path in mask_list:
+                series_id, channel_name = get_image_details(mask_path,inreg)
+                if channel_name != ref:
+                    logging.warning("skipping mask for channel " +
+                        f"'{channel_name}', not reference ({ref}).")
+                    continue
+                if series_id in mask_data:
+                    logging.warning("found multiple masks for reference " +
+                        f"channel in series {series_id}. " +
+                        f"Skipping '{mask_path}'.")
+                    continue
+                mask_data[series_id] = path_join(dpath, mask_path)
 
         channel_data = {}
         for channel_path in channel_list:
@@ -194,20 +205,22 @@ class SeriesList(object):
 
         series_list = []
         for series_id in channel_data.keys():
-            if series_id not in mask_data:
-                logging.critical("missing mask of reference channel "
-                    f"'{ref}' for series '{series_id}'")
-                sys_exit()
+            if ref is not None:
+                assert series_id in mask_data, ("missing mask of reference " +
+                    f"channel '{ref}' for series '{series_id}'")
             series_list.append(Series(series_id,
                 channel_data[series_id], mask_data[series_id], inreg))
 
-        return SeriesList(series_list)
+        return SeriesList(series_list, dpath)
 
     def __len__(self) -> int:
-        return len(self._series)
+        return len(self.series)
+
+    def __getitem__(self, i: int) -> Series:
+        return self.series[i]
 
     def __next__(self) -> Series:
-        for series in self._series:
+        for series in self.series:
             yield series
 
     def __iter__(self) -> Iterator[Series]:
