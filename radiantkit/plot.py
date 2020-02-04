@@ -73,19 +73,19 @@ def plot_nuclear_selection(data: pd.DataFrame, ref: str,
 	if size_fit is not None:
 		data.append(go.Scatter(name="size_gauss1",
 			x=xx_linspace, y=stat.gaussian(xx_linspace, *size_fit[0][:3]),
-			xaxis="x", yaxis="y3", line=dict(color="#969696")))
+			xaxis="x", yaxis="y3", line=dict(color="#323232", dash="dot")))
 		if stat.FitType.SOG == size_fit[1]:
 			data.append(go.Scatter(name="size_gauss2",
 				x=xx_linspace, y=stat.gaussian(xx_linspace, *size_fit[0][3:]),
-				xaxis="x", yaxis="y3", line=dict(color="#454545")))
+				xaxis="x", yaxis="y3", line=dict(color="#999999", dash="dot")))
 	if isum_fit is not None:
 		data.append(go.Scatter(name="isum_gauss1",
 			y=yy_linspace, x=stat.gaussian(yy_linspace, *isum_fit[0][:3]),
-			xaxis="x2", yaxis="y", line=dict(color="#969696")))
+			xaxis="x2", yaxis="y", line=dict(color="#323232", dash="dot")))
 		if stat.FitType.SOG == isum_fit[1]:
 			data.append(go.Scatter(name="isum_gauss2",
 				y=yy_linspace, x=stat.gaussian(yy_linspace, *isum_fit[0][3:]),
-				xaxis="x2", yaxis="y", line=dict(color="#454545")))
+				xaxis="x2", yaxis="y", line=dict(color="#999999", dash="dot")))
 
 	layout = go.Layout(
 	    xaxis=dict(domain=[.19, 1], title="size"),
