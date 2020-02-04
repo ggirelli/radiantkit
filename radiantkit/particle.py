@@ -96,11 +96,12 @@ class ParticleBase(ParticleSettings):
             return self._intensity[channel_name]['mean']
         else: return nan
 
-    def init_intensity_features(self,
-        I: Type[ImageBase], channel_name: str='unknown') -> None:
+    def init_intensity_features(self, I: Image,
+        channel_name: str='unknown') -> None:
         if channel_name in self._intensity: logging.warning(
             f"overwriting intensity mean of channel '{channel_name}'.")
         else: self._intensity[channel_name] = {}
+
         pixels = self._region_of_interest.apply(I)[self._mask.pixels]
         self._intensity[channel_name]['mean'] = np_mean(pixels)
         self._intensity[channel_name]['sum'] = np_sum(pixels)

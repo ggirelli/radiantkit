@@ -34,6 +34,7 @@ class ImageSettings(object):
 class ImageBase(ImageSettings):
     _path_to_local: Optional[str] = None
     _pixels: Optional[np.ndarray] = None
+    _shape: Tuple[int]=None
 
     def __init__(self, pixels: np.ndarray, path: Optional[str]=None,
         axes: Optional[str]=None):
@@ -41,6 +42,7 @@ class ImageBase(ImageSettings):
         assert len(pixels.shape) <= len(self._ALLOWED_AXES)
         self._pixels = pixels.copy()
         self._remove_empty_axes()
+        self._shape = self._pixels.shape
         if axes is not None:
             assert len(axes) == len(self.shape)
             assert all([c in self._ALLOWED_AXES for c in new_axes])
@@ -53,7 +55,7 @@ class ImageBase(ImageSettings):
 
     @property
     def shape(self) -> Tuple[int]:
-        return self._pixels.shape
+        return self._shape
 
     @property
     def pixels(self) -> np.ndarray:
@@ -99,6 +101,12 @@ class ImageBase(ImageSettings):
             self._pixels = np.moveaxis(self.pixels, range(len(self.axes)),
                 [new_axes.index(c) for c in self.axes])
             self._axes_order = new_axes
+            self._shape = self._pixels.shape
+
+    @property
+    def loaded(self):
+        if not self.is_loadable(): return True
+        else: return self._pixels is not None
 
     @staticmethod
     def from_tiff(path: str) -> 'ImageBase':
@@ -131,7 +139,7 @@ class ImageBase(ImageSettings):
     def load_from_local(self) -> None:
         assert self._path_to_local is not None
         assert os.path.isfile(self._path_to_local)
-        self.from_tiff(self._path_to_local)
+        self._pixels = self.from_tiff(self._path_to_local).pixels
 
     def unload(self) -> None:
         if self._path_to_local is None:
@@ -150,6 +158,14 @@ class ImageBase(ImageSettings):
         if bundle_axes is None: bundle_axes = self._axes_order
         save_tiff(path, self.pixels, self.dtype, compressed, bundle_axes,
             inMicrons, ResolutionZ, forImageJ, **kwargs)
+
+    def __repr__(self):
+        s = f"{self.nd}D image: "
+        s += f"{'x'.join([str(d) for d in self.shape])} [{self.axes}]"
+        if self.loaded: s += ' [loaded]'
+        else: s += ' [unloaded]'
+        if self.is_loadable(): s += f"\nFrom '{self._path_to_local}'"
+        return s
 
 class ImageLabeled(ImageBase):
     def __init__(self, pixels: np.ndarray, path: Optional[str]=None,
@@ -278,11 +294,17 @@ class ImageBinary(ImageBase):
 
 class Image(ImageBase):
     _rescale_factor: float = 1.
+    _background: float=None
+    _foreground: float=None
 
     def __init__(self, pixels: np.ndarray, path: Optional[str]=None,
         axes: Optional[str]=None):
         super(Image, self).__init__(pixels, path, axes)
     
+    @property
+    def ground(self):
+        return (self._background, self._foreground)
+
     @property
     def rescale_factor(self) -> float:
         return self._rescale_factor
@@ -311,6 +333,11 @@ class Image(ImageBase):
         method: str, mode: str, *args, **kwargs) -> ImageBinary:
         return ImageBinary(threshold_adaptive(self.pixels, block_size,
             method, mode, *args, **kwargs), doRebinarize=False)
+
+    def update_ground(self, M: ImageBinary, block_side: int=11) -> None:
+        M = dilate(M.pixels, block_side)
+        self._foreground = np.median(self.pixels[M])
+        self._background = np.median(np.logical_not(self.pixels[M]))
 
 def get_huygens_rescaling_factor(path: str) -> float:
     basename,ext = tuple(os.path.splitext(os.path.basename(path)))

@@ -20,6 +20,7 @@ class SeriesSettings(object):
     _mask: Union[str, Type[Image]]=None
     _ref: Optional[str]=None
     labeled: bool=False
+    ground_block_side: int=11
 
     def __init__(self, ID: int, channel_paths: Dict[str,str],
         mask_path: Optional[str]=None, inreg: Optional[Pattern]=None):
@@ -69,7 +70,7 @@ class SeriesSettings(object):
         return self._mask is not None
 
     def init_mask(self) -> None:
-        if not self.has_mask(): return None
+        if not self.has_mask(): return
         if isinstance(self._mask, str):
             if self.labeled:
                 self._mask = ImageLabeled.from_tiff(self.mask_path)
@@ -81,6 +82,9 @@ class SeriesSettings(object):
             if isinstance(self._channels[channel_name], str):
                 self._channels[channel_name] = Image.from_tiff(
                     self._channels[channel_name])
+                if self.has_mask():
+                    self.init_mask()
+                    self._channels[channel_name].update_ground(self.mask)
 
     def get_channel(self, channel_name: str) -> Optional[Image]:
         if channel_name in self._channels:
@@ -88,6 +92,16 @@ class SeriesSettings(object):
                 self.init_channel(channel_name)
             if isinstance(self._channels[channel_name], Image):
                 return self._channels[channel_name]
+
+    def unload(self) -> None:
+        for channel_name in self._channels.keys():
+            self.unload_channel(channel_name)
+        if self.has_mask(): self.mask.unload()
+
+    def unload_channel(self, channel_name: str) -> None:
+        if channel_name in self._channels:
+            if not isinstance(self._channels[channel_name], str):
+                self._channels[channel_name].unload()
 
     def __str__(self) -> str:
         s = f"Series #{self._ID} with {len(self.channel_names)} channels."
@@ -131,7 +145,7 @@ class Series(SeriesSettings):
             for pbody in self._particles:
                 pbody.init_intensity_features(
                     self.get_channel(channel), channel)
-            self.get_channel(channel).unload()
+            self.unload_channel(channel)
 
     @staticmethod
     def extract_particles(series: 'Series', channel: Optional[str]=None,
@@ -201,7 +215,8 @@ class SeriesList(object):
                 dpath, channel_path)
 
         channel_counts = [len(x) for x in channel_data.values()]
-        assert 1 == len(set(channel_counts)), "inconsistent number of channels"
+        assert 1 == len(set(channel_counts)
+            ), f"inconsistent number of channels in '{dpath}' series"
 
         series_list = []
         for series_id in channel_data.keys():

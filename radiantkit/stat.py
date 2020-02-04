@@ -60,7 +60,7 @@ def gpartial(V: np.ndarray, d: int, sigma: float) -> np.ndarray:
 def gaussian(x: float, k: float, loc: float, scale: float) -> float:
     return k*scipy.stats.norm.pdf(x, loc=loc, scale=scale)
 
-def gaussian_fit(xx: np.ndarray) -> np.ndarray:
+def gaussian_fit(xx: np.ndarray) -> Optional[np.ndarray]:
     df = scipy.stats.gaussian_kde(xx)
     sd = np.std(xx)
     params = [df(xx).max()*sd/4*np.sqrt(2*np.pi), np.mean(xx), sd]
@@ -82,15 +82,17 @@ def sog(x: float, k1: float, loc1: float, scale1: float,
     k2: float, loc2: float, scale2: float) -> float:
     return gaussian(x, k1, loc1, scale1) + gaussian(x, k2, loc2, scale2)
 
-def sog_fit(xx: np.ndarray) -> np.ndarray:
+def sog_fit(xx: np.ndarray) -> Optional[np.ndarray]:
     df = scipy.stats.gaussian_kde(xx)
     loc2 = np.mean(xx)+2.5*np.std(xx)
     sd1 = np.std(xx)
     params = [df(xx).max()*sd1/4*np.sqrt(2*np.pi), np.mean(xx), sd1,
         df(loc2)[0]*sd1/4*np.sqrt(2*np.pi), loc2, sd1/4]
-    with warnings.catch_warnings():
-        fitted_params,_ = scipy.optimize.curve_fit(
-            sog, xx, df(xx), p0=params)
+    try:
+        with warnings.catch_warnings():
+            fitted_params,_ = scipy.optimize.curve_fit(
+                sog, xx, df(xx), p0=params)
+    except RuntimeError as e: return None
     if all(fitted_params == params): return None
     return fitted_params
 
