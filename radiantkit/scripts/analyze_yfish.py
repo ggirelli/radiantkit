@@ -9,7 +9,9 @@ from ggc.args import check_threads, export_settings
 import itertools
 from joblib import delayed, Parallel
 import logging
-import os
+import numpy as np
+from os import listdir, mkdir
+from os.path import join as path_join, isdir, isfile
 from radiantkit import const, path
 from radiantkit import particle, series
 import re
@@ -116,7 +118,7 @@ def init_parser(subparsers: argparse._SubParsersAction
 def parse_arguments(args: argparse.Namespace) -> argparse.Namespace:
     args.version = const.__version__
 
-    assert not os.path.isfile(args.output)
+    assert not isfile(args.output)
     assert all([v >= 0 for v in args.aspect])
     assert args.k_sigma >= 0
 
@@ -191,17 +193,17 @@ def confirm_arguments(args: argparse.Namespace) -> None:
     settings_string = print_settings(args)
     if not args.do_all: ask("Confirm settings and proceed?")
 
-    assert os.path.isdir(args.input), f"input folder not found: {args.input}"
-    if not os.path.isdir(args.output): os.mkdir(args.output)
+    assert isdir(args.input), f"input folder not found: {args.input}"
+    if not isdir(args.output): mkdir(args.output)
 
-    with open(os.path.join(args.output,
+    with open(path_join(args.output,
         "analyze_yfish.config.txt"), "w+") as OH:
         export_settings(OH, settings_string)
 
 def build_conditions(args: argparse.Namespace) -> Dict:
     conditions = []
-    for condition_name in os.listdir(args.input):
-        condition_folder = os.path.join(args.input, condition_name)
+    for condition_name in listdir(args.input):
+        condition_folder = path_join(args.input, condition_name)
         condition = series.SeriesList.from_directory(condition_folder,
                 args.inreg, args.ref, (args.mask_prefix, args.mask_suffix))
 
@@ -237,5 +239,21 @@ def run(args: argparse.Namespace) -> None:
                 *[s.particles for s in condition]))
                 ).select_G1(args.k_sigma, args.ref)
 
-            print(ndata)
-            print(details)
+            passed = ndata.loc[ndata['pass'], ['image', 'label']]
+            passed['series_id'] = [path.get_image_details(p, args.inreg)[0]
+                for p in passed['image'].values]
+            passed.drop('image', 1, inplace=True)
+            passed = dict([
+                (sid, passed.loc[passed['series_id']==sid, 'label'].values)
+                for sid in set(passed['series_id'].values)])
+            for series in condition: series.keep_particles(passed[series.ID])
+
+            n_passed = np.logical_not(ndata['pass']).sum()
+            logging.info(f"discarded {n_passed}/{ndata.shape[0]} " +
+                f"({n_passed/ndata.shape[0]*100:.2f}%) nuclei")
+
+            ndpath = path_join(args.output, "select_nuclei.data.tsv")
+            logging.info(f"writing nuclear data to:\n{ndpath}")
+            ndata.to_csv(ndpath, sep="\t", index=False)
+
+        logging.info("retrieving nuclear features")

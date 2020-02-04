@@ -103,6 +103,7 @@ class ParticleBase(ParticleSettings):
         else: self._intensity[channel_name] = {}
 
         pixels = self._region_of_interest.apply(I)[self._mask.pixels]
+        if I.ground[0] is not None: pixels -= I.ground[0]
         self._intensity[channel_name]['mean'] = np_mean(pixels)
         self._intensity[channel_name]['sum'] = np_sum(pixels)
 

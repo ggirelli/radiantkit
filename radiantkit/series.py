@@ -153,6 +153,9 @@ class Series(SeriesSettings):
         series.init_particles(channel, particleClass)
         return series
 
+    def keep_particles(self, label_list: List[int]) -> None:
+        self._particles = [p for p in self._particles if p.label in label_list]
+
     def __str__(self):
         s = super(Series, self).__str__()
         if self._particles is not None:

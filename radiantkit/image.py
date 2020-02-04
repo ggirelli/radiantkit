@@ -159,7 +159,7 @@ class ImageBase(ImageSettings):
         save_tiff(path, self.pixels, self.dtype, compressed, bundle_axes,
             inMicrons, ResolutionZ, forImageJ, **kwargs)
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         s = f"{self.nd}D image: "
         s += f"{'x'.join([str(d) for d in self.shape])} [{self.axes}]"
         if self.loaded: s += ' [loaded]'
@@ -336,8 +336,15 @@ class Image(ImageBase):
 
     def update_ground(self, M: ImageBinary, block_side: int=11) -> None:
         M = dilate(M.pixels, block_side)
+
         self._foreground = np.median(self.pixels[M])
-        self._background = np.median(np.logical_not(self.pixels[M]))
+        self._background = np.median(self.pixels[np.logical_not(M)])
+
+    def __repr__(self) -> str:
+        s = super(Image, self).__repr__()
+        if self.ground[0] is not None:
+            s += f"\nBack/foreground: {self.ground}"
+        return s
 
 def get_huygens_rescaling_factor(path: str) -> float:
     basename,ext = tuple(os.path.splitext(os.path.basename(path)))
