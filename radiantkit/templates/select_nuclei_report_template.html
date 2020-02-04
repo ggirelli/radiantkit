@@ -16,7 +16,7 @@
 				<div class="nav nav-tabs" id="nav-tab" role="tablist">
 					<a class="nav-item nav-link active" id="nav-Settings-tab" data-toggle="tab" href="#nav-Settings" role="tab" aria-controls="nav-Settings" aria-selected="true">Settings</a>
 					<a class="nav-item nav-link" id="nav-plot-tab" data-toggle="tab" href="#nav-plot" role="tab" aria-controls="nav-plot" aria-selected="false">Plot</a>
-					<a class="nav-item nav-link" id="nav-list-tab" data-toggle="tab" href="#nav-list" role="tab" aria-controls="nav-list" aria-selected="false">List</a>
+					<a class="nav-item nav-link" id="nav-data-tab" data-toggle="tab" href="#nav-data" role="tab" aria-controls="nav-data" aria-selected="false">Data</a>
 				</div>
 			</nav>
 			<div class="tab-content p-3" id="nav-tabContent">
@@ -34,12 +34,16 @@
 								<td>{{ args.input }}</td>
 							</tr>
 							<tr>
+								<th scope="row">Reference channel</th>
+								<td>{{ args.dna_channel }}</td>
+							</tr>
+							<tr>
 								<th scope="row">Prefix</th>
-								<td><code>{{ args.prefix }}</code></td>
+								<td><code>{{ args.mask_prefix }}</code></td>
 							</tr>
 							<tr>
 								<th scope="row">Suffix</th>
-								<td><code>{{ args.suffix }}</code></td>
+								<td><code>{{ args.mask_suffix }}</code></td>
 							</tr>
 							<tr>
 								<th scope="row">K-sigma</th>
@@ -48,6 +52,10 @@
 							<tr>
 								<th scope="row">Compressed</th>
 								<td>{{ args.compressed|string }}</td>
+							</tr>
+							<tr>
+								<th scope="row">Rescale</th>
+								<td>{{ args.do_rescaling|string }}</td>
 							</tr>
 							<tr>
 								<th scope="row">Reg.exp.</th>
@@ -61,7 +69,7 @@
 					</table>
 				</div>
 				<div class="tab-pane fade" id="nav-plot" role="tabpanel" aria-labelledby="nav-plot-tab">
-					<h4>{{ data['pass'].sum() }} nuclei out of {{ data.shape[0] }} ({{ "%.2f"|format(data['pass'].sum()/data.shape[0]*100|float) }}%) pass the filter</h4>
+					<p>{{ data['pass'].sum() }} nuclei out of {{ data.shape[0] }} ({{ "%.2f"|format(data['pass'].sum()/data.shape[0]*100|float) }}%) pass the filter</p>
 					<div id="select_nuclei" class="mx-auto" style="width: 1000px;"></div>
 					<script>
 						CONTAINER = document.getElementById('select_nuclei');
@@ -69,14 +77,13 @@
 						Plotly.newPlot( CONTAINER, PLOT_JSON.data, PLOT_JSON.layout, {"responsive":true})
 					</script>
 				</div>
-				<div class="tab-pane fade" id="nav-list" role="tabpanel" aria-labelledby="nav-list-tab">
-					<h3 class="my-4">Parsed images</h3>
+				<div class="tab-pane fade" id="nav-data" role="tabpanel" aria-labelledby="nav-data-tab">
 					<table class="table table-hover text-center">
 						<thead class="thead-dark">
 							<th scope="col">Directory</th>
 							<th scope="col">Raw image</th>
 							<th scope="col">Mask</th>
-							<th scope="col"># Nuclei</th>
+							<th scope="col"># Objects</th>
 						</thead>
 						<tbody>
 							{% for series in series_list: %}
@@ -84,9 +91,13 @@
 								<td>{{ series.channels[series.ref].path|dirname }}</td>
 								<td>{{ series.channels[series.ref].path|basename }}</td>
 								<td>{{ series.mask.path|basename }}</td>
-								<td>{{ len(series.particles) }}</td>
+								<td>{{ series.particles|length }}</td>
 							</tr>
 							{% endfor %}
+							<tr>
+								<th scope="row" colspan="3">Total</th>
+								<td>{{ data.shape[0] }}</td>
+							</tr>
 						</tbody>
 					</table>
 				</div>

@@ -25,7 +25,6 @@ class Report(object):
         self._env.filters['basename'] = basename
         self._env.filters['dirname'] = dirname
         self._template = self._env.get_template(template)
-        print((type(self._env),type(self._template)))
 
     def render(self, path: str, **kwargs) -> None:
         with open(path, "w+") as OH:
