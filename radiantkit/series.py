@@ -247,8 +247,11 @@ class SeriesList(object):
             if ref is not None:
                 assert series_id in mask_data, ("missing mask of reference " +
                     f"channel '{ref}' for series '{series_id}'")
-            series_list.append(Series(series_id,
-                channel_data[series_id], mask_data[series_id], inreg))
+                series_list.append(Series(series_id,
+                    channel_data[series_id], mask_data[series_id], inreg))
+            else:
+                series_list.append(Series(series_id,
+                    channel_data[series_id], inreg=inreg))
 
         return SeriesList(series_list, dpath)
 
