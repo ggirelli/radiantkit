@@ -5,10 +5,12 @@
 
 import argparse as argp
 import ggc
+import joblib
 import logging as log
 import os
 from radiantkit.const import __version__, default_inreg
 from radiantkit.series import Series, SeriesList
+from radiantkit.particle import Nucleus
 import re
 import sys
 from tqdm import tqdm
@@ -163,3 +165,28 @@ def run(args: argp.Namespace) -> None:
         log.info("Nothing to export when using both " +
             "--no-tiff-export and no-feature-export flags.")
         sys.exit()
+
+    log.info(f"extracting nuclei")
+    if 1 == args.threads:
+        series_list = [Series.extract_particles(s, s.channel_names, Nucleus)
+            for s in tqdm(series_list)]
+    else:
+        series_list = joblib.Parallel(n_jobs=args.threads, verbose=11)(
+            joblib.delayed(Series.extract_particles
+                )(s, s.channel_names, Nucleus) for s in series_list)
+
+    if args.export_features:
+        pass
+
+    if args.export_tiffs:
+        tiff_path = os.path.join(args.output, "tiff")
+        assert not os.path.isfile(tiff_path)
+        if not os.path.isdir(tiff_path): os.mkdir(tiff_path)
+
+        log.info(f"exporting nuclei images to '{tiff_path}'")
+        for series in series_list:
+            for nucleus in series.particles:
+                print((nucleus.label, nucleus.mask, nucleus.region_of_interest,
+                    nucleus.total_size, nucleus.surface,
+                    [(nucleus.get_intensity_sum(cn), nucleus.get_intensity_mean(cn))
+                        for cn in nucleus.channel_names]))
