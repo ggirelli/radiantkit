@@ -38,6 +38,10 @@
 								<td>{{ args.dna_channel }}</td>
 							</tr>
 							<tr>
+								<th scope="row">K-sigma</th>
+								<td>{{ args.k_sigma }}</td>
+							</tr>
+							<tr>
 								<th scope="row">Prefix</th>
 								<td><code>{{ args.mask_prefix }}</code></td>
 							</tr>
@@ -46,16 +50,24 @@
 								<td><code>{{ args.mask_suffix }}</code></td>
 							</tr>
 							<tr>
-								<th scope="row">K-sigma</th>
-								<td>{{ args.k_sigma }}</td>
+								<th scope="row">Ground block side</th>
+								<td>{{ args.block_side }}</td>
 							</tr>
 							<tr>
-								<th scope="row">Compressed</th>
-								<td>{{ args.compressed|string }}</td>
+								<th scope="row">Labeled</th>
+								<td>{{ args.labeled|string }}</td>
 							</tr>
 							<tr>
 								<th scope="row">Rescale</th>
 								<td>{{ args.do_rescaling|string }}</td>
+							</tr>
+							<tr>
+								<th scope="row">Remove labels</th>
+								<td>{{ args.remove_labels|string }}</td>
+							</tr>
+							<tr>
+								<th scope="row">Compressed</th>
+								<td>{{ args.compressed|string }}</td>
 							</tr>
 							<tr>
 								<th scope="row">Reg.exp.</th>
@@ -113,15 +125,19 @@
 					<table class="table table-hover text-center">
 						<thead class="thead-dark">
 							<th scope="col">Directory</th>
-							<th scope="col">Raw image</th>
+							<th scope="col">Reference</th>
+							<th scope="col">BG</th>
+							<th scope="col">FG</th>
 							<th scope="col">Mask</th>
-							<th scope="col"># Objects</th>
+							<th scope="col">Objects</th>
 						</thead>
 						<tbody>
 							{% for series in series_list: %}
 							<tr>
 								<td>{{ series.channels[series.ref].path|dirname }}</td>
 								<td>{{ series.channels[series.ref].path|basename }}</td>
+								<td>{{ series.get_channel(args.dna_channel).ground[0] }}</td>
+								<td>{{ series.get_channel(args.dna_channel).ground[1] }}</td>
 								<td>{{ series.mask.path|basename }}</td>
 								<td>{{ series.particles|length }}</td>
 							</tr>
@@ -137,7 +153,7 @@
 		</div>
 	</div>
 	<div class="row p-2">
-		<p><small>Report generated on {{ now }}.</small></p>
+		<p><small>Report generated on {{ now }} with <code>radiant select_nuclei v{{args.version}}</code>.</small></p>
 	</div>
 </div></body>
 </html>

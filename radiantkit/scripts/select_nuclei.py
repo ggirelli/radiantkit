@@ -70,6 +70,9 @@ interactive data visualization.
         version='%s %s' % (sys.argv[0], __version__,))
 
     advanced = parser.add_argument_group("Advanced")
+    advanced.add_argument('--block-side', type=int, metavar="NUMBER",
+        help="""Structural element side for dilation-based background/foreground
+        measurement. Should be odd. Default: 11.""", default=11)
     advanced.add_argument('--use-labels',
         action='store_const', dest='labeled',
         const=True, default=False,
@@ -115,6 +118,11 @@ def parse_arguments(args: argp.Namespace) -> argp.Namespace:
         if '.' != args.mask_suffix[0]:
             args.mask_suffix = f".{args.mask_suffix}"
 
+    if not 0 == args.block_side%2:
+        log.warning("changed ground block side from " +
+            f"{args.block_side} to {args.block_side+1}")
+        args.block_side += 1
+
     args.threads = ggc.args.check_threads(args.threads)
 
     return args
@@ -126,14 +134,17 @@ def print_settings(args: argp.Namespace, clear: bool = True) -> str:
 
        Input directory : '{args.input}'
       DNA channel name : '{args.dna_channel}'
+               K sigma : {args.k_sigma}
 
            Mask prefix : '{args.mask_prefix}'
            Mask suffix : '{args.mask_suffix}'
 
+     Ground block side : {args.block_side}
             Use labels : {args.labeled}
                Rescale : {args.do_rescaling}
          Remove labels : {args.remove_labels}
             Compressed : {args.compressed}
+
                Threads : {args.threads}
                 Regexp : {args.inreg.pattern}
     """
@@ -185,6 +196,7 @@ def run(args: argp.Namespace) -> None:
         f"{len(series_list.channel_names)} channels each" +
         f": {series_list.channel_names}")
     for series in series_list: series.labeled = args.labeled
+    for series in series_list: series.ground_bloc_side = args.block_side
 
     log.info(f"extracting nuclei")
     if 1 == args.threads:
@@ -213,7 +225,8 @@ def run(args: argp.Namespace) -> None:
                 joblib.delayed(remove_labels_from_series_mask
                     )(series, passed[series.ID], args.labeled, args.compressed)
                     for series in series_list)
-        log.info("removed {} nuclei labels")
+        n_removed = len(nuclei)-len(list(itertools.chain(*passed.values())))
+        log.info(f"removed {n_removed} nuclei labels")
 
     np.set_printoptions(formatter={'float_kind':'{:.2E}'.format})
     log.info(f"size fit:\n{details['size']['fit']}")

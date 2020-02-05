@@ -19,7 +19,7 @@ class SeriesSettings(object):
     _mask: Union[str, Type[ImageBase]]=None
     _ref: Optional[str]=None
     _labeled: bool=False
-    ground_block_side: int=11
+    _ground_block_side: int=11
 
     def __init__(self, ID: int, channel_paths: Dict[str,str],
         mask_path: Optional[str]=None, inreg: Optional[Pattern]=None):
@@ -40,15 +40,24 @@ class SeriesSettings(object):
         return self._ID
 
     @property
-    def labeled(self):
+    def labeled(self) -> bool:
         return self._labeled
     
     @labeled.setter
-    def labeled(self, labeled: bool):
+    def labeled(self, labeled: bool) -> None:
         if labeled != self._labeled:
             if not labeled and isinstance(self._mask, ImageLabeled):
                 self._mask = self._mask.binary()
         self._labeled = labeled
+
+    @property
+    def ground_block_side(self) -> int:
+        return self._ground_block_side
+    
+    @ground_block_side.setter
+    def ground_block_side(self, bs: int) -> None:
+        self._ground_block_side = bs
+        if 0 == bs%2: self._ground_block_side += 1
 
     @property
     def channel_names(self) -> List[str]:
