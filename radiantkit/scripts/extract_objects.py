@@ -9,6 +9,7 @@ import joblib
 import logging as log
 import os
 from radiantkit.const import __version__, default_inreg
+from radiantkit import image
 from radiantkit.series import Series, SeriesList
 from radiantkit.particle import Nucleus
 import re
@@ -181,14 +182,8 @@ def run(args: argp.Namespace) -> None:
                 )(s, s.channel_names, Nucleus) for s in series_list)
 
     if args.export_features:
-        pass
-
-    if args.export_tiffs:
-        tiff_path = os.path.join(args.output, "tiff")
-        assert not os.path.isfile(tiff_path)
-        if not os.path.isdir(tiff_path): os.mkdir(tiff_path)
-
-        log.info(f"exporting nuclei images to '{tiff_path}'")
+        feat_path = os.path.join(args.output, "nuclear_features.tsv")
+        log.info(f"exporting nuclear features to '{feat_path}'")
         for series in series_list:
             for nucleus in series.particles:
                 print((nucleus.label, nucleus.mask, nucleus.region_of_interest,
@@ -196,3 +191,17 @@ def run(args: argp.Namespace) -> None:
                     [(cn, nucleus.get_intensity_sum(cn),
                         nucleus.get_intensity_mean(cn))
                         for cn in nucleus.channel_names]))
+
+    if args.export_tiffs:
+        tiff_path = os.path.join(args.output, "tiff")
+        assert not os.path.isfile(tiff_path)
+        if not os.path.isdir(tiff_path): os.mkdir(tiff_path)
+
+        log.info(f"exporting nuclei images to '{tiff_path}'")
+        if 1 == args.threads:
+            for series in tqdm(series_list, desc="series"):
+                series.export_particles(tiff_path, args.compressed)
+        else:
+            joblib.Parallel(n_jobs=args.threads, verbose=11)(
+                joblib.delayed(Series.static_export_particles)(
+                    s, tiff_path, args.compressed) for s in series_list)

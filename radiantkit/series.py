@@ -11,6 +11,7 @@ from radiantkit.image import Image, ImageBase, ImageBinary, ImageLabeled
 from radiantkit.path import find_re, get_image_details
 from radiantkit.path import select_by_prefix_and_suffix
 from radiantkit.particle import ParticleBase, ParticleFinder
+from tqdm import tqdm
 from typing import Dict, List, Tuple
 from typing import Iterator, Optional, Pattern, Type, Union
 
@@ -212,6 +213,29 @@ class Series(SeriesSettings):
 
     def keep_particles(self, label_list: List[int]) -> None:
         self._particles = [p for p in self._particles if p.label in label_list]
+
+    def export_particles(self, path: str, compressed: bool,
+        showProgress: bool=False) -> None:
+        assert os.path.isdir(path)
+        if showProgress: iterbar = tqdm
+        else: iterbar = lambda x, *args, **kwargs: x
+
+        for nucleus in iterbar(self.particles, desc="mask"):
+            nucleus.mask.to_tiff(os.path.join(path,
+                f"mask_series{self.ID:03d}_nucleus{nucleus.label:03d}"),
+                compressed)
+
+        for channel_name in iterbar(self.channel_names, desc="channel"):
+            channel = self.get_channel(channel_name)
+            for nucleus in iterbar(self.particles, desc="nucleus"):
+                Image(nucleus.region_of_interest.apply(channel)).to_tiff(
+                    os.path.join(path, f"{channel_name}_series{self.ID:03d}_" +
+                        f"nucleus{nucleus.label:03d}"), compressed)
+
+    @staticmethod
+    def static_export_particles(series: 'Series', path: str, compressed: bool,
+        showProgress: bool=False) -> None:
+        series.export_particles(path, compressed, showProgress)
 
     def __str__(self):
         s = super(Series, self).__str__()
