@@ -23,13 +23,16 @@ class BoundingElement(object):
         return tuple([int(b1-b0) for (b0, b1) in self._bounds])
 
     @staticmethod
-    def from_binary_image(B: ImageBinary) -> 'BoundingElement':
+    def from_binary_image(B: ImageBinary, offset: int=1) -> 'BoundingElement':
         assert 0 == B.pixels.min() and 1 == B.pixels.max()
         axes_bounds = []
         for axis_id in range(len(B.shape)):
             axis = B.pixels.sum(tuple([axis for axis in range(len(B.shape))
                 if axis != axis_id])) != 0
-            axes_bounds.append((axis.argmax(), len(axis)-axis[::-1].argmax()))
+            axes_bounds.append((
+                max(0, axis.argmax()-1),
+                min(len(axis)-axis[::-1].argmax()+1, len(axis))
+            ))
         return BoundingElement(axes_bounds)
 
     def apply(self, I: Type[Image]) -> np.ndarray:
