@@ -200,12 +200,12 @@ def run(args: argp.Namespace) -> None:
 
     log.info(f"extracting nuclei")
     if 1 == args.threads:
-        series_list = [Series.extract_particles(s, args.dna_channel, Nucleus)
+        series_list = [Series.extract_particles(s, [args.dna_channel], Nucleus)
             for s in tqdm(series_list)]
     else:
         series_list = joblib.Parallel(n_jobs=args.threads, verbose=11)(
             joblib.delayed(Series.extract_particles
-                )(s, args.dna_channel, Nucleus) for s in series_list)
+                )(s, [args.dna_channel], Nucleus) for s in series_list)
 
     nuclei = NucleiList(list(itertools.chain(
         *[s.particles for s in series_list])))

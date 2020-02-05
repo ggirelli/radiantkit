@@ -240,12 +240,12 @@ def run(args: argparse.Namespace) -> None:
         logging.info("extracting nuclei")
 
         if 1 == args.threads:
-            condition.series = [series.extract_particles(series, args.ref,
+            condition.series = [series.extract_particles(series, [args.ref],
                 particleClass=particle.Nucleus)
                 for series in tqdm(condition)]
         else:
             condition.series = Parallel(n_jobs=args.threads, verbose=11)(
-                delayed(series.extract_particles)(series, args.ref,
+                delayed(series.extract_particles)(series, [args.ref],
                     particleClass=particle.Nucleus) for series in condition)
 
         if not args.skip_nuclear_selection:

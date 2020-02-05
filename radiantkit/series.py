@@ -148,7 +148,7 @@ class Series(SeriesSettings):
             "particle attribute accessible after running extract_particles.")
         return self._particles
     
-    def init_particles(self, channel: Optional[str]=None,
+    def init_particles(self, channel_list: Optional[List[str]]=None,
         particleClass: Type[ParticleBase]=ParticleBase) -> None:
         if not self.has_mask():
             logging.warning("mask is missing, no particles extracted.")
@@ -161,17 +161,19 @@ class Series(SeriesSettings):
         self.mask.unload()
 
         for pbody in self._particles: pbody.source = self.mask_path
-        if channel is not None:
-            assert channel in self.channel_names
-            for pbody in self._particles:
-                pbody.init_intensity_features(
-                    self.get_channel(channel), channel)
+        if channel_list is not None:
+            for channel in channel_list:
+                assert channel in self.channel_names
+                for pbody in self._particles:
+                    pbody.init_intensity_features(
+                        self.get_channel(channel), channel)
             self.unload_channel(channel)
 
     @staticmethod
-    def extract_particles(series: 'Series', channel: Optional[str]=None,
+    def extract_particles(series: 'Series',
+        channel_list: Optional[List[str]]=None,
         particleClass: Type[ParticleBase]=ParticleBase) -> 'Series':
-        series.init_particles(channel, particleClass)
+        series.init_particles(channel_list, particleClass)
         return series
 
     def keep_particles(self, label_list: List[int]) -> None:
