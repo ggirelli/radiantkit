@@ -31,20 +31,24 @@ Extract data of objects from masks.
     parser.add_argument('ref_channel', type=str,
         help='Name of channel with masks to be used.')
 
-    parser.add_argument('--output', type=str,
-        help='''Path to folder where output should be written to.
-            Defaults to "objects" subfolder in the input directory.''')
-    parser.add_argument('--mask-prefix', type=str, metavar="TEXT",
-        help="""Prefix for output binarized images name.
-        Default: ''.""", default='')
-    parser.add_argument('--mask-suffix', type=str, metavar="TEXT",
-        help="""Suffix for output binarized images name.
-        Default: 'mask'.""", default='mask')
-
     parser.add_argument('--version', action='version',
         version='%s %s' % (sys.argv[0], __version__,))
 
+    critical = parser.add_argument_group("critical arguments")
+    critical.add_argument('--aspect', type=float, nargs=3, help="""Physical size
+        of Z, Y and X voxel sides in nm. Default: 300.0 216.6 216.6""",
+        metavar=('Z','Y','X'), default=[300., 216.6, 216.6])
+    critical.add_argument('--mask-prefix', type=str, metavar="TEXT",
+        help="""Prefix for output binarized images name.
+        Default: ''.""", default='')
+    critical.add_argument('--mask-suffix', type=str, metavar="TEXT",
+        help="""Suffix for output binarized images name.
+        Default: 'mask'.""", default='mask')
+
     output = parser.add_argument_group("output mode")
+    output.add_argument('--output', type=str,
+        help='''Path to folder where output should be written to.
+            Defaults to "objects" subfolder in the input directory.''')
     output.add_argument('--no-feature-export',
         action='store_const', dest='export_features',
         const=False, default=True,
@@ -121,6 +125,7 @@ def print_settings(args: argp.Namespace, clear: bool = True) -> str:
        Input directory : '{args.input}'
       Output directory : '{args.output}'
 Reference channel name : '{args.ref_channel}'
+    Voxel aspect (ZYX) : {args.aspect}
 
            Mask prefix : '{args.mask_prefix}'
            Mask suffix : '{args.mask_suffix}'
@@ -154,7 +159,7 @@ def run(args: argp.Namespace) -> None:
     confirm_arguments(args)
 
     series_list = SeriesList.from_directory(args.input, args.inreg,
-        args.ref_channel, (args.mask_prefix, args.mask_suffix))
+        args.ref_channel, (args.mask_prefix, args.mask_suffix), args.aspect)
     log.info(f"parsed {len(series_list)} series with " +
         f"{len(series_list.channel_names)} channels each" +
         f": {series_list.channel_names}")
@@ -188,5 +193,6 @@ def run(args: argp.Namespace) -> None:
             for nucleus in series.particles:
                 print((nucleus.label, nucleus.mask, nucleus.region_of_interest,
                     nucleus.total_size, nucleus.surface,
-                    [(nucleus.get_intensity_sum(cn), nucleus.get_intensity_mean(cn))
+                    [(cn, nucleus.get_intensity_sum(cn),
+                        nucleus.get_intensity_mean(cn))
                         for cn in nucleus.channel_names]))

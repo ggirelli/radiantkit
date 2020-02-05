@@ -5,6 +5,7 @@
 
 import itertools
 import logging
+import numpy as np
 import os
 from radiantkit.image import Image, ImageBase, ImageBinary, ImageLabeled
 from radiantkit.path import find_re, get_image_details
@@ -20,9 +21,11 @@ class SeriesSettings(object):
     _ref: Optional[str]=None
     _labeled: bool=False
     _ground_block_side: int=11
+    _aspect: Optional[np.ndarray]=None
 
     def __init__(self, ID: int, channel_paths: Dict[str,str],
-        mask_path: Optional[str]=None, inreg: Optional[Pattern]=None):
+        mask_path: Optional[str]=None, inreg: Optional[Pattern]=None,
+        aspect: Optional[np.ndarray]=None):
         super(SeriesSettings, self).__init__()
         self._ID = ID
 
@@ -34,6 +37,8 @@ class SeriesSettings(object):
             assert ref in channel_paths
             self._ref = ref
             self._mask = mask_path
+
+        self._asoect = self.aspect
 
     @property
     def ID(self) -> int:
@@ -58,6 +63,19 @@ class SeriesSettings(object):
     def ground_block_side(self, bs: int) -> None:
         self._ground_block_side = bs
         if 0 != bs%2: self._ground_block_side += 1
+
+    @property
+    def aspect(self) -> Optional[np.ndarray]:
+        return self._aspect
+    
+    @aspect.setter
+    def aspect(self, spacing: np.ndarray) -> None:
+        if not isinstance(self.mask, str):
+            self.mask.aspect = spacing
+        for channel_name in self._channels:
+            if not isinstance(self._channels[channel_name], str):
+                self._channels[channel_name].aspect = spacing
+        self._aspect = spacing
 
     @property
     def channel_names(self) -> List[str]:
@@ -94,6 +112,7 @@ class SeriesSettings(object):
             if self.labeled: self._mask = ImageLabeled.from_tiff(
                     self.mask_path, doRelabel=False)
             else: self._mask = ImageBinary.from_tiff(self.mask_path)
+            if self.aspect is not None: self._mask.aspect = self.aspect
 
     def init_channel(self, channel_name: str) -> None:
         if channel_name in self._channels:
@@ -106,6 +125,8 @@ class SeriesSettings(object):
                         self._channels[channel_name].update_ground(
                             self.mask.binary())
                     else: self._channels[channel_name].update_ground(self.mask)
+                if self.aspect is not None:
+                    self._channels[channel_name].aspect = self.aspect
 
     def get_channel(self, channel_name: str) -> Optional[Image]:
         if channel_name in self._channels:
@@ -139,15 +160,28 @@ class Series(SeriesSettings):
     _particles: Optional[List[Type[ParticleBase]]]=None
 
     def __init__(self, ID: int, channel_paths: Dict[str,str],
-        mask_path: Optional[str]=None, inreg: Optional[Pattern]=None):
-        super(Series, self).__init__(ID, channel_paths, mask_path, inreg)
+        mask_path: Optional[str]=None, inreg: Optional[Pattern]=None,
+        aspect: Optional[np.ndarray]=None):
+        super(Series, self).__init__(ID, channel_paths, mask_path,
+            inreg, aspect)
 
     @property
-    def particles(self):
+    def particles(self) -> Optional[List[Type[ParticleBase]]]:
         if self._particles is None: logging.warning(
             "particle attribute accessible after running extract_particles.")
         return self._particles
     
+    @property
+    def aspect(self) -> np.ndarray:
+        return super(Series, self).aspect
+
+    @aspect.setter
+    def aspect(self, spacing: np.ndarray) -> None:
+        super(Series, self).aspect(spacing)
+        if self._particles is not None:
+            for particle in self._particles:
+                particle.aspect = spacing
+
     def init_particles(self, channel_list: Optional[List[str]]=None,
         particleClass: Type[ParticleBase]=ParticleBase) -> None:
         if not self.has_mask():
@@ -209,7 +243,8 @@ class SeriesList(object):
 
     @staticmethod
     def from_directory(dpath: str, inreg: Pattern, ref: Optional[str]=None,
-        maskfix: Optional[Tuple[str, str]]=None):
+        maskfix: Optional[Tuple[str, str]]=None,
+        aspect: Optional[np.ndarray]=None):
         channel_list = find_re(dpath, inreg)
         mask_list, channel_list = select_by_prefix_and_suffix(
             dpath, channel_list, *maskfix)
@@ -249,11 +284,11 @@ class SeriesList(object):
             if ref is not None:
                 assert series_id in mask_data, ("missing mask of reference " +
                     f"channel '{ref}' for series '{series_id}'")
-                series_list.append(Series(series_id,
-                    channel_data[series_id], mask_data[series_id], inreg))
+                series_list.append(Series(series_id, channel_data[series_id],
+                    mask_data[series_id], inreg, aspect=aspect))
             else:
-                series_list.append(Series(series_id,
-                    channel_data[series_id], inreg=inreg))
+                series_list.append(Series(series_id, channel_data[series_id],
+                    inreg=inreg, aspect=aspect))
 
         return SeriesList(series_list, dpath)
 

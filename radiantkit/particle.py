@@ -35,6 +35,15 @@ class ParticleSettings(object):
         return self._mask
 
     @property
+    def aspect(self) -> np.ndarray:
+        return self.mask.aspect
+    
+    @aspect.setter
+    def aspect(self, spacing: np.ndarray) -> None:
+        self.mask.aspect = spacing
+        self.surface = None
+
+    @property
     def region_of_interest(self) -> BoundingElement:
         return self._region_of_interest
 
@@ -45,7 +54,7 @@ class ParticleSettings(object):
 
     @property
     def volume(self) -> int:
-        return self.total_size
+        return self.total_size * np.prod(self.mask.aspect)
 
     @property
     def sizeXY(self) -> int:

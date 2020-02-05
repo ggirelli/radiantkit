@@ -19,8 +19,9 @@ from typing import List, Optional, Tuple, Union
 import warnings
 
 class ImageSettings(object):
-    _ALLOWED_AXES: str = "VCTZYX"
-    _axes_order: str = "VCTZYX"
+    _ALLOWED_AXES: str="VCTZYX"
+    _axes_order: str="VCTZYX"
+    _aspect: np.ndarray=np.ones(6)
 
     def __init__(self):
         super(ImageSettings, self).__init__()
@@ -28,6 +29,22 @@ class ImageSettings(object):
     @property
     def nd(self) -> int:
         return len(self._axes_order)
+
+    @property
+    def aspect(self) -> np.ndarray:
+        return self._aspect
+
+    @aspect.setter
+    def aspect(self, spacing: np.ndarray) -> None:
+        if len(self.aspect) == len(spacing): self._aspect = spacing
+        elif len(spacing) < len(self._axes_order):
+            self.aspect[-len(spacing):] = spacing
+            logging.warning(f"aspect changed to {self.aspect} " +
+                f"(used only last {len(self.aspect)} values)")
+        else:
+            self.aspect = spacing[-len(self.aspect):]
+            logging.warning(f"aspect changed to {self.aspect} " +
+                f"(used only last {len(self.aspect)} values)")
 
 class ImageBase(ImageSettings):
     _path_to_local: Optional[str] = None
@@ -48,6 +65,7 @@ class ImageBase(ImageSettings):
             self._axes_order = axes
         else:
             self._axes_order = self._ALLOWED_AXES[-len(self.shape):]
+        self._aspect = self._aspect[-len(self.shape):]
         if path is not None:
             if os.path.isfile(path): self._path_to_local = path
 
@@ -84,6 +102,7 @@ class ImageBase(ImageSettings):
                     self._pixels = np.delete(self.pixels,
                         slice(1, self.pixels.shape[axes_id]), axes_id)
                     self._pixels = np.squeeze(self.pixels, axes_id)
+                    self._aspect.pop(axes_id)
         
         while len(new_axes) > len(self.axes):
             for c in new_axes:
@@ -92,14 +111,17 @@ class ImageBase(ImageSettings):
                     new_shape = [1]
                     new_shape.extend(self._pixels.shape)
                     self._pixels.shape = new_shape
+                    self._aspect = np.append(1, self._aspect)
 
         if new_axes != self.axes:
             assert len(new_axes) == len(self.axes)
             assert all([c in new_axes for c in self.axes])
-            self._pixels = np.moveaxis(self.pixels, range(len(self.axes)),
-                [new_axes.index(c) for c in self.axes])
-            self._axes_order = new_axes
+            new_axes_order = [new_axes.index(c) for c in self.axes]
+            self._pixels = np.moveaxis(self.pixels,
+                range(len(self.axes)), new_axes_order)
             self._shape = self._pixels.shape
+            self._aspect = self._aspect[new_axes_order]
+            self._axes_order = new_axes
 
     @property
     def loaded(self):
@@ -158,11 +180,11 @@ class ImageBase(ImageSettings):
             inMicrons, ResolutionZ, forImageJ, **kwargs)
 
     def __repr__(self) -> str:
-        s = f"{self.nd}D image: "
+        s = f"{self.nd}D {self.__class__.__name__}: "
         s += f"{'x'.join([str(d) for d in self.shape])} [{self.axes}]"
         if self.loaded: s += ' [loaded]'
         else: s += ' [unloaded]'
-        if self.is_loadable(): s += f"\nFrom '{self._path_to_local}'"
+        if self.is_loadable(): s += f"; From '{self._path_to_local}'"
         return s
 
 class ImageLabeled(ImageBase):
@@ -241,7 +263,7 @@ class ImageLabeled(ImageBase):
 
     def __repr__(self) -> str:
         s = super(ImageLabeled, self).__repr__()
-        s += f"\nMax label: {self.pixels.max}"
+        s += f"; Max label: {self.pixels.max}"
         return s
 
 class ImageBinary(ImageBase):
@@ -300,8 +322,8 @@ class ImageBinary(ImageBase):
 
     def __repr__(self) -> str:
         s = super(ImageBinary, self).__repr__()
-        s += f"\nForeground voxels: {self.pixels.sum()}"
-        s += f"\nBackground voxels: {(self.pixels*(-1)+1).sum()}"
+        s += f"; Foreground voxels: {self.pixels.sum()}"
+        s += f"; Background voxels: {(self.pixels*(-1)+1).sum()}"
         return s
 
 class Image(ImageBase):

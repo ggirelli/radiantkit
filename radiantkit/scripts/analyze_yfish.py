@@ -215,7 +215,8 @@ def build_conditions(args: argparse.Namespace) -> Dict:
     for condition_name in listdir(args.input):
         condition_folder = path_join(args.input, condition_name)
         condition = series.SeriesList.from_directory(condition_folder,
-                args.inreg, args.ref, (args.mask_prefix, args.mask_suffix))
+                args.inreg, args.ref, (args.mask_prefix, args.mask_suffix),
+                args.aspect)
         
         for series in condition:
             series.labeled = args.labeled
