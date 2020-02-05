@@ -41,7 +41,7 @@ class ParticleSettings(object):
     @aspect.setter
     def aspect(self, spacing: np.ndarray) -> None:
         self.mask.aspect = spacing
-        self.surface = None
+        self._surface = None
 
     @property
     def region_of_interest(self) -> BoundingElement:
@@ -217,7 +217,7 @@ class ParticleFinder(object):
             particleClass: Type[ParticleBase] = ParticleBase
         ) -> List[Type[ParticleBase]]:
         return ParticleFinder.get_particles_from_labeled_image(
-            ImageLabeled(B.pixels, B.axes), particleClass)
+            B.label(), particleClass)
 
     @staticmethod
     def get_particles_from_labeled_image(L: ImageLabeled,
@@ -229,9 +229,11 @@ class ParticleFinder(object):
         for current_label in np.unique(L.pixels):
             if 0 == current_label: continue
             B = ImageBinary(L.pixels == current_label)
+
             region_of_interest = BoundingElement.from_binary_image(B)
 
             B = ImageBinary(region_of_interest.apply(B))
+            B.aspect = L.aspect
 
             particle = particleClass(B, region_of_interest)
             particle.label = current_label

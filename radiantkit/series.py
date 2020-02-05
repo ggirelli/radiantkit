@@ -38,7 +38,7 @@ class SeriesSettings(object):
             self._ref = ref
             self._mask = mask_path
 
-        self._asoect = self.aspect
+        self._aspect = aspect
 
     @property
     def ID(self) -> int:

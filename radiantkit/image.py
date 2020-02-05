@@ -181,7 +181,8 @@ class ImageBase(ImageSettings):
 
     def __repr__(self) -> str:
         s = f"{self.nd}D {self.__class__.__name__}: "
-        s += f"{'x'.join([str(d) for d in self.shape])} [{self.axes}]"
+        s += f"{'x'.join([str(d) for d in self.shape])} [{self.axes}, "
+        s += f"aspect: {'x'.join([str(d) for d in self.aspect])} nm]"
         if self.loaded: s += ' [loaded]'
         else: s += ' [unloaded]'
         if self.is_loadable(): s += f"; From '{self._path_to_local}'"
@@ -259,7 +260,9 @@ class ImageLabeled(ImageBase):
         self._pixels = inherit_labels(self, mask2d)
 
     def binary(self) -> 'ImageBinary':
-        return ImageBinary(self.pixels, self._path_to_local, self._axes_order)
+        B = ImageBinary(self.pixels, self._path_to_local, self._axes_order)
+        B.aspect = self.aspect
+        return B
 
     def __repr__(self) -> str:
         s = super(ImageLabeled, self).__repr__()
@@ -309,7 +312,9 @@ class ImageBinary(ImageBase):
         self._pixels = np.logical_not(self.pixels)
 
     def label(self) -> ImageLabeled:
-        return ImageLabeled(self.pixels)
+        L = ImageLabeled(self.pixels, self._path_to_local, self._axes_order)
+        L.aspect = self.aspect
+        return L
 
     def to_tiff(self, path: str, compressed: bool,
         bundle_axes: Optional[str]=None, inMicrons: bool=False,
@@ -377,7 +382,7 @@ class Image(ImageBase):
     def __repr__(self) -> str:
         s = super(Image, self).__repr__()
         if self.ground[0] is not None:
-            s += f"\nBack/foreground: {self.ground}"
+            s += f"; Back/foreground: {self.ground}"
         return s
 
 def get_huygens_rescaling_factor(path: str) -> float:
