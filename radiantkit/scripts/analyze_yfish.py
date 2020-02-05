@@ -90,6 +90,9 @@ def init_parser(subparsers: argparse._SubParsersAction
         dataset. Included in the final report. Use double quotes.""")
 
     advanced = parser.add_argument_group("Advanced arguments")
+    advanced.add_argument('--block-side', type=int, metavar="NUMBER",
+        help="""Structural element side for dilation-based background/foreground
+        measurement. Should be odd. Default: 11.""", default=11)
     advanced.add_argument('--use-labels',
         action='store_const', dest='labeled',
         const=True, default=False,
@@ -180,6 +183,7 @@ def print_settings(args: argparse.Namespace, clear: bool = True) -> str:
                   Note : {args.note}
            Description : {args.readable_description}
     
+     Ground block side : {args.block_side}
             Use labels : {args.labeled}
                Rescale : {args.do_rescaling}
                  Debug : {args.debug_mode}
@@ -207,6 +211,10 @@ def build_conditions(args: argparse.Namespace) -> Dict:
         condition_folder = path_join(args.input, condition_name)
         condition = series.SeriesList.from_directory(condition_folder,
                 args.inreg, args.ref, (args.mask_prefix, args.mask_suffix))
+        
+        for series in condition:
+            series.labeled = args.labeled
+            series.ground_block_side = args.block_side
 
         logging.info(f"parsed {len(condition)} " +
             f"series from condition '{condition_name}'")
@@ -225,6 +233,7 @@ def run(args: argparse.Namespace) -> None:
 
     for condition in build_conditions(args):
         logging.info("extracting nuclei")
+
         if 1 == args.threads:
             condition.series = [series.extract_particles(series, args.ref,
                 particleClass=particle.Nucleus)
