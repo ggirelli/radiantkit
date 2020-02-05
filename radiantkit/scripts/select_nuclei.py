@@ -3,29 +3,31 @@
 @contact: gigi.ga90@gmail.com
 '''
 
-from argparse import _SubParsersAction, RawDescriptionHelpFormatter
-from argparse import ArgumentParser, Namespace
-from ggc.prompt import ask
-from ggc.args import check_threads, export_settings
-from joblib import delayed, Parallel
-from itertools import chain
-import logging
-from numpy import set_printoptions
-from os.path import isdir, join as path_join
+import argparse as argp
+import ggc
+import joblib
+import itertools
+import logging as log
+import numpy as np
+import os
+import pandas as pd
 from radiantkit.const import __version__, default_inreg
+from radiantkit.image import ImageBinary, ImageLabeled
 from radiantkit.particle import NucleiList, Nucleus
+from radiantkit.path import get_image_details
 from radiantkit.series import Series, SeriesList
 from radiantkit.report import report_select_nuclei
-from re import compile as re_compile
-from sys import argv as sys_argv
+import re
+import sys
 from tqdm import tqdm
+from typing import Dict, List, Pattern
 
-logging.basicConfig(level=logging.INFO, format='%(asctime)s ' +
+log.basicConfig(level=log.INFO, format='%(asctime)s ' +
     '[P%(process)s:%(module)s:%(funcName)s] %(levelname)s: %(message)s',
     datefmt='%m/%d/%Y %I:%M:%S')
 
-def init_parser(subparsers: _SubParsersAction
-    ) -> ArgumentParser:
+def init_parser(subparsers: argp._SubParsersAction
+    ) -> argp.ArgumentParser:
     parser = subparsers.add_parser(__name__.split(".")[-1], description = '''
 Select nuclei (objects) from segmented images based on their size (volume in 3D,
 area in 2D) and integral of intensity from raw image.
@@ -46,7 +48,7 @@ the last scenario, k_sigma is ignored.
 A tabulation-separated table is generated with the nuclear features and whether
 they pass the filter(s). Alongside it, an html report is generated with
 interactive data visualization.
-''', formatter_class = RawDescriptionHelpFormatter,
+''', formatter_class = argp.RawDescriptionHelpFormatter,
         help = "Select G1 nuclei.")
 
     parser.add_argument('input', type=str,
@@ -65,17 +67,25 @@ interactive data visualization.
         Default: 'mask'.""", default='mask')
 
     parser.add_argument('--version', action='version',
-        version='%s %s' % (sys_argv[0], __version__,))
+        version='%s %s' % (sys.argv[0], __version__,))
 
     advanced = parser.add_argument_group("Advanced")
-    advanced.add_argument('--uncompressed',
-        action='store_const', dest='compressed',
-        const=False, default=True,
-        help='Generate uncompressed TIFF binary masks.')
+    advanced.add_argument('--use-labels',
+        action='store_const', dest='labeled',
+        const=True, default=False,
+        help='Use labels from masks instead of relabeling.')
     advanced.add_argument('--no-rescaling',
         action='store_const', dest='do_rescaling',
         const=False, default=True,
         help='Do not rescale image even if deconvolved.')
+    advanced.add_argument('--no-remove',
+        action='store_const', dest='remove_labels',
+        const=False, default=True,
+        help='Do not remove labels of discarded nuclei.')
+    advanced.add_argument('--uncompressed',
+        action='store_const', dest='compressed',
+        const=False, default=True,
+        help='Generate uncompressed TIFF binary masks.')
     advanced.add_argument('--inreg', type=str, metavar="REGEXP",
         help=f"""Regular expression to identify input TIFF images.
         Must contain 'channel_name' and 'series_id' fields.
@@ -91,12 +101,12 @@ interactive data visualization.
 
     return parser
 
-def parse_arguments(args: Namespace) -> Namespace:
+def parse_arguments(args: argp.Namespace) -> argp.Namespace:
     args.version = __version__
 
     assert '(?P<channel_name>' in args.inreg
     assert '(?P<series_id>' in args.inreg
-    args.inreg = re_compile(args.inreg)
+    args.inreg = re.compile(args.inreg)
 
     if 0 != len(args.mask_prefix):
         if '.' != args.mask_prefix[-1]:
@@ -105,76 +115,120 @@ def parse_arguments(args: Namespace) -> Namespace:
         if '.' != args.mask_suffix[0]:
             args.mask_suffix = f".{args.mask_suffix}"
 
-    args.threads = check_threads(args.threads)
+    args.threads = ggc.args.check_threads(args.threads)
 
     return args
 
-def print_settings(args: Namespace, clear: bool = True) -> str:
+def print_settings(args: argp.Namespace, clear: bool = True) -> str:
     s = f"""# Nuclei selection v{args.version}
 
----------- SETTING : VALUE ----------
+    ---------- SETTING : VALUE ----------
 
-   Input directory : '{args.input}'
-  DNA channel name : '{args.dna_channel}'
+       Input directory : '{args.input}'
+      DNA channel name : '{args.dna_channel}'
 
-       Mask prefix : '{args.mask_prefix}'
-       Mask suffix : '{args.mask_suffix}'
-        Compressed : {args.compressed}
+           Mask prefix : '{args.mask_prefix}'
+           Mask suffix : '{args.mask_suffix}'
 
-           Rescale : {args.do_rescaling}
-           Threads : {args.threads}
-            Regexp : {args.inreg.pattern}
+            Use labels : {args.labeled}
+               Rescale : {args.do_rescaling}
+         Remove labels : {args.remove_labels}
+            Compressed : {args.compressed}
+               Threads : {args.threads}
+                Regexp : {args.inreg.pattern}
     """
     if clear: print("\033[H\033[J")
     print(s)
     return(s)
 
-def confirm_arguments(args: Namespace) -> None:
+def confirm_arguments(args: argp.Namespace) -> None:
     settings_string = print_settings(args)
-    if not args.do_all: ask("Confirm settings and proceed?")
+    if not args.do_all: ggc.prompt.ask("Confirm settings and proceed?")
 
-    assert isdir(args.input
+    assert os.path.isdir(args.input
         ), f"image folder not found: {args.input}"
 
-    with open(path_join(args.input, "select_nuclei.config.txt"), "w+") as OH:
-        export_settings(OH, settings_string)
+    with open(os.path.join(args.input, "select_nuclei.config.txt"), "w+") as OH:
+        ggc.args.export_settings(OH, settings_string)
 
-def run(args: Namespace) -> None:
+def extract_passing_nuclei_per_series(
+    ndata: pd.DataFrame, inreg: Pattern) -> Dict[int,List[int]]:
+    passed = ndata.loc[ndata['pass'], ['image', 'label']]
+    passed['series_id'] = [get_image_details(p, inreg)[0]
+        for p in passed['image'].values]
+    passed.drop('image', 1, inplace=True)
+    passed = dict([
+        (sid, passed.loc[passed['series_id']==sid, 'label'].values)
+        for sid in set(passed['series_id'].values)])
+    return passed
+
+def remove_labels_from_series_mask(series: Series, labels: List[int],
+    labeled: bool, compressed: bool) -> None:
+    os.rename(series.mask.path, f"{series.mask.path}.old")
+    if labeled:
+        L = series.mask.pixels
+        L[np.logical_not(np.isin(L, labels))] = 0
+        L = ImageLabeled(L)
+        L.to_tiff(series.mask.path, compressed)
+    else:
+        L = series.mask.label().pixels
+        L[np.logical_not(np.isin(L, labels))] = 0
+        M = ImageBinary(L)
+        M.to_tiff(series.mask.path, compressed)
+
+def run(args: argp.Namespace) -> None:
     confirm_arguments(args)
 
     series_list = SeriesList.from_directory(args.input, args.inreg,
         args.dna_channel, (args.mask_prefix, args.mask_suffix))
-    logging.info(f"parsed {len(series_list)} series with " +
+    log.info(f"parsed {len(series_list)} series with " +
         f"{len(series_list.channel_names)} channels each" +
         f": {series_list.channel_names}")
+    for series in series_list: series.labeled = args.labeled
 
+    log.info(f"extracting nuclei")
     if 1 == args.threads:
         series_list = [Series.extract_particles(s, args.dna_channel, Nucleus)
             for s in tqdm(series_list)]
     else:
-        series_list = Parallel(n_jobs=args.threads, verbose=11)(
-            delayed(Series.extract_particles)(s, args.dna_channel, Nucleus)
-            for s in series_list)
+        series_list = joblib.Parallel(n_jobs=args.threads, verbose=11)(
+            joblib.delayed(Series.extract_particles
+                )(s, args.dna_channel, Nucleus) for s in series_list)
 
-    nuclei = NucleiList(list(chain(*[s.particles for s in series_list])))
-    logging.info(f"extracted {len(nuclei)} nuclei.")
+    nuclei = NucleiList(list(itertools.chain(
+        *[s.particles for s in series_list])))
+    log.info(f"extracted {len(nuclei)} nuclei.")
 
     nuclei_data, details = nuclei.select_G1(args.k_sigma, args.dna_channel)
 
-    set_printoptions(formatter={'float_kind':'{:.2E}'.format})
-    logging.info(f"size fit:\n{details['size']['fit']}")
-    set_printoptions(formatter={'float_kind':'{:.2E}'.format})
-    logging.info(f"size range: {details['size']['range']}")
-    set_printoptions(formatter={'float_kind':'{:.2E}'.format})
-    logging.info(f"intensity sum fit:\n{details['isum']['fit']}")
-    set_printoptions(formatter={'float_kind':'{:.2E}'.format})
-    logging.info(f"intensity sum range: {details['isum']['range']}")
+    passed = extract_passing_nuclei_per_series(nuclei_data, args.inreg)
+    if args.remove_labels:
+        log.info("removing discarded nuclei labeles from masks")
+        if 1 == args.threads:
+            for series in tqdm(series_list):
+                remove_labels_from_series_mask(series, passed[series.ID],
+                    args.labeled, args.compressed)
+        else:
+            joblib.Parallel(n_jobs=args.threads, verbose=11)(
+                joblib.delayed(remove_labels_from_series_mask
+                    )(series, passed[series.ID], args.labeled, args.compressed)
+                    for series in series_list)
+        log.info("removed {} nuclei labels")
 
-    ndpath = path_join(args.input, "select_nuclei.data.tsv")
-    logging.info(f"writing nuclear data to:\n{ndpath}")
+    np.set_printoptions(formatter={'float_kind':'{:.2E}'.format})
+    log.info(f"size fit:\n{details['size']['fit']}")
+    np.set_printoptions(formatter={'float_kind':'{:.2E}'.format})
+    log.info(f"size range: {details['size']['range']}")
+    np.set_printoptions(formatter={'float_kind':'{:.2E}'.format})
+    log.info(f"intensity sum fit:\n{details['isum']['fit']}")
+    np.set_printoptions(formatter={'float_kind':'{:.2E}'.format})
+    log.info(f"intensity sum range: {details['isum']['range']}")
+
+    ndpath = os.path.join(args.input, "select_nuclei.data.tsv")
+    log.info(f"writing nuclear data to:\n{ndpath}")
     nuclei_data.to_csv(ndpath, sep="\t", index=False)
 
-    report_path = path_join(args.input, "select_nuclei.report.html")
-    logging.info(f"writing report to\n{report_path}")
+    report_path = os.path.join(args.input, "select_nuclei.report.html")
+    log.info(f"writing report to\n{report_path}")
     report_select_nuclei(args, report_path, data=nuclei_data,
         details=details, series_list=series_list, ref=args.dna_channel)

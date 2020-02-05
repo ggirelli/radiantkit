@@ -14,6 +14,7 @@ from os import listdir, mkdir
 from os.path import join as path_join, isdir, isfile
 from radiantkit import const, path
 from radiantkit import particle, series
+from radiantkit.scripts.select_nuclei import extract_passing_nuclei_per_series
 import re
 import sys
 from tqdm import tqdm
@@ -239,13 +240,7 @@ def run(args: argparse.Namespace) -> None:
                 *[s.particles for s in condition]))
                 ).select_G1(args.k_sigma, args.ref)
 
-            passed = ndata.loc[ndata['pass'], ['image', 'label']]
-            passed['series_id'] = [path.get_image_details(p, args.inreg)[0]
-                for p in passed['image'].values]
-            passed.drop('image', 1, inplace=True)
-            passed = dict([
-                (sid, passed.loc[passed['series_id']==sid, 'label'].values)
-                for sid in set(passed['series_id'].values)])
+            passed = extract_passing_nuclei_per_series(ndata, args.inreg)
             for series in condition: series.keep_particles(passed[series.ID])
 
             n_passed = np.logical_not(ndata['pass']).sum()

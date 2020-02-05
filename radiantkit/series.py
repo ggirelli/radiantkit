@@ -3,23 +3,22 @@
 @contact: gigi.ga90@gmail.com
 '''
 
-from itertools import chain
+import itertools
 import logging
-from os.path import isdir, isfile, join as path_join
+import os
 from radiantkit.image import Image, ImageBase, ImageBinary, ImageLabeled
 from radiantkit.path import find_re, get_image_details
 from radiantkit.path import select_by_prefix_and_suffix
 from radiantkit.particle import ParticleBase, ParticleFinder
-from sys import exit as sys_exit
 from typing import Dict, List, Tuple
 from typing import Iterator, Optional, Pattern, Type, Union
 
 class SeriesSettings(object):
     _ID: int=0
     _channels: Dict[str, Union[str, Type[Image]]]=None
-    _mask: Union[str, Type[Image]]=None
+    _mask: Union[str, Type[ImageBase]]=None
     _ref: Optional[str]=None
-    labeled: bool=False
+    _labeled: bool=False
     ground_block_side: int=11
 
     def __init__(self, ID: int, channel_paths: Dict[str,str],
@@ -27,7 +26,7 @@ class SeriesSettings(object):
         super(SeriesSettings, self).__init__()
         self._ID = ID
 
-        for name in channel_paths: assert isfile(channel_paths[name])
+        for name in channel_paths: assert os.path.isfile(channel_paths[name])
         self._channels = channel_paths.copy()
 
         if mask_path is not None:
@@ -39,6 +38,17 @@ class SeriesSettings(object):
     @property
     def ID(self) -> int:
         return self._ID
+
+    @property
+    def labeled(self):
+        return self._labeled
+    
+    @labeled.setter
+    def labeled(self, labeled: bool):
+        if labeled != self._labeled:
+            if not labeled and isinstance(self._mask, ImageLabeled):
+                self._mask = self._mask.binary()
+        self._labeled = labeled
 
     @property
     def channel_names(self) -> List[str]:
@@ -72,10 +82,9 @@ class SeriesSettings(object):
     def init_mask(self) -> None:
         if not self.has_mask(): return
         if isinstance(self._mask, str):
-            if self.labeled:
-                self._mask = ImageLabeled.from_tiff(self.mask_path)
-            else:
-                self._mask = ImageBinary.from_tiff(self.mask_path)
+            if self.labeled: self._mask = ImageLabeled.from_tiff(
+                    self.mask_path, doRelabel=False)
+            else: self._mask = ImageBinary.from_tiff(self.mask_path)
 
     def init_channel(self, channel_name: str) -> None:
         if channel_name in self._channels:
@@ -84,7 +93,10 @@ class SeriesSettings(object):
                     self._channels[channel_name])
                 if self.has_mask():
                     self.init_mask()
-                    self._channels[channel_name].update_ground(self.mask)
+                    if self.labeled:
+                        self._channels[channel_name].update_ground(
+                            self.mask.binary())
+                    else: self._channels[channel_name].update_ground(self.mask)
 
     def get_channel(self, channel_name: str) -> Optional[Image]:
         if channel_name in self._channels:
@@ -172,7 +184,7 @@ class SeriesList(object):
         super(SeriesList, self).__init__()
         self.series = series_list
         if path is not None:
-            assert isdir(path)
+            assert os.path.isdir(path)
             self._path = path
 
     @property
@@ -181,7 +193,7 @@ class SeriesList(object):
 
     @property
     def channel_names(self):
-        return list(set(chain(*[series.channel_names
+        return list(set(itertools.chain(*[series.channel_names
             for series in self.series])))
 
     @staticmethod
@@ -204,7 +216,7 @@ class SeriesList(object):
                         f"channel in series {series_id}. " +
                         f"Skipping '{mask_path}'.")
                     continue
-                mask_data[series_id] = path_join(dpath, mask_path)
+                mask_data[series_id] = os.path.join(dpath, mask_path)
 
         channel_data = {}
         for channel_path in channel_list:
@@ -214,7 +226,7 @@ class SeriesList(object):
                 logging.warning("found multiple instances of channel " +
                     f"{channel_name} in series {series_id}. " +
                     f"Skipping '{channel_path}'.")
-            channel_data[series_id][channel_name] = path_join(
+            channel_data[series_id][channel_name] = os.path.join(
                 dpath, channel_path)
 
         channel_counts = [len(x) for x in channel_data.values()]
