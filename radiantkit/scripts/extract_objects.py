@@ -26,9 +26,10 @@ Extract data of objects from masks.
 
     parser.add_argument('input', type=str,
         help='Path to folder containing deconvolved tiff images and masks.')
-    parser.add_argument('output', type=str,
-        help='Path to folder where output should be written to.')
 
+    parser.add_argument('--output', type=str,
+        help='''Path to folder where output should be written to.
+            Defaults to "objects" subfolder in the input directory.''')
     parser.add_argument('--mask-prefix', type=str, metavar="TEXT",
         help="""Prefix for output binarized images name.
         Default: ''.""", default='')
@@ -39,7 +40,17 @@ Extract data of objects from masks.
     parser.add_argument('--version', action='version',
         version='%s %s' % (sys.argv[0], __version__,))
 
-    advanced = parser.add_argument_group("Advanced")
+    output = parser.add_argument_group("output mode")
+    output.add_argument('--no-feature-export',
+        action='store_const', dest='export_features',
+        const=False, default=True,
+        help='Skip calculation and export of table with object features.')
+    output.add_argument('--no-tiff-export',
+        action='store_const', dest='export_tiffs',
+        const=False, default=True,
+        help='Skip export of channel and mask tiffs.')
+
+    advanced = parser.add_argument_group("advanced arguments")
     advanced.add_argument('--block-side', type=int, metavar="NUMBER",
         help="""Structural element side for dilation-based background/foreground
         measurement. Should be odd. Default: 11.""", default=11)
@@ -73,6 +84,10 @@ Extract data of objects from masks.
 def parse_arguments(args: argp.Namespace) -> argp.Namespace:
     args.version = __version__
 
+    if args.output is None:
+        args.output = os.path.join(args.input, 'objects')
+        assert not os.path.isfile(args.output)
+
     assert '(?P<channel_name>' in args.inreg
     assert '(?P<series_id>' in args.inreg
     args.inreg = re.compile(args.inreg)
@@ -84,7 +99,7 @@ def parse_arguments(args: argp.Namespace) -> argp.Namespace:
         if '.' != args.mask_suffix[0]:
             args.mask_suffix = f".{args.mask_suffix}"
 
-    if not 0 == args.block_side%2:
+    if not 0 != args.block_side%2:
         log.warning("changed ground block side from " +
             f"{args.block_side} to {args.block_side+1}")
         args.block_side += 1
@@ -99,9 +114,13 @@ def print_settings(args: argp.Namespace, clear: bool = True) -> str:
     ---------- SETTING : VALUE ----------
 
        Input directory : '{args.input}'
+      Output directory : '{args.output}'
 
            Mask prefix : '{args.mask_prefix}'
            Mask suffix : '{args.mask_suffix}'
+
+  Export feature table : {args.export_features}
+   Export object tiffs : {args.export_tiffs}
 
      Ground block side : {args.block_side}
             Use labels : {args.labeled}
