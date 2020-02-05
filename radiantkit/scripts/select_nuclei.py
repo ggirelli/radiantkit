@@ -118,7 +118,7 @@ def parse_arguments(args: argp.Namespace) -> argp.Namespace:
         if '.' != args.mask_suffix[0]:
             args.mask_suffix = f".{args.mask_suffix}"
 
-    if not 0 == args.block_side%2:
+    if not 0 != args.block_side%2:
         log.warning("changed ground block side from " +
             f"{args.block_side} to {args.block_side+1}")
         args.block_side += 1

@@ -57,7 +57,7 @@ class SeriesSettings(object):
     @ground_block_side.setter
     def ground_block_side(self, bs: int) -> None:
         self._ground_block_side = bs
-        if 0 == bs%2: self._ground_block_side += 1
+        if 0 != bs%2: self._ground_block_side += 1
 
     @property
     def channel_names(self) -> List[str]:

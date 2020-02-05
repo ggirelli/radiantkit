@@ -144,6 +144,11 @@ def parse_arguments(args: argparse.Namespace) -> argparse.Namespace:
         if '.' != args.mask_suffix[0]:
             args.mask_suffix = f".{args.mask_suffix}"
 
+    if not 0 != args.block_side%2:
+        log.warning("changed ground block side from " +
+            f"{args.block_side} to {args.block_side+1}")
+        args.block_side += 1
+
     args.threads = check_threads(args.threads)
 
     if args.debug_mode: logging.getLogger().level = logging.DEBUG
