@@ -37,3 +37,6 @@ class BoundingElement(object):
         for axis_id in range(len(I.shape)):
             assert self._bounds[axis_id][1] <= I.shape[axis_id]
         return I.pixels[tuple([slice(b0, b1) for b0,b1 in self._bounds])]
+
+    def __repr__(self):
+        return  f"{len(self._bounds)}D Bounding Element: {self._bounds}"
