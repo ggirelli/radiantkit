@@ -26,6 +26,8 @@ Extract data of objects from masks.
 
     parser.add_argument('input', type=str,
         help='Path to folder containing deconvolved tiff images and masks.')
+    parser.add_argument('ref_channel', type=str,
+        help='Name of channel with masks to be used.')
 
     parser.add_argument('--output', type=str,
         help='''Path to folder where output should be written to.
@@ -86,7 +88,8 @@ def parse_arguments(args: argp.Namespace) -> argp.Namespace:
 
     if args.output is None:
         args.output = os.path.join(args.input, 'objects')
-        assert not os.path.isfile(args.output)
+    assert not os.path.isfile(args.output)
+    if not os.path.isdir(args.output): os.mkdir(args.output)
 
     assert '(?P<channel_name>' in args.inreg
     assert '(?P<series_id>' in args.inreg
@@ -109,12 +112,13 @@ def parse_arguments(args: argp.Namespace) -> argp.Namespace:
     return args
 
 def print_settings(args: argp.Namespace, clear: bool = True) -> str:
-    s = f"""# Nuclei selection v{args.version}
+    s = f"""# Object extraction v{args.version}
 
     ---------- SETTING : VALUE ----------
 
        Input directory : '{args.input}'
       Output directory : '{args.output}'
+Reference channel name : '{args.ref_channel}'
 
            Mask prefix : '{args.mask_prefix}'
            Mask suffix : '{args.mask_suffix}'
@@ -138,12 +142,24 @@ def confirm_arguments(args: argp.Namespace) -> None:
     settings_string = print_settings(args)
     if not args.do_all: ggc.prompt.ask("Confirm settings and proceed?")
 
-    assert os.path.isdir(args.input
-        ), f"image folder not found: {args.input}"
+    assert os.path.isdir(args.input), f"image folder not found: {args.input}"
 
-    settings_path = os.path.join(args.input, "extract_objects.config.txt")
+    settings_path = os.path.join(args.output, "extract_objects.config.txt")
     with open(settings_path, "w+") as OH:
         ggc.args.export_settings(OH, settings_string)
 
 def run(args: argp.Namespace) -> None:
     confirm_arguments(args)
+
+    series_list = SeriesList.from_directory(args.input, args.inreg,
+        args.ref_channel, (args.mask_prefix, args.mask_suffix))
+    log.info(f"parsed {len(series_list)} series with " +
+        f"{len(series_list.channel_names)} channels each" +
+        f": {series_list.channel_names}")
+    for series in series_list: series.labeled = args.labeled
+    for series in series_list: series.ground_bloc_side = args.block_side
+
+    if not args.export_tiffs and not args.export_features:
+        log.info("Nothing to export when using both " +
+            "--no-tiff-export and no-feature-export flags.")
+        sys.exit()
