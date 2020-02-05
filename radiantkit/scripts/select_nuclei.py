@@ -52,7 +52,7 @@ interactive data visualization.
         help = "Select G1 nuclei.")
 
     parser.add_argument('input', type=str,
-        help='Path to folder containing deconvolved tiff images.')
+        help='Path to folder containing deconvolved tiff images and masks.')
     parser.add_argument('dna_channel', type=str,
         help='Name of channel with DNA staining intensity.')
 

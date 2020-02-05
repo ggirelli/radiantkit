@@ -25,7 +25,9 @@ Extract data of objects from masks.
         help = "Extract data of objects from masks.")
 
     parser.add_argument('input', type=str,
-        help='Path to folder containing deconvolved tiff images.')
+        help='Path to folder containing deconvolved tiff images and masks.')
+    parser.add_argument('output', type=str,
+        help='Path to folder where output should be written to.')
 
     parser.add_argument('--mask-prefix', type=str, metavar="TEXT",
         help="""Prefix for output binarized images name.

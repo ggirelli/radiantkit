@@ -48,9 +48,8 @@ Input images that have the specified prefix and suffix are not segmented.''',
     parser.add_argument('input', type=str,
         help='Path to folder containing deconvolved tiff images.')
 
-    parser.add_argument('-o', metavar = "DIRPATH", type = str,
-        help = """Path to output TIFF folder. Defaults to the input file
-        basename.""", default = None)
+    parser.add_argument('-o', metavar = "DIRPATH", type = str, default = None,
+        help = """Path to output TIFF folder. Defaults to the input folder""")
     parser.add_argument('--outprefix', type=str, metavar="TEXT",
         help="""Prefix for output binarized images name.
         Default: ''.""", default='')
