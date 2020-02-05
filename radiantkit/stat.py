@@ -6,9 +6,7 @@
 from enum import Enum
 from matplotlib import pyplot as plt
 import numpy as np
-from scipy.signal import convolve
-import scipy.optimize
-import scipy.stats
+import scipy as sp
 from typing import Optional, Tuple
 import warnings
 
@@ -40,45 +38,45 @@ def gpartial(V: np.ndarray, d: int, sigma: float) -> np.ndarray:
 
     if 3 == len(V.shape):
         if 1 == d:
-            V = convolve(V, dg.reshape([1, 1, w+1]), 'same')
+            V = sp.signal.convolve(V, dg.reshape([1, 1, w+1]), 'same')
         else:
-            V = convolve(V, g.reshape([1, 1, w+1]), 'same')
+            V = sp.signal.convolve(V, g.reshape([1, 1, w+1]), 'same')
         if 2 == d:
-            V = convolve(V, dg.reshape([1, w+1, 1]), 'same')
+            V = sp.signal.convolve(V, dg.reshape([1, w+1, 1]), 'same')
         else:
-            V = convolve(V, g.reshape([1, w+1, 1]), 'same')
+            V = sp.signal.convolve(V, g.reshape([1, w+1, 1]), 'same')
         if 3 == d:
-            V = convolve(V, dg.reshape([w+1, 1, 1]), 'same')
+            V = sp.signal.convolve(V, dg.reshape([w+1, 1, 1]), 'same')
         else:
-            V = convolve(V, g.reshape([w+1, 1, 1]), 'same')
+            V = sp.signal.convolve(V, g.reshape([w+1, 1, 1]), 'same')
     elif 2 == len(V.shape):
         if 1 == d:
-            V = convolve(V, dg.reshape([1, w+1]), 'same')
+            V = sp.signal.convolve(V, dg.reshape([1, w+1]), 'same')
         else:
-            V = convolve(V, g.reshape([1, w+1]), 'same')
+            V = sp.signal.convolve(V, g.reshape([1, w+1]), 'same')
         if 2 == d:
-            V = convolve(V, dg.reshape([w+1, 1]), 'same')
+            V = sp.signal.convolve(V, dg.reshape([w+1, 1]), 'same')
         else:
-            V = convolve(V, g.reshape([w+1, 1]), 'same')
+            V = sp.signal.convolve(V, g.reshape([w+1, 1]), 'same')
 
     return V
 
 def gaussian(x: float, k: float, loc: float, scale: float) -> float:
-    return k*scipy.stats.norm.pdf(x, loc=loc, scale=scale)
+    return k*sp.stats.norm.pdf(x, loc=loc, scale=scale)
 
 def gaussian_fit(xx: np.ndarray) -> Optional[np.ndarray]:
-    df = scipy.stats.gaussian_kde(xx)
+    df = sp.stats.gaussian_kde(xx)
     sd = np.std(xx)
     params = [df(xx).max()*sd/4*np.sqrt(2*np.pi), np.mean(xx), sd]
     with warnings.catch_warnings():
-        fitted_params,_ = scipy.optimize.curve_fit(
+        fitted_params,_ = sp.optimize.curve_fit(
             gaussian, xx, df(xx), p0=params)
     if all(fitted_params == params): return None
     return fitted_params
 
 def plot_gaussian_fit(xx: np.ndarray, fitted_params:np.ndarray) -> None:
     assert 3 == len(fitted_params)
-    df = scipy.stats.gaussian_kde(xx)
+    df = sp.stats.gaussian_kde(xx)
     plt.plot(xx, df(xx), '.')
     x2 = np.linspace(xx.min(), xx.max(), 1000)
     plt.plot(x2, gaussian(x2, *fitted_params), 'r')
@@ -89,14 +87,14 @@ def sog(x: float, k1: float, loc1: float, scale1: float,
     return gaussian(x, k1, loc1, scale1) + gaussian(x, k2, loc2, scale2)
 
 def sog_fit(xx: np.ndarray) -> Optional[np.ndarray]:
-    df = scipy.stats.gaussian_kde(xx)
+    df = sp.stats.gaussian_kde(xx)
     loc2 = np.mean(xx)+2.5*np.std(xx)
     sd1 = np.std(xx)
     params = [df(xx).max()*sd1/4*np.sqrt(2*np.pi), np.mean(xx), sd1,
         df(loc2)[0]*sd1/4*np.sqrt(2*np.pi), loc2, sd1/4]
     try:
         with warnings.catch_warnings():
-            fitted_params,_ = scipy.optimize.curve_fit(
+            fitted_params,_ = sp.optimize.curve_fit(
                 sog, xx, df(xx), p0=params)
     except RuntimeError as e: return None
     if all(fitted_params == params): return None
@@ -104,7 +102,7 @@ def sog_fit(xx: np.ndarray) -> Optional[np.ndarray]:
 
 def plot_sog_fit(xx: np.ndarray, fitted_params:np.ndarray) -> None:
     assert 6 == len(fitted_params)
-    df = scipy.stats.gaussian_kde(xx)
+    df = sp.stats.gaussian_kde(xx)
     plt.plot(xx, df(xx), '.')
     x2 = np.linspace(xx.min(), xx.max(), 1000)
     plt.plot(x2, gaussian(x2, *fitted_params[:3]), 'r')

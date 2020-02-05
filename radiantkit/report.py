@@ -5,25 +5,24 @@
 
 import argparse
 from datetime import datetime
-from jinja2 import PackageLoader
-from jinja2 import Environment, Template, select_autoescape
-from os.path import basename, dirname
-from radiantkit import plot
+import jinja2 as jj2
+import os
+import radiantkit as ra
 import tempfile
 from typing import Optional
 
 class Report(object):
-    _env: Optional[Environment]=None
-    _template: Optional[Template]=None
+    _env: Optional[jj2.Environment]=None
+    _template: Optional[jj2.Template]=None
 
     def __init__(self, template: str):
         super(Report, self).__init__()
-        self._env = Environment(
-                loader=PackageLoader('radiantkit', 'templates'),
-                autoescape=select_autoescape(['html', 'xml'])
+        self._env = jj2.Environment(
+                loader=jj2.PackageLoader('radiantkit', 'templates'),
+                autoescape=jj2.select_autoescape(['html', 'xml'])
             )
-        self._env.filters['basename'] = basename
-        self._env.filters['dirname'] = dirname
+        self._env.filters['basename'] = os.path.basename
+        self._env.filters['dirname'] = os.path.dirname
         self._template = self._env.get_template(template)
 
     def render(self, path: str, **kwargs) -> None:
@@ -36,7 +35,7 @@ def report_select_nuclei(args: argparse.Namespace,
     report = Report('select_nuclei_report_template.html')
     details = kwargs['details']
 
-    figure = plot.plot_nuclear_selection(kwargs['data'], kwargs['ref'],
+    figure = ra.plot.plot_nuclear_selection(kwargs['data'], kwargs['ref'],
         details['size']['range'], details['isum']['range'],
         details['size']['fit'], details['isum']['fit'],)
 
