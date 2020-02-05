@@ -49,7 +49,7 @@ definition.''', formatter_class = argparse.RawDescriptionHelpFormatter,
     parser.add_argument('--version', action = 'version',
         version = '%s %s' % (sys.argv[0], __version__,))
 
-    advanced = parser.add_argument_group("Advanced")
+    advanced = parser.add_argument_group("advanced arguments")
     default_inreg='^.*\.tiff?$'
     advanced.add_argument('--inreg', type=str, metavar="REGEXP",
         help="""Regular expression to identify input TIFF images.

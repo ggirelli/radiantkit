@@ -59,7 +59,7 @@ double quotes, i.e., "\\$". Alternatively, use single quotes, i.e., '$'.''',
     parser.add_argument('--version', action = 'version',
         version = f'{sys.argv[0]} {__version__}')
 
-    advanced = parser.add_argument_group("Advanced")
+    advanced = parser.add_argument_group("advanced arguments")
     advanced.add_argument('--template', metavar = "STRING", type = str,
         help = """Template for output file name. See main description for more
         details. Default: '{TNTFields.CHANNEL_NAME}_{TNTFields.SERIES_ID}'""",

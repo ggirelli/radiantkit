@@ -39,7 +39,7 @@ def init_parser(subparsers: argparse._SubParsersAction
     parser.add_argument('--version', action = 'version',
         version = f'{sys.argv[0]} {const.__version__}')
 
-    critical = parser.add_argument_group("Critical arguments")
+    critical = parser.add_argument_group("critical arguments")
     critical.add_argument('--aspect', type=float, nargs=3, help="""Physical size
     of Z, Y and X voxel sides in nm. Default: 300.0 216.6 216.6""",
     metavar=('Z','Y','X'), default=[300., 216.6, 216.6])
@@ -72,7 +72,7 @@ def init_parser(subparsers: argparse._SubParsersAction
         help=f"""Quantile (fraction) for CENTER_TOP_QUANTILE distance type.
         Defaults to 0.01 for 2D, and 0.001 for 3D analysis types.""")
 
-    nuclear_selection = parser.add_argument_group("Nuclei selection")
+    nuclear_selection = parser.add_argument_group("nuclei selection")
     nuclear_selection.add_argument('--k-sigma', type=float, metavar="NUMBER",
         help="""Suffix for output binarized images name.
         Default: 2.5""", default=2.5)
@@ -80,7 +80,7 @@ def init_parser(subparsers: argparse._SubParsersAction
         dest='skip_nuclear_selection', const=True, default=False,
         help='Skip selection of G1 nuclei.')
 
-    minor = parser.add_argument_group("Minor arguments")
+    minor = parser.add_argument_group("minor arguments")
     minor.add_argument('--description', type=str, nargs='*', metavar="STRING",
         help = """Space separated 'condition:description' couples.
         'condition' is the name of a condition folder. 'description' is a
@@ -89,7 +89,7 @@ def init_parser(subparsers: argparse._SubParsersAction
     minor.add_argument('--note', type=str, help="""A short description of the
         dataset. Included in the final report. Use double quotes.""")
 
-    advanced = parser.add_argument_group("Advanced arguments")
+    advanced = parser.add_argument_group("advanced arguments")
     advanced.add_argument('--block-side', type=int, metavar="NUMBER",
         help="""Structural element side for dilation-based background/foreground
         measurement. Should be odd. Default: 11.""", default=11)

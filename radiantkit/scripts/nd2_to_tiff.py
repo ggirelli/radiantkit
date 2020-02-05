@@ -66,7 +66,7 @@ double quotes, i.e., "\\$". Alternatively, use single quotes, i.e., '$'.''',
     parser.add_argument('--version', action = 'version',
         version = f'{sys.argv[0]} {__version__}')
 
-    advanced = parser.add_argument_group("Advanced")
+    advanced = parser.add_argument_group("advanced arguments")
     advanced.add_argument('--deltaZ', type = float, metavar = 'FLOAT',
         help = """If provided (in um), the script does not check delta Z
         consistency and instead uses the provided one.""", default = None)

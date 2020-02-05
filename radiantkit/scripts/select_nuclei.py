@@ -69,7 +69,7 @@ interactive data visualization.
     parser.add_argument('--version', action='version',
         version='%s %s' % (sys.argv[0], __version__,))
 
-    advanced = parser.add_argument_group("Advanced")
+    advanced = parser.add_argument_group("advanced arguments")
     advanced.add_argument('--block-side', type=int, metavar="NUMBER",
         help="""Structural element side for dilation-based background/foreground
         measurement. Should be odd. Default: 11.""", default=11)

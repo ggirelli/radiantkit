@@ -105,7 +105,7 @@ tiff_split big_image.tif split_out_dir 100 -e -O 10 20''',
     parser.add_argument('--version', action = 'version',
         version = '%s %s' % (sys.argv[0], __version__,))
     
-    advanced = parser.add_argument_group("Advanced")
+    advanced = parser.add_argument_group("advanced arguments")
     advanced.add_argument('--invert',
         action = 'store_const', dest = 'inverted',
         const = True, default = False,

@@ -77,7 +77,7 @@ Input images that have the specified prefix and suffix are not segmented.''',
     parser.add_argument('--version', action='version',
         version='%s %s' % (sys.argv[0], __version__,))
 
-    advanced = parser.add_argument_group("Advanced")
+    advanced = parser.add_argument_group("advanced arguments")
     advanced.add_argument('--dilate-fill-erode', type=int, metavar="NUMBER",
         help="""Number of pixels for dilation/erosion steps
         in a dilate-fill-erode operation. Default: 0. Set to 0 to skip.""",
