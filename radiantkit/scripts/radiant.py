@@ -35,6 +35,7 @@ tools for radial analysis of microscopy image.
 
     scripts.analyze_yfish.init_parser(subparsers)
     scripts.select_nuclei.init_parser(subparsers)
+    scripts.extract_objects.init_parser(subparsers)
 
     scripts.tiff_findoof.init_parser(subparsers)
     scripts.tiff_segment.init_parser(subparsers)

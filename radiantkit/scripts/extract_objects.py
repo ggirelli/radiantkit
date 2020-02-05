@@ -1,0 +1,128 @@
+'''
+@author: Gabriele Girelli
+@contact: gigi.ga90@gmail.com
+'''
+
+import argparse as argp
+import ggc
+import logging as log
+import os
+from radiantkit.const import __version__, default_inreg
+from radiantkit.series import Series, SeriesList
+import re
+import sys
+from tqdm import tqdm
+
+log.basicConfig(level=log.INFO, format='%(asctime)s ' +
+    '[P%(process)s:%(module)s:%(funcName)s] %(levelname)s: %(message)s',
+    datefmt='%m/%d/%Y %I:%M:%S')
+
+def init_parser(subparsers: argp._SubParsersAction
+    ) -> argp.ArgumentParser:
+    parser = subparsers.add_parser(__name__.split(".")[-1], description = '''
+Extract data of objects from masks.
+''', formatter_class = argp.RawDescriptionHelpFormatter,
+        help = "Extract data of objects from masks.")
+
+    parser.add_argument('input', type=str,
+        help='Path to folder containing deconvolved tiff images.')
+
+    parser.add_argument('--mask-prefix', type=str, metavar="TEXT",
+        help="""Prefix for output binarized images name.
+        Default: ''.""", default='')
+    parser.add_argument('--mask-suffix', type=str, metavar="TEXT",
+        help="""Suffix for output binarized images name.
+        Default: 'mask'.""", default='mask')
+
+    parser.add_argument('--version', action='version',
+        version='%s %s' % (sys.argv[0], __version__,))
+
+    advanced = parser.add_argument_group("Advanced")
+    advanced.add_argument('--block-side', type=int, metavar="NUMBER",
+        help="""Structural element side for dilation-based background/foreground
+        measurement. Should be odd. Default: 11.""", default=11)
+    advanced.add_argument('--use-labels',
+        action='store_const', dest='labeled',
+        const=True, default=False,
+        help='Use labels from masks instead of relabeling.')
+    advanced.add_argument('--no-rescaling',
+        action='store_const', dest='do_rescaling',
+        const=False, default=True,
+        help='Do not rescale image even if deconvolved.')
+    advanced.add_argument('--uncompressed',
+        action='store_const', dest='compressed',
+        const=False, default=True,
+        help='Generate uncompressed TIFF binary masks.')
+    advanced.add_argument('--inreg', type=str, metavar="REGEXP",
+        help=f"""Regular expression to identify input TIFF images.
+        Must contain 'channel_name' and 'series_id' fields.
+        Default: '{default_inreg}'""", default=default_inreg)
+    advanced.add_argument('-t', type=int, metavar="NUMBER", dest="threads",
+        help="""Number of threads for parallelization. Default: 1""",
+        default=1)
+    advanced.add_argument('-y', '--do-all', action='store_const',
+        help="""Do not ask for settings confirmation and proceed.""",
+        const=True, default=False)
+
+    parser.set_defaults(parse=parse_arguments, run=run)
+
+    return parser
+
+def parse_arguments(args: argp.Namespace) -> argp.Namespace:
+    args.version = __version__
+
+    assert '(?P<channel_name>' in args.inreg
+    assert '(?P<series_id>' in args.inreg
+    args.inreg = re.compile(args.inreg)
+
+    if 0 != len(args.mask_prefix):
+        if '.' != args.mask_prefix[-1]:
+            args.mask_prefix = f"{args.mask_prefix}."
+    if 0 != len(args.mask_suffix):
+        if '.' != args.mask_suffix[0]:
+            args.mask_suffix = f".{args.mask_suffix}"
+
+    if not 0 == args.block_side%2:
+        log.warning("changed ground block side from " +
+            f"{args.block_side} to {args.block_side+1}")
+        args.block_side += 1
+
+    args.threads = ggc.args.check_threads(args.threads)
+
+    return args
+
+def print_settings(args: argp.Namespace, clear: bool = True) -> str:
+    s = f"""# Nuclei selection v{args.version}
+
+    ---------- SETTING : VALUE ----------
+
+       Input directory : '{args.input}'
+
+           Mask prefix : '{args.mask_prefix}'
+           Mask suffix : '{args.mask_suffix}'
+
+     Ground block side : {args.block_side}
+            Use labels : {args.labeled}
+               Rescale : {args.do_rescaling}
+            Compressed : {args.compressed}
+
+               Threads : {args.threads}
+                Regexp : {args.inreg.pattern}
+    """
+    if clear: print("\033[H\033[J")
+    print(s)
+    return(s)
+
+def confirm_arguments(args: argp.Namespace) -> None:
+    settings_string = print_settings(args)
+    if not args.do_all: ggc.prompt.ask("Confirm settings and proceed?")
+
+    assert os.path.isdir(args.input
+        ), f"image folder not found: {args.input}"
+
+    settings_path = os.path.join(args.input, "extract_objects.config.txt")
+    with open(settings_path, "w+") as OH:
+        ggc.args.export_settings(OH, settings_string)
+
+def run(args: argp.Namespace) -> None:
+    confirm_arguments(args)
