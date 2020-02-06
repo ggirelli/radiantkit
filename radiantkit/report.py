@@ -31,14 +31,21 @@ class Report(object):
 
 def report_select_nuclei(args: argparse.Namespace,
     opath: str, online: bool=False, **kwargs) -> None:
-
     report = Report('select_nuclei_report_template.html')
     details = kwargs['details']
 
-    figure = ra.plot.plot_nuclear_selection(kwargs['data'], kwargs['ref'],
+    figure = ra.plot.plot_nuclear_selection(kwargs['data'], args.dna_channel,
         details['size']['range'], details['isum']['range'],
         details['size']['fit'], details['isum']['fit'],)
 
     report.render(opath, online=online, args=args, details=details,
         data=kwargs['data'], series_list=kwargs['series_list'],
         plot_json=figure.to_json(), now=str(datetime.now()))
+
+def report_extract_objects(args: argparse.Namespace,
+    opath: str, online: bool=False, **kwargs) -> None:
+    report = Report('extract_objects_report_template.html')
+
+    report.render(opath, online=online, args=args,
+        data=kwargs['data'], series_list=kwargs['series_list'],
+        now=str(datetime.now()))

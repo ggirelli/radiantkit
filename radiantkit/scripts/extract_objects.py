@@ -10,9 +10,9 @@ import logging as log
 import os
 import pandas as pd
 from radiantkit.const import __version__, default_inreg
-from radiantkit import image
-from radiantkit.series import Series, SeriesList
 from radiantkit.particle import Nucleus
+from radiantkit.report import report_extract_objects
+from radiantkit.series import Series, SeriesList
 import re
 import sys
 from tqdm import tqdm
@@ -59,6 +59,14 @@ Extract data of objects from masks.
         action='store_const', dest='export_tiffs',
         const=False, default=True,
         help='Skip export of channel and mask tiffs.')
+
+    report = parser.add_argument_group("report arguments")
+    report.add_argument('--no-report', action='store_const',
+        help="""Do not generate an HTML report.""",
+        dest="mk_report", const=False, default=True)
+    report.add_argument('--online-report', action='store_const',
+        help="""Make a smaller HTML report by linking remote JS libraries.""",
+        dest="online_report", const=True, default=False)
 
     advanced = parser.add_argument_group("advanced arguments")
     advanced.add_argument('--block-side', type=int, metavar="NUMBER",
@@ -205,6 +213,13 @@ def run(args: argp.Namespace) -> None:
 
         odata = pd.concat(odata, sort=False)
         odata.to_csv(feat_path, index=False, sep="\t")
+
+        if args.mk_report:
+            report_path = os.path.join(args.output,
+                "extract_objects.report.html")
+            log.info(f"writing report to\n{report_path}")
+            report_extract_objects(args, report_path, args.online_report,
+                data=ndata, series_list=series_list)
 
     if args.export_tiffs:
         tiff_path = os.path.join(args.output, "tiff")

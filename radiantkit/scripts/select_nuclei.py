@@ -253,5 +253,4 @@ def run(args: argp.Namespace) -> None:
         report_path = os.path.join(args.input, "select_nuclei.report.html")
         log.info(f"writing report to\n{report_path}")
         report_select_nuclei(args, report_path, args.online_report,
-            data=nuclei_data, details=details,
-            series_list=series_list, ref=args.dna_channel)
+            data=nuclei_data, details=details, series_list=series_list)
