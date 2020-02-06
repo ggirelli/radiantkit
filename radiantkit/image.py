@@ -282,11 +282,24 @@ class ImageLabeled(ImageBase):
         return s
 
 class ImageBinary(ImageBase):
+    _background: float=0
+    _foreground: float=0
+
     def __init__(self, pixels: np.ndarray, path: Optional[str]=None,
         axes: Optional[str]=None, doRebinarize: bool=True):
         super(ImageBinary, self).__init__(pixels, path, axes)
         if doRebinarize: self._rebinarize()
         assert 1 == self.pixels.max()
+        self._foreground = self.pixels.sum()
+        self._background = np.prod(self.pixels.shape)-self._foreground
+
+    @property
+    def background(self):
+        return self._background
+    
+    @property
+    def foreground(self):
+        return self._foreground
 
     @staticmethod
     def from_tiff(path: str, axes: Optional[str]=None,
@@ -339,8 +352,8 @@ class ImageBinary(ImageBase):
 
     def __repr__(self) -> str:
         s = super(ImageBinary, self).__repr__()
-        s += f"; Foreground voxels: {self.pixels.sum()}"
-        s += f"; Background voxels: {(self.pixels*(-1)+1).sum()}"
+        s += f"; Foreground voxels: {self.foreground}"
+        s += f"; Background voxels: {self.background}"
         return s
 
 class Image(ImageBase):

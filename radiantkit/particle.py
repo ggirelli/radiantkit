@@ -49,7 +49,7 @@ class ParticleSettings(object):
 
     @property
     def total_size(self) -> int:
-        if self._total_size is None: self._total_size = self._mask.pixels.sum()
+        if self._total_size is None: self._total_size = self._mask.foreground
         return self._total_size
 
     @property

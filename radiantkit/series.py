@@ -58,7 +58,7 @@ class ChannelList(object):
     def ground_block_side(self) -> int:
         return self._ground_block_side
     
-    def __update_ground(self, name: Optional[str]):
+    def __update_ground(self, name: Optional[str]=None):
         if name is None:
             for name,channel in self._channels.items():
                 channel.update_ground(self.mask, self.ground_block_side)
