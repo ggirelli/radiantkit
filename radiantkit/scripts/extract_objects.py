@@ -165,7 +165,7 @@ def run(args: argp.Namespace) -> None:
         f"{len(series_list.channel_names)} channels each" +
         f": {series_list.channel_names}")
     for series in series_list: series.labeled = args.labeled
-    for series in series_list: series.ground_bloc_side = args.block_side
+    for series in series_list: series.ground_block_side = args.block_side
 
     if not args.export_tiffs and not args.export_features:
         log.info("Nothing to export when using both " +
@@ -179,7 +179,7 @@ def run(args: argp.Namespace) -> None:
     else:
         series_list = joblib.Parallel(n_jobs=args.threads, verbose=11)(
             joblib.delayed(Series.extract_particles
-                )(s, s.channel_names, Nucleus) for s in series_list)
+                )(s, s.names, Nucleus) for s in series_list)
 
     if args.export_features:
         feat_path = os.path.join(args.output, "nuclear_features.tsv")

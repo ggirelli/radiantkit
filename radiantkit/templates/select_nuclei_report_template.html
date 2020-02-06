@@ -134,10 +134,10 @@
 						<tbody>
 							{% for series in series_list: %}
 							<tr>
-								<td>{{ series.channels[series.ref].path|dirname }}</td>
-								<td>{{ series.channels[series.ref].path|basename }}</td>
-								<td>{{ series.get_channel(args.dna_channel).ground[0] }}</td>
-								<td>{{ series.get_channel(args.dna_channel).ground[1] }}</td>
+								<td>{{ series[args.dna_channel][1].path|dirname }}</td>
+								<td>{{ series[args.dna_channel][1].path|basename }}</td>
+								<td>{{ series[args.dna_channel][1].background }}</td>
+								<td>{{ series[args.dna_channel][1].foreground }}</td>
 								<td>{{ series.mask.path|basename }}</td>
 								<td>{{ series.particles|length }}</td>
 							</tr>

@@ -158,7 +158,7 @@ class ImageBase(ImageSettings):
 
     def load_from_local(self) -> None:
         assert self._path_to_local is not None
-        assert os.path.isfile(self._path_to_local)
+        assert os.path.isfile(self._path_to_local), self._path_to_local
         self._pixels = self.from_tiff(self._path_to_local).pixels
 
     def unload(self) -> None:
@@ -259,8 +259,8 @@ class ImageLabeled(ImageBase):
     def inherit_labels(self, mask2d: 'ImageLabeled') -> None:
         self._pixels = inherit_labels(self, mask2d)
 
-    def binary(self) -> 'ImageBinary':
-        B = ImageBinary(self.pixels, self._path_to_local, self._axes_order)
+    def binarize(self) -> 'ImageBinary':
+        B = ImageBinary(self.pixels, None, self._axes_order)
         B.aspect = self.aspect
         return B
 
@@ -312,7 +312,7 @@ class ImageBinary(ImageBase):
         self._pixels = np.logical_not(self.pixels)
 
     def label(self) -> ImageLabeled:
-        L = ImageLabeled(self.pixels, self._path_to_local, self._axes_order)
+        L = ImageLabeled(self.pixels, None, self._axes_order)
         L.aspect = self.aspect
         return L
 
@@ -341,8 +341,12 @@ class Image(ImageBase):
         super(Image, self).__init__(pixels, path, axes)
     
     @property
-    def ground(self):
-        return (self._background, self._foreground)
+    def background(self):
+        return self._background
+
+    @property
+    def foreground(self):
+        return self._foreground
 
     @property
     def rescale_factor(self) -> float:
@@ -373,16 +377,17 @@ class Image(ImageBase):
         return ImageBinary(threshold_adaptive(self.pixels, block_size,
             method, mode, *args, **kwargs), doRebinarize=False)
 
-    def update_ground(self, M: ImageBinary, block_side: int=11) -> None:
+    def update_ground(self, M: Union[ImageBinary,ImageLabeled],
+        block_side: int=11) -> None:
+        if isinstance(M, ImageLabeled): M = M.binarize()
         M = dilate(M.pixels, block_side)
-
         self._foreground = np.median(self.pixels[M])
         self._background = np.median(self.pixels[np.logical_not(M)])
 
     def __repr__(self) -> str:
         s = super(Image, self).__repr__()
-        if self.ground[0] is not None:
-            s += f"; Back/foreground: {self.ground}"
+        if self.background is not None:
+            s += f"; Back/foreground: {(self.background, self.foreground)}"
         return s
 
 def get_huygens_rescaling_factor(path: str) -> float:

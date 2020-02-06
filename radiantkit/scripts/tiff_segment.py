@@ -49,7 +49,8 @@ Input images that have the specified prefix and suffix are not segmented.''',
         help='Path to folder containing deconvolved tiff images.')
 
     parser.add_argument('-o', metavar = "DIRPATH", type = str, default = None,
-        help = """Path to output TIFF folder. Defaults to the input folder""")
+        help = """Path to output TIFF folder. Defaults to the input folder""",
+        dest = "output")
     parser.add_argument('--outprefix', type=str, metavar="TEXT",
         help="""Prefix for output binarized images name.
         Default: ''.""", default='')
@@ -165,7 +166,7 @@ def print_settings(args: argparse.Namespace, clear: bool = True) -> str:
         Minimum radius : [{args.radius[0]:.2f}, {args.radius[1]:.2f}] vx
                Clear Z : {args.do_clear_Z}
 
-               Rescale : {do_rescaling}
+               Rescale : {args.do_rescaling}
                Threads : {args.threads}
                 Regexp : {args.inreg.pattern}
                  Debug : {args.debug_mode}
@@ -244,7 +245,7 @@ def run_segmentation(args: argparse.Namespace,
 
     imgbase,imgext = os.path.splitext(imgpath)
     if not args.labeled:
-        logging.info("writing binary output")
+        logging.info("writing output")
         M = image.ImageBinary(L.pixels)
         M.to_tiff(os.path.join(args.output,
             f"{args.outprefix}{imgbase}{args.outsuffix}{imgext}"),
@@ -264,6 +265,10 @@ def run(args: argparse.Namespace) -> None:
     if 0 != len(args.outprefix): imglist = [f for f in imglist
         if not os.path.splitext(f)[0].startswith(args.outprefix)]
     
+    logLevel = logging.getLogger().level
+    if args.debug_mode: logLevel = "DEBUG"
+    if args.silent: logLevel = "CRITICAL"
+
     logging.info(f"found {len(imglist)} image(s) to segment.")
     if 1 == args.threads:
         for imgpath in tqdm(imglist): run_segmentation(
@@ -271,5 +276,5 @@ def run(args: argparse.Namespace) -> None:
     else:
         Parallel(n_jobs = args.threads, verbose = 11)(
             delayed(run_segmentation)(
-                args, imgpath, args.input, logging.getLogger().level)
+                args, imgpath, args.input, logLevel)
             for imgpath in imglist)

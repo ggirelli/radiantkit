@@ -175,6 +175,7 @@ def extract_passing_nuclei_per_series(
 
 def remove_labels_from_series_mask(series: Series, labels: List[int],
     labeled: bool, compressed: bool) -> None:
+    series.mask.load_from_local()
     os.rename(series.mask.path, f"{series.mask.path}.old")
     if labeled:
         L = series.mask.pixels
