@@ -13,6 +13,7 @@ from radiantkit.image import Image, ImageBase, ImageBinary, ImageLabeled
 from radiantkit.selection import BoundingElement
 from radiantkit.stat import cell_cycle_fit, range_from_fit
 from skimage.measure import marching_cubes_lewiner, mesh_surface_area
+from skimage.morphology import convex_hull_image
 from tqdm import tqdm
 from typing import Dict, List, Optional, Tuple, Type
 
@@ -67,12 +68,8 @@ class ParticleSettings(object):
     @property
     def surface(self) -> float:
         if self._surface is None:
-            M = self._mask.pixels.copy()
-            shape = [1 for axis in M.shape]
-            shape[-2:] = M.shape[-2:]
-            M = np.vstack((np.zeros(shape), M, np.zeros(shape)))
             verts, faces, ns, vs = marching_cubes_lewiner(
-                M, 0.0, self._mask.aspect)
+                self._mask.offset(1), 0.0, self._mask.aspect)
             self._surface = mesh_surface_area(verts, faces)
         return self._surface
 
@@ -81,6 +78,14 @@ class ParticleSettings(object):
         axes_ids = tuple([self.mask.axes.index(axis)
             for axis in self.mask.axes if axis not in axes])
         return self.mask.pixels.max(axes_ids).sum()
+
+    def describe_shape(self, spacing: Optional[np.ndarray]=None) -> float:
+        if None == spacing: spacing = self.aspect
+        if 2 == len(self.mask.shape):
+            return self.total_size/convex_hull_image(self.mask.pixels).sum()
+        elif 3 == len(self.mask.shape):
+            return (np.pi*(6.0*self.total_size)**2)**(1/3.0)/self.surface
+        else: return 0
 
 class ParticleBase(ParticleSettings):
     _intensity: Dict[str, Dict[str, float]]=None
