@@ -8,6 +8,7 @@ import ggc
 import joblib
 import logging as log
 import os
+import pandas as pd
 from radiantkit.const import __version__, default_inreg
 from radiantkit import image
 from radiantkit.series import Series, SeriesList
@@ -184,13 +185,26 @@ def run(args: argp.Namespace) -> None:
     if args.export_features:
         feat_path = os.path.join(args.output, "nuclear_features.tsv")
         log.info(f"exporting nuclear features to '{feat_path}'")
+
+        odata = []
         for series in series_list:
             for nucleus in series.particles:
-                print((nucleus.label, nucleus.mask, nucleus.region_of_interest,
-                    nucleus.total_size, nucleus.surface,
-                    [(cn, nucleus.get_intensity_sum(cn),
-                        nucleus.get_intensity_mean(cn))
-                        for cn in nucleus.channel_names]))
+                ndata = dict(series_id=[series.ID],
+                    nucleus_id=[nucleus.label],
+                    total_size=[nucleus.total_size],
+                    volume=[nucleus.volume],
+                    surface=[nucleus.surface],
+                    shape=[nucleus.shape])
+                
+                for name in nucleus.channel_names:
+                    ndata[f"{name}_isum"] = [nucleus.get_intensity_sum(name)]
+                    ndata[f"{name}_imean"] = [nucleus.get_intensity_mean(name)]
+                
+                ndata = pd.DataFrame.from_dict(ndata)
+                odata.append(ndata)
+
+        odata = pd.concat(odata, sort=False)
+        odata.to_csv(feat_path, index=False, sep="\t")
 
     if args.export_tiffs:
         tiff_path = os.path.join(args.output, "tiff")

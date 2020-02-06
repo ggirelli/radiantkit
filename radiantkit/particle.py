@@ -23,6 +23,7 @@ class ParticleSettings(object):
     label: Optional[int] = None
     _total_size: Optional[int]=None
     _surface: Optional[int]=None
+    _shape: Optional[float]=None
 
     def __init__(self, B: ImageBinary,
         region_of_interest: BoundingElement):
@@ -69,23 +70,28 @@ class ParticleSettings(object):
     def surface(self) -> float:
         if self._surface is None:
             verts, faces, ns, vs = marching_cubes_lewiner(
-                self._mask.offset(1), 0.0, self._mask.aspect)
+                self._mask.get_offset(1), 0.0, self._mask.aspect)
             self._surface = mesh_surface_area(verts, faces)
         return self._surface
+
+    @property
+    def shape(self, spacing: Optional[np.ndarray]=None) -> float:
+        if self._shape is None:
+            if None == spacing: spacing = self.aspect
+            if 2 == len(self.mask.shape):
+                convex_size = convex_hull_image(self.mask.pixels).sum()
+                self._shape = self.total_size/convex_size
+            elif 3 == len(self.mask.shape):
+                sphere_surface = (np.pi*(6.0*self.total_size)**2)**(1/3.0)
+                self._shape = sphere_surface/self.surface
+            else: self._shape = 0
+        return self._shape
 
     def size(self, axes: str) -> int:
         assert all([axis in self.mask.axes for axis in axes])
         axes_ids = tuple([self.mask.axes.index(axis)
             for axis in self.mask.axes if axis not in axes])
         return self.mask.pixels.max(axes_ids).sum()
-
-    def describe_shape(self, spacing: Optional[np.ndarray]=None) -> float:
-        if None == spacing: spacing = self.aspect
-        if 2 == len(self.mask.shape):
-            return self.total_size/convex_hull_image(self.mask.pixels).sum()
-        elif 3 == len(self.mask.shape):
-            return (np.pi*(6.0*self.total_size)**2)**(1/3.0)/self.surface
-        else: return 0
 
 class ParticleBase(ParticleSettings):
     _intensity: Dict[str, Dict[str, float]]=None
