@@ -179,6 +179,18 @@ class ImageBase(ImageSettings):
         save_tiff(path, self.pixels, self.dtype, compressed, bundle_axes,
             inMicrons, ResolutionZ, forImageJ, **kwargs)
 
+    def get_offset(self, offset: int) -> np.ndarray:
+        if 0 == offset: return self.pixels
+        if offset < 0:
+            offset *= -1
+            return self.pixels[tuple([slice(offset,-offset)
+                for a in range(len(self.shape))])]
+        else:
+            canvas = np.zeros(np.array(self.shape)+2*offset)
+            canvas[tuple([slice(offset,self.shape[a]+offset)
+                for a in range(len(self.shape))])] = self.pixels
+            return canvas
+
     def __repr__(self) -> str:
         s = f"{self.nd}D {self.__class__.__name__}: "
         s += f"{'x'.join([str(d) for d in self.shape])} [{self.axes}, "
