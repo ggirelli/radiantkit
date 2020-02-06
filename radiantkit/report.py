@@ -30,7 +30,7 @@ class Report(object):
             OH.write(self._template.render(**kwargs))
 
 def report_select_nuclei(args: argparse.Namespace,
-    opath: str, **kwargs) -> None:
+    opath: str, online: bool=False, **kwargs) -> None:
 
     report = Report('select_nuclei_report_template.html')
     details = kwargs['details']
@@ -39,6 +39,6 @@ def report_select_nuclei(args: argparse.Namespace,
         details['size']['range'], details['isum']['range'],
         details['size']['fit'], details['isum']['fit'],)
 
-    report.render(opath, args=args, details=details,
+    report.render(opath, online=online, args=args, details=details,
         data=kwargs['data'], series_list=kwargs['series_list'],
         plot_json=figure.to_json(), now=str(datetime.now()))

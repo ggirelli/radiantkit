@@ -69,6 +69,14 @@ interactive data visualization.
     parser.add_argument('--version', action='version',
         version='%s %s' % (sys.argv[0], __version__,))
 
+    report = parser.add_argument_group("report arguments")
+    report.add_argument('--no-report', action='store_const',
+        help="""Do not generate an HTML report.""",
+        dest="mk_report", const=False, default=True)
+    report.add_argument('--online-report', action='store_const',
+        help="""Make a smaller HTML report by linking remote JS libraries.""",
+        dest="online_report", const=True, default=False)
+
     advanced = parser.add_argument_group("advanced arguments")
     advanced.add_argument('--block-side', type=int, metavar="NUMBER",
         help="""Structural element side for dilation-based background/foreground
@@ -82,9 +90,8 @@ interactive data visualization.
         const=False, default=True,
         help='Do not rescale image even if deconvolved.')
     advanced.add_argument('--no-remove',
-        action='store_const', dest='remove_labels',
-        const=False, default=True,
-        help='Do not remove labels of discarded nuclei.')
+        action='store_const', dest='remove_labels', const=False, default=True,
+        help='Do not regenerate masks after removing discarded nuclei labels.')
     advanced.add_argument('--uncompressed',
         action='store_const', dest='compressed',
         const=False, default=True,
@@ -242,7 +249,9 @@ def run(args: argp.Namespace) -> None:
     log.info(f"writing nuclear data to:\n{ndpath}")
     nuclei_data.to_csv(ndpath, sep="\t", index=False)
 
-    report_path = os.path.join(args.input, "select_nuclei.report.html")
-    log.info(f"writing report to\n{report_path}")
-    report_select_nuclei(args, report_path, data=nuclei_data,
-        details=details, series_list=series_list, ref=args.dna_channel)
+    if args.mk_report:
+        report_path = os.path.join(args.input, "select_nuclei.report.html")
+        log.info(f"writing report to\n{report_path}")
+        report_select_nuclei(args, report_path, args.online_report,
+            data=nuclei_data, details=details,
+            series_list=series_list, ref=args.dna_channel)

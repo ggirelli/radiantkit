@@ -1,14 +1,4 @@
-<!DOCTYPE html>
-<html>
-<head>
-	<title>RadIAnT-Kit - Nuclei selection</title>
-	<script>{% include "include/jquery-3.4.1.min.js" %}</script>
-	<script>{% include "include/popper.min.js" %}</script>
-	<script>{% include "include/bootstrap.min.js" %}</script>
-	<style>{% include "include/bootstrap.min.css" %}</style>
-	<script>{% include "include/plotly-1.52.1.min.js" %}</script>
-</head>
-<body><div class="container">
+{% include "include/dom_start.html" %}<div class="container">
 	<h1 class="my-5">RadIAnT-Kit - Nuclei selection</h1>
 	<div class="row">
 		<div class="col">
@@ -155,5 +145,4 @@
 	<div class="row p-2">
 		<p><small>Report generated on {{ now }} with <code>radiant select_nuclei v{{args.version}}</code>.</small></p>
 	</div>
-</div></body>
-</html>
+</div>{% include "include/dom_end.html" %}
