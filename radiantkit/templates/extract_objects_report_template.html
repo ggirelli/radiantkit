@@ -1,5 +1,5 @@
 {% include "include/dom_start.html" %}<div class="container">
-	<h1 class="my-5">RadIAnT-Kit - Object extraction</h1>
+	<h1 class="my-5">{{title}}</h1>
 	<div class="row">
 		<div class="col">
 			<nav>
@@ -71,6 +71,12 @@
 					</table>
 				</div>
 				<div class="tab-pane fade" id="nav-results" role="tabpanel" aria-labelledby="nav-results-tab">
+					<div id="extract_objects" class="mx-auto" style="width: 1000px;"></div>
+					<script>
+						CONTAINER = document.getElementById('extract_objects');
+						PLOT_JSON = {{ plot_json|safe }};
+						Plotly.newPlot( CONTAINER, PLOT_JSON.data, PLOT_JSON.layout, {"responsive":true, "displayModeBar":true})
+					</script>
 				</div>
 				<div class="tab-pane fade" id="nav-data" role="tabpanel" aria-labelledby="nav-data-tab">
 					<table class="table table-hover text-center">
@@ -104,6 +110,6 @@
 		</div>
 	</div>
 	<div class="row p-2">
-		<p><small>Report generated on {{ now }} with <code>radiant select_nuclei v{{args.version}}</code>.</small></p>
+		<p><small>Report generated on {{ now }} with <code>radiant extract_objects v{{args.version}}</code>.</small></p>
 	</div>
 </div>{% include "include/dom_end.html" %}

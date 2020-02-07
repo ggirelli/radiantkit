@@ -3,10 +3,13 @@
 @contact: gigi.ga90@gmail.com
 '''
 
+import ggc
 import itertools
+import joblib
 import logging
 import numpy as np
 import os
+import pandas as pd
 from radiantkit.image import Image, ImageBase, ImageBinary, ImageLabeled
 from radiantkit.path import find_re, get_image_details
 from radiantkit.path import select_by_prefix_and_suffix
@@ -279,12 +282,14 @@ class Series(ChannelList):
         return s
 
 class SeriesList(object):
+    name: str=None
     _series: List[Series]=None
     label: Optional[str]=None
 
-    def __init__(self, series_list: List[Series]):
+    def __init__(self, name: str="", series_list: List[Series]=[]):
         super(SeriesList, self).__init__()
         self._series = series_list
+        self.name = name
 
     @property
     def channel_names(self):
@@ -332,7 +337,63 @@ class SeriesList(object):
         clen = len(set([len(s) for s in series.values()]))
         assert 1 == clen, f"inconsistent number of channels in '{dpath}' series"
 
-        return SeriesList(series.values())
+        return SeriesList(os.path.basename(dpath), series.values())
+
+    def extract_particles(self, particleClass: Type[ParticleBase],
+        threads: int=1) -> None:
+        threads = ggc.args.check_threads(threads)
+        if 1 == threads:
+            [series.init_particles(particleClass=particleClass)
+                for series in tqdm(self)]
+        else:
+            self._series = joblib.Parallel(n_jobs=threads, verbose=11)(
+                joblib.delayed(Series.extract_particles
+                    )(series, series.names, particleClass)
+                    for series in self)
+
+    def export_particle_features(self, path: str) -> pd.DataFrame:
+        fdata = []
+        for series in self:
+            for nucleus in series.particles:
+                ndata = dict(
+                    root=[self.name],
+                    series_id=[series.ID],
+                    nucleus_id=[nucleus.label],
+                    total_size=[nucleus.total_size],
+                    volume=[nucleus.volume],
+                    surface=[nucleus.surface],
+                    shape=[nucleus.shape])
+                
+                for name in nucleus.channel_names:
+                    ndata[f"{name}_isum"] = [nucleus.get_intensity_sum(name)]
+                    ndata[f"{name}_imean"] = [nucleus.get_intensity_mean(name)]
+                ndata = pd.DataFrame.from_dict(ndata)
+                fdata.append(ndata)
+
+        fdata = pd.concat(fdata, sort=False)
+        fdata.to_csv(path, index=False, sep="\t")
+        return fdata
+
+    def particle_feature_labels(self):
+        dfu = dict(total_size='Size (vx)', volume='Volume (nm^3)',
+            shape='Shape', surface='Surface (nm^2)',
+            sizeXY='XY size (px)', sizeZ='Z size (px)')
+        for channel in self.channel_names:
+            dfu[f'{channel}_isum'] = f'"{channel}" intensity sum (a.u.)'
+            dfu[f'{channel}_imean'] = f'"{channel}" intensity sum (a.u.)'
+        return dfu
+
+    def export_particle_tiffs(self, path: str, threads: int=1,
+        compressed: bool=False) -> None:
+        threads = ggc.args.check_threads(threads)
+        assert os.path.isdir(path)
+        if 1 == threads:
+            for series in tqdm(self, desc="series"):
+                series.export_particles(path, compressed)
+        else:
+            joblib.Parallel(n_jobs=threads, verbose=11)(
+                joblib.delayed(Series.static_export_particles)(
+                    series, path, compressed) for series in self)
 
     def __len__(self) -> int:
         return len(self._series)

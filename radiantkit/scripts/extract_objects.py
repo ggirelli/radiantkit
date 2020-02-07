@@ -5,7 +5,6 @@
 
 import argparse as argp
 import ggc
-import joblib
 import logging as log
 import os
 import pandas as pd
@@ -168,6 +167,7 @@ def confirm_arguments(args: argp.Namespace) -> None:
 def run(args: argp.Namespace) -> None:
     confirm_arguments(args)
 
+    log.info(f"parsing series folder")
     series_list = SeriesList.from_directory(args.input, args.inreg,
         args.ref_channel, (args.mask_prefix, args.mask_suffix),
         args.aspect, args.labeled, args.block_side)
@@ -181,55 +181,25 @@ def run(args: argp.Namespace) -> None:
         sys.exit()
 
     log.info(f"extracting nuclei")
-    if 1 == args.threads:
-        series_list = [Series.extract_particles(s, s.channel_names, Nucleus)
-            for s in tqdm(series_list)]
-    else:
-        series_list = joblib.Parallel(n_jobs=args.threads, verbose=11)(
-            joblib.delayed(Series.extract_particles
-                )(s, s.names, Nucleus) for s in series_list)
+    series_list.extract_particles(Nucleus, args.threads)
 
     if args.export_features:
         feat_path = os.path.join(args.output, "nuclear_features.tsv")
         log.info(f"exporting nuclear features to '{feat_path}'")
-
-        odata = []
-        for series in series_list:
-            for nucleus in series.particles:
-                ndata = dict(series_id=[series.ID],
-                    nucleus_id=[nucleus.label],
-                    total_size=[nucleus.total_size],
-                    volume=[nucleus.volume],
-                    surface=[nucleus.surface],
-                    shape=[nucleus.shape])
-                
-                for name in nucleus.channel_names:
-                    ndata[f"{name}_isum"] = [nucleus.get_intensity_sum(name)]
-                    ndata[f"{name}_imean"] = [nucleus.get_intensity_mean(name)]
-                
-                ndata = pd.DataFrame.from_dict(ndata)
-                odata.append(ndata)
-
-        odata = pd.concat(odata, sort=False)
-        odata.to_csv(feat_path, index=False, sep="\t")
+        fdata = series_list.export_particle_features(feat_path)
 
         if args.mk_report:
             report_path = os.path.join(args.output,
                 "extract_objects.report.html")
             log.info(f"writing report to\n{report_path}")
             report_extract_objects(args, report_path, args.online_report,
-                data=ndata, series_list=series_list)
+                data=fdata, series_list=series_list)
 
     if args.export_tiffs:
         tiff_path = os.path.join(args.output, "tiff")
         assert not os.path.isfile(tiff_path)
         if not os.path.isdir(tiff_path): os.mkdir(tiff_path)
-
         log.info(f"exporting nuclei images to '{tiff_path}'")
-        if 1 == args.threads:
-            for series in tqdm(series_list, desc="series"):
-                series.export_particles(tiff_path, args.compressed)
-        else:
-            joblib.Parallel(n_jobs=args.threads, verbose=11)(
-                joblib.delayed(Series.static_export_particles)(
-                    s, tiff_path, args.compressed) for s in series_list)
+        series_list.export_particle_tiffs(tiff_path,
+            args.threads, args.compressed)
+
