@@ -137,17 +137,22 @@ def plot_nuclear_selection(data: pd.DataFrame, ref: str,
     
     return fig
 
-def plot_nuclear_features(data: pd.DataFrame, labels: Dict[str,str],
-    n_id_cols: int=3, n_series_cols: int=3):
-    fig = make_subplots(rows=(data.shape[1]-n_id_cols)//n_series_cols+1,
-        cols=n_series_cols)
-
+def plot_nuclear_features(data: pd.DataFrame, spx_data: pd.DataFrame,
+    labels: Dict[str,str], n_id_cols: int=3,
+    n_plot_grid_col: int=3) -> go.Figure:
     root_list = np.unique(data['root'].values)
     N = root_list.shape[0]
     pal = ['hsl('+str(h)+',50%'+',50%)' for h in np.linspace(0, 360, N)]
 
+    channel_list = np.unique(spx_data['channel'].values)
+    n_features = data.shape[1]-n_id_cols
+    n_rows = (n_features+len(channel_list))//n_plot_grid_col+1
+    fig = make_subplots(rows=n_rows, cols=n_plot_grid_col,
+        horizontal_spacing=.2)
+
+
     layout = {}
-    for ci in range(data.shape[1]-n_id_cols):
+    for ci in range(n_features):
         colname = data.columns[ci+n_id_cols]
         if colname in labels: collab = labels[colname]
         else: collab = colname
@@ -156,16 +161,36 @@ def plot_nuclear_features(data: pd.DataFrame, labels: Dict[str,str],
             fig.add_trace(go.Box(name=root,
                 y=data[data['root']==root][colname].values,
                 notched=True, marker_color=pal[np.argmax(root_list == root)]),
-                row=ci//n_series_cols+1, col=ci%n_series_cols+1)
+                row=ci//n_plot_grid_col+1, col=ci%n_plot_grid_col+1)
 
         if ci == 0: layout[f"yaxis"] = dict(title=collab)
         else: layout[f"yaxis{ci+1}"] = dict(title=collab)
 
+    for ci in range(n_features, n_features+len(channel_list)):
+        channel = channel_list[ci-n_features]
+        spx_channel = spx_data[spx_data['channel'] == channel]
+
+        for root in spx_channel['root'].values:
+            spx_root = spx_channel[spx_channel['root'] == root]
+            fig.add_trace(go.Box(name=root, notched=True,
+                    y=[[spx_root['vmin'].values[0],spx_root['vmax'].values[0]]],
+                    marker_color=pal[np.argmax(root_list == root)]
+                ), row=ci//n_plot_grid_col+1, col=ci%n_plot_grid_col+1)
+            fig.update_traces(
+                q1=spx_root['q1'], q3=spx_root['q3'],
+                median=spx_root['median'],
+                lowerfence=spx_root['whisk_low'],
+                upperfence=spx_root['whisk_high'],
+                row=ci//n_plot_grid_col+1, col=ci%n_plot_grid_col+1)
+
+        layout[f"yaxis{ci+1}"] = dict(
+            title=f'"{channel}" single pixel intensity (a.u.)')
+
     fig.update_xaxes(tickangle=45)
-    fig.update_xaxes(ticks="outside", tickwidth=1, ticklen=5)
-    fig.update_yaxes(ticks="outside", tickwidth=1, ticklen=5)
+    fig.update_xaxes(ticks="outside", tickwidth=1, ticklen=5, automargin=True)
+    fig.update_yaxes(ticks="outside", tickwidth=1, ticklen=5, automargin=True)
     fig.update_layout(**layout)
-    fig.update_layout(height=1400, width=1000, autosize=False)
+    fig.update_layout(height=400*n_rows, width=1000, autosize=False)
     fig.update_layout(showlegend=False)
     return fig
 

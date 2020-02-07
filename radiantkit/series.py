@@ -14,6 +14,7 @@ from radiantkit.image import Image, ImageBase, ImageBinary, ImageLabeled
 from radiantkit.path import find_re, get_image_details
 from radiantkit.path import select_by_prefix_and_suffix
 from radiantkit.particle import ParticleBase, ParticleFinder
+from radiantkit.stat import quantile_from_counts
 import sys
 from tqdm import tqdm
 from typing import Dict, List, Tuple
@@ -305,7 +306,7 @@ class SeriesList(object):
             dpath, find_re(dpath, inreg), *maskfix)
         series = {}
 
-        for path in channels:
+        for path in tqdm(channels, desc="initializing channels"):
             sid, channel_name = get_image_details(path,inreg)
             if sid not in series:
                 series[sid] = Series(sid, ground_block_side)
@@ -320,7 +321,7 @@ class SeriesList(object):
                 os.path.join(dpath, path))
         
         if ref is not None:
-            for path in masks:
+            for path in tqdm(masks, desc="initializing masks"):
                 sid, channel_name = get_image_details(path,inreg)
                 if sid not in series:
                     series[sid] = Series(sid, ground_block_side)
@@ -374,14 +375,49 @@ class SeriesList(object):
         fdata.to_csv(path, index=False, sep="\t")
         return fdata
 
-    def particle_feature_labels(self):
+    def particle_feature_labels(self) -> Dict[str,str]:
         dfu = dict(total_size='Size (vx)', volume='Volume (nm^3)',
             shape='Shape', surface='Surface (nm^2)',
             sizeXY='XY size (px)', sizeZ='Z size (px)')
         for channel in self.channel_names:
             dfu[f'{channel}_isum'] = f'"{channel}" intensity sum (a.u.)'
-            dfu[f'{channel}_imean'] = f'"{channel}" intensity sum (a.u.)'
+            dfu[f'{channel}_imean'] = f'"{channel}" intensity mean (a.u.)'
         return dfu
+
+    def get_particle_single_px_stats(self) -> pd.DataFrame:
+        box_stats = []
+        for channel_name in tqdm(self.channel_names,
+            desc='calculating channel box stats'):
+            odata = pd.DataFrame.from_dict(dict(value=[0], count=[0]))
+            odata.set_index('value')
+            for series in self:
+                channel = series[channel_name][1]
+                for nucleus in series.particles:
+                    odata = odata.add(fill_value=0,
+                        other=nucleus.get_intensity_value_counts(channel))
+            odata.sort_index(inplace=True)
+            odata['cumsum'] = np.cumsum(odata['count'])
+
+            q1 = quantile_from_counts(odata['value'].values,
+                odata['cumsum'].values, .25, True)
+            median = quantile_from_counts(odata['value'].values,
+                odata['cumsum'].values, .5, True)
+            q3 = quantile_from_counts(odata['value'].values,
+                odata['cumsum'].values, .75, True)
+            iqr = q3-q1
+            whisk_low = max(q1-iqr, odata['value'].min())
+            whisk_high = min(q3+iqr, odata['value'].max())
+            outliers = np.append(
+                odata['value'].values[odata['value'].values < whisk_low],
+                odata['value'].values[odata['value'].values > whisk_low])
+
+            box_stats.append(pd.DataFrame.from_dict(dict(root=[self.name],
+                channel=[channel_name], vmin=[odata['value'].min()],
+                whisk_low=[whisk_low], q1=[q1], median=[median], q3=[q3],
+                whisk_high=[whisk_high], vmax=[odata['value'].max()],
+                n_outliers = [len(outliers)], outliers = [outliers]
+            )))
+        return pd.concat(box_stats)
 
     def export_particle_tiffs(self, path: str, threads: int=1,
         compressed: bool=False) -> None:

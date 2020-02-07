@@ -126,10 +126,14 @@ class ParticleBase(ParticleSettings):
         self._intensity[channel_name]['mean'] = np.mean(pixels)
         self._intensity[channel_name]['sum'] = np.sum(pixels)
 
-    def get_intensity_value_conts(self, I: Image) -> List[np.ndarray]:
+    def get_intensity_value_counts(self, I: Image) -> List[np.ndarray]:
         pixels = self._region_of_interest.apply(I)[self._mask.pixels]
+        I.unload()
         if I.background is not None: pixels -= I.background
-        return np.unique(pixels, return_counts=True)
+        odata = pd.DataFrame(np.unique(pixels, return_counts=True)).transpose()
+        odata.columns = ['value', 'count']
+        odata.set_index('value')
+        return odata
 
 class Nucleus(ParticleBase):
     def __init__(self, B: ImageBinary,

@@ -188,12 +188,18 @@ def run(args: argp.Namespace) -> None:
         log.info(f"exporting nuclear features to '{feat_path}'")
         fdata = series_list.export_particle_features(feat_path)
 
+        feat_path = os.path.join(args.output, "single_pixel_features.tsv")
+        log.info(f"exporting single_pixel features to '{feat_path}'")
+        single_pixel_box_data = series_list.get_particle_single_px_stats()
+        single_pixel_box_data.to_csv(feat_path, index=False, sep="\t")
+
         if args.mk_report:
             report_path = os.path.join(args.output,
                 "extract_objects.report.html")
             log.info(f"writing report to\n{report_path}")
             report_extract_objects(args, report_path, args.online_report,
-                data=fdata, series_list=series_list)
+                data=fdata, spx_data=single_pixel_box_data,
+                series_list=series_list)
 
     if args.export_tiffs:
         tiff_path = os.path.join(args.output, "tiff")

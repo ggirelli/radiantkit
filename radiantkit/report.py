@@ -49,7 +49,7 @@ def report_extract_objects(args: argparse.Namespace,
     opath: str, online: bool=False, **kwargs) -> None:
     report = Report('extract_objects_report_template.html')
 
-    figure = ra.plot.plot_nuclear_features(kwargs['data'],
+    figure = ra.plot.plot_nuclear_features(kwargs['data'], kwargs['spx_data'],
         kwargs['series_list'].particle_feature_labels())
 
     report.render(opath, title="RadIAnT-Kit - Object extraction",

@@ -142,3 +142,19 @@ def range_from_fit(data: np.ndarray, fitted_params: Tuple[float],
     if FitType.FWHM == fit_type:
         return fitted_params
     return None
+
+def quantile_from_counts(values: np.ndarray, counts: np.ndarray,
+    p: float, cumsummed: bool=False) -> float:
+    '''Hyndman, R. J. and Fan, Y. (1996),
+    “Sample quantiles in statistical packages,”
+    The American Statistician, 50(4), 361 - 365.'''
+    assert p >= 0 and p <= 1
+    if not cumsummed: counts = np.cumsum(counts)
+    x = len(values)*p+.5
+    if int(x) == x:
+        loc = (counts >= x).argmax()
+        return values[loc]
+    else:
+        x1 = values[(counts >= np.floor(x)).argmax()]
+        x2 = values[(counts >= np.ceil(x)).argmax()]
+        return (x1+x2)/2
