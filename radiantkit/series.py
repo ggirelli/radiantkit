@@ -25,12 +25,14 @@ class ChannelList(object):
     _mask: Optional[Union[ImageBinary,ImageLabeled]]=None
     _aspect: Optional[np.ndarray]=None
     _shape: Optional[Tuple[int]]=None
-    _ground_block_side: int=11
+    _ground_block_side = 11
 
-    def __init__(self, ID: int):
+    def __init__(self, ID: int, ground_block_side: Optional[int]=None):
         super(ChannelList, self).__init__()
         self._ID = ID
         self._channels = {}
+        if ground_block_side is not None:
+            self._ground_block_side = ground_block_side
     
     @property
     def ID(self) -> int:
@@ -192,8 +194,8 @@ class ChannelList(object):
 class Series(ChannelList):
     _particles: Optional[List[Type[ParticleBase]]]=None
 
-    def __init__(self, ID: int):
-        super(Series, self).__init__(ID)
+    def __init__(self, ID: int, ground_block_side: Optional[int]=None):
+        super(Series, self).__init__(ID, ground_block_side)
 
     @property
     def particles(self) -> Optional[List[Type[ParticleBase]]]:
@@ -290,9 +292,9 @@ class SeriesList(object):
 
     @staticmethod
     def from_directory(dpath: str, inreg: Pattern,
-        ref: Optional[str]=None,
-        maskfix: Optional[Tuple[str, str]]=None,
-        aspect: Optional[np.ndarray]=None):
+        ref: Optional[str]=None, maskfix: Optional[Tuple[str, str]]=None,
+        aspect: Optional[np.ndarray]=None, labeled: bool=False,
+        ground_block_side: Optional[int]=None):
 
         masks, channels = select_by_prefix_and_suffix(
             dpath, find_re(dpath, inreg), *maskfix)
@@ -301,8 +303,8 @@ class SeriesList(object):
         for path in channels:
             sid, channel_name = get_image_details(path,inreg)
             if sid not in series:
-                series[sid] = Series(sid)
-                series[sid].aspect = aspect
+                series[sid] = Series(sid, ground_block_side)
+                if aspect is not None: series[sid].aspect = aspect
 
             if channel_name in series[sid]:
                 logging.warning("found multiple instances of channel " +
@@ -316,8 +318,8 @@ class SeriesList(object):
             for path in masks:
                 sid, channel_name = get_image_details(path,inreg)
                 if sid not in series:
-                    series[sid] = Series(sid)
-                    series[sid].aspect = aspect
+                    series[sid] = Series(sid, ground_block_side)
+                    if aspect is not None: series[sid].aspect = aspect
 
                 if channel_name != ref:
                     logging.warning("skipping mask for channel " +
@@ -325,7 +327,7 @@ class SeriesList(object):
                     continue
 
                 series[sid].add_mask_from_tiff(channel_name,
-                    os.path.join(dpath, path))
+                    os.path.join(dpath, path), labeled)
 
         clen = len(set([len(s) for s in series.values()]))
         assert 1 == clen, f"inconsistent number of channels in '{dpath}' series"

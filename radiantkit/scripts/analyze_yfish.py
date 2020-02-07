@@ -216,11 +216,7 @@ def build_conditions(args: argparse.Namespace) -> Dict:
         condition_folder = path_join(args.input, condition_name)
         condition = series.SeriesList.from_directory(condition_folder,
                 args.inreg, args.ref, (args.mask_prefix, args.mask_suffix),
-                args.aspect)
-        
-        for series in condition:
-            series.labeled = args.labeled
-            series.ground_block_side = args.block_side
+                args.aspect, args.labeled, args.block_side)
 
         logging.info(f"parsed {len(condition)} " +
             f"series from condition '{condition_name}'")

@@ -199,12 +199,11 @@ def run(args: argp.Namespace) -> None:
     confirm_arguments(args)
 
     series_list = SeriesList.from_directory(args.input, args.inreg,
-        args.dna_channel, (args.mask_prefix, args.mask_suffix))
+        args.dna_channel, (args.mask_prefix, args.mask_suffix),
+        None, args.labeled, args.block_side)
     log.info(f"parsed {len(series_list)} series with " +
         f"{len(series_list.channel_names)} channels each" +
         f": {series_list.channel_names}")
-    for series in series_list: series.labeled = args.labeled
-    for series in series_list: series.ground_bloc_side = args.block_side
 
     log.info(f"extracting nuclei")
     if 1 == args.threads:

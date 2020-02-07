@@ -169,12 +169,11 @@ def run(args: argp.Namespace) -> None:
     confirm_arguments(args)
 
     series_list = SeriesList.from_directory(args.input, args.inreg,
-        args.ref_channel, (args.mask_prefix, args.mask_suffix), args.aspect)
+        args.ref_channel, (args.mask_prefix, args.mask_suffix),
+        args.aspect, args.labeled, args.block_side)
     log.info(f"parsed {len(series_list)} series with " +
         f"{len(series_list.channel_names)} channels each" +
         f": {series_list.channel_names}")
-    for series in series_list: series.labeled = args.labeled
-    for series in series_list: series.ground_block_side = args.block_side
 
     if not args.export_tiffs and not args.export_features:
         log.info("Nothing to export when using both " +
