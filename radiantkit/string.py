@@ -6,9 +6,10 @@
 from enum import Enum
 import re
 from string import Template
-from typing import Iterator, List, Optional
+from typing import Iterator, List, Optional, Tuple
 
 class MultiRange(object):
+    __current_item: Tuple[int]=(0,0)
     __string_range: Optional[str] = None
     __extremes_list: Optional[list] = None
     __reg: re.Pattern = re.compile(r'^[0-9-, ]+$')
@@ -69,12 +70,19 @@ class MultiRange(object):
             if i >= len(self.__extremes_list)-2+popped: is_clean = True
 
     def __next__(self) -> int:
-        for extremes in self.__extremes_list:
-            for i in range(extremes[0], extremes[1]+1):
-                yield i
+        current_range_id,current_item = self.__current_item
+        if current_range_id >= len(self.__extremes_list):
+            raise StopIteration
+        current_range = self.__extremes_list[current_range_id]
+        if current_item >= current_range[1]-current_range[0]:
+            self.__current_item = (current_range_id+1, 0)
+        else:
+            self.__current_item = (current_range_id, current_item+1)
+        return current_range[0]+current_item
 
     def __iter__(self) -> Iterator[int]:
-        return self.__next__()
+        self.__current_item = (0,0)
+        return self
 
     def __len__(self) -> int:
         return self.length
