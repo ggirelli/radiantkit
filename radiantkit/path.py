@@ -3,36 +3,46 @@
 @contact: gigi.ga90@gmail.com
 '''
 
+import logging
 import os
 import re
 from typing import List, Pattern, Tuple
 
+
 def add_leading_dot(s: str) -> str:
-    if '.' != s[0]: s = '.' + s
+    if '.' != s[0]:
+        s = '.' + s
     return s
+
 
 def add_extension(path: str, ext: str) -> str:
     ext = add_leading_dot(ext)
-    if not path.endswith(ext): path += ext
+    if not path.endswith(ext):
+        path += ext
     return path
 
+
 def find_re(ipath: str, ireg: Pattern) -> List[str]:
-    flist = [f for f in os.listdir(ipath) 
-        if os.path.isfile(os.path.join(ipath, f))
-        and not type(None) == type(re.match(ireg, f))]
+    flist = [f for f in os.listdir(ipath)
+             if (os.path.isfile(os.path.join(ipath, f))
+                 and re.match(ireg, f) is not None)]
     return flist
 
-def select_by_prefix_and_suffix(dpath: str, ilist: List[str],
-    prefix: str="", suffix: str= "") -> List[str]:
+
+def select_by_prefix_and_suffix(
+        dpath: str, ilist: List[str], prefix: str = "", suffix: str = ""
+        ) -> List[str]:
     olist = ilist.copy()
-    if 0 != len(suffix): olist = [f for f in olist
-        if os.path.splitext(f)[0].endswith(suffix)]
-    if 0 != len(prefix): olist = [f for f in olist
-        if os.path.splitext(f)[0].startswith(prefix)]
+    if 0 != len(suffix):
+        olist = [f for f in olist if os.path.splitext(f)[0].endswith(suffix)]
+    if 0 != len(prefix):
+        olist = [f for f in olist if os.path.splitext(f)[0].startswith(prefix)]
     return (olist, [x for x in ilist if x not in olist])
 
-def pair_raw_mask_images(dpath: str, flist: List[str],
-    prefix: str="", suffix: str="") -> List[Tuple[str]]:
+
+def pair_raw_mask_images(
+        dpath: str, flist: List[str], prefix: str = "", suffix: str = ""
+        ) -> List[Tuple[str]]:
     for fpath in flist:
         fbase, fext = os.path.splitext(fpath)
         fbase = fbase[len(prefix):-len(suffix)]
@@ -41,8 +51,9 @@ def pair_raw_mask_images(dpath: str, flist: List[str],
             logging.warning(f"missing raw image for mask '{fpath}', skipped.")
             flist.pop(flist.index(fpath))
         else:
-            flist[flist.index(fpath)] = (raw_image,fpath)
+            flist[flist.index(fpath)] = (raw_image, fpath)
     return flist
+
 
 def get_image_details(path: str, inreg: Pattern):
     finfo = re.match(inreg, os.path.basename(path)).groupdict()

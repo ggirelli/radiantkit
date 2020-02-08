@@ -10,7 +10,7 @@ import logging
 import numpy as np
 import os
 import pandas as pd
-from radiantkit.image import Image, ImageBase, ImageBinary, ImageLabeled
+from radiantkit.image import Image, ImageBinary, ImageLabeled
 from radiantkit.path import find_re, get_image_details
 from radiantkit.path import select_by_prefix_and_suffix
 from radiantkit.particle import ParticleBase, ParticleFinder
@@ -18,26 +18,27 @@ from radiantkit.stat import quantile_from_counts
 import sys
 from tqdm import tqdm
 from typing import Dict, List, Tuple
-from typing import Dict, Iterator, Optional, Pattern, Type, Union
+from typing import Iterator, Optional, Pattern, Type, Union
+
 
 class ChannelList(object):
     '''Store named Image instances (channels) with the same shape and aspect.
     A mask can be provided for background/foreground calculation.'''
-    _ID: int=0
-    _channels: Dict[str, Image]=None
-    _ref: Optional[str]=None
-    _mask: Optional[Union[ImageBinary,ImageLabeled]]=None
-    _aspect: Optional[np.ndarray]=None
-    _shape: Optional[Tuple[int]]=None
+    _ID: int = 0
+    _channels: Dict[str, Image] = None
+    _ref: Optional[str] = None
+    _mask: Optional[Union[ImageBinary, ImageLabeled]] = None
+    _aspect: Optional[np.ndarray] = None
+    _shape: Optional[Tuple[int]] = None
     _ground_block_side = 11
 
-    def __init__(self, ID: int, ground_block_side: Optional[int]=None):
+    def __init__(self, ID: int, ground_block_side: Optional[int] = None):
         super(ChannelList, self).__init__()
         self._ID = ID
         self._channels = {}
         if ground_block_side is not None:
             self._ground_block_side = ground_block_side
-    
+
     @property
     def ID(self) -> int:
         return self._ID
@@ -57,16 +58,17 @@ class ChannelList(object):
     @aspect.setter
     def aspect(self, spacing: np.ndarray) -> None:
         if 0 != len(self):
-            for name,channel in self._channels.items(): channel.aspect = spacing
+            for name, channel in self._channels.items():
+                channel.aspect = spacing
             self._aspect = list(self._channels.values())[0].aspect
 
     @property
     def ground_block_side(self) -> int:
         return self._ground_block_side
-    
-    def __update_ground(self, name: Optional[str]=None):
+
+    def __update_ground(self, name: Optional[str] = None):
         if name is None:
-            for name,channel in self._channels.items():
+            for name, channel in self._channels.items():
                 channel.update_ground(self.mask, self.ground_block_side)
         else:
             self._channels[name].update_ground(
@@ -74,9 +76,11 @@ class ChannelList(object):
 
     @ground_block_side.setter
     def ground_block_side(self, bs: int) -> None:
-        if 0 != bs%2: bs += 1
+        if 0 != bs % 2:
+            bs += 1
         if bs != self._ground_block_side and self.is_masked():
-            if 0 != len(self): self.__update_ground()
+            if 0 != len(self):
+                self.__update_ground()
         self._ground_block_side = bs
 
     @property
@@ -84,13 +88,13 @@ class ChannelList(object):
         return self._ref
 
     @property
-    def mask(self) -> Optional[Union[ImageBinary,ImageLabeled]]:
+    def mask(self) -> Optional[Union[ImageBinary, ImageLabeled]]:
         return self._mask
 
     @staticmethod
     def from_dict(channel_paths: Dict[str, str]) -> 'ChannelList':
         CL = ChannelList()
-        for name,path in channel_paths.items():
+        for name, path in channel_paths.items():
             CL.add_channel_from_tiff(name, path)
         return CL
 
@@ -104,63 +108,71 @@ class ChannelList(object):
         if self.aspect is None:
             self._aspect = spacing
         elif any(spacing != self.aspect):
-            logging.error(f"aspect mismatch. Expected {self.aspect} " +
-                f"but got {spacing}")
+            logging.error(f"aspect mismatch. Expected {self.aspect} "
+                          + f"but got {spacing}")
             sys.exit()
 
     def __init_or_check_shape(self, shape: np.ndarray) -> None:
         if self.shape is None:
             self._shape = shape
         elif shape != self.shape:
-            logging.error(f"shape mismatch. Expected {self.shape} " +
-                f"but got {shape}")
+            logging.error(f"shape mismatch. Expected {self.shape} "
+                          + f"but got {shape}")
             sys.exit()
 
-    def add_mask(self, name: str, M: Union[ImageBinary,ImageLabeled],
-        replace: bool=False) -> None:
-        if not name in self._channels:
+    def add_mask(self, name: str, M: Union[ImageBinary, ImageLabeled],
+                 replace: bool = False) -> None:
+        if name not in self._channels:
             logging.error(f"{name} channel unavailable. Mask not added.")
             return
         if self.mask is not None and not replace:
-            logging.warning(f"mask is already present." +
-                "Use replace=True to replace it.")
+            logging.warning(f"mask is already present."
+                            + "Use replace=True to replace it.")
         self.__init_or_check_shape(M.shape)
         self.__init_or_check_aspect(M.aspect)
         self._mask = M
         self._ref = name
 
-    def add_mask_from_tiff(self, name: str, path: str,
-        labeled: bool=False, replace: bool=False) -> None:
+    def add_mask_from_tiff(
+            self, name: str, path: str,
+            labeled: bool = False, replace: bool = False) -> None:
         assert os.path.isfile(path)
-        if labeled: M = ImageLabeled.from_tiff(path)
-        else: M = ImageBinary.from_tiff(path)
-        if self.aspect is not None: M.aspect = self.aspect
+        if labeled:
+            M = ImageLabeled.from_tiff(path)
+        else:
+            M = ImageBinary.from_tiff(path)
+        if self.aspect is not None:
+            M.aspect = self.aspect
         M.unload()
         self.add_mask(name, M, replace)
 
-    def add_channel(self, name: str, I: Image, replace: bool=False) -> None:
+    def add_channel(self, name: str, img: Image,
+                    replace: bool = False) -> None:
         if name in self._channels and not replace:
-            logging.warning(f"channel {name} is already present." +
-                "Use replace=True to replace it.")
-        self.__init_or_check_shape(I.shape)
-        self.__init_or_check_aspect(I.aspect)
-        self._channels[name] = I
-        if self.is_masked(): self._channels[name].update_ground(
-            self.mask, self._ground_block_side)
+            logging.warning(f"channel {name} is already present."
+                            + "Use replace=True to replace it.")
+        self.__init_or_check_shape(img.shape)
+        self.__init_or_check_aspect(img.aspect)
+        self._channels[name] = img
+        if self.is_masked():
+            self._channels[name].update_ground(
+                self.mask, self._ground_block_side)
 
     def add_channel_from_tiff(self, name: str, path: str,
-        replace: bool=False) -> None:
+                              replace: bool = False) -> None:
         assert os.path.isfile(path)
-        I = Image.from_tiff(path)
-        if self.aspect is not None: I.aspect = self.aspect
-        I.unload()
-        self.add_channel(name, I, replace)
+        img = Image.from_tiff(path)
+        if self.aspect is not None:
+            img.aspect = self.aspect
+        img.unload()
+        self.add_channel(name, img, replace)
 
-    def unload(self, name: Optional[str]=None) -> None:
+    def unload(self, name: Optional[str] = None) -> None:
         if name is None:
             for channel in self._channels.values():
                 channel.unload()
-            if self.is_masked(): self.mask.unload()
+            if self.is_masked():
+                self.mask.unload()
         elif name in self._channels:
             self._channels[name].unload()
 
@@ -175,14 +187,14 @@ class ChannelList(object):
     def __len__(self) -> int:
         return len(self._channels)
 
-    def __getitem__(self, name: str) -> Tuple[str,Image]:
+    def __getitem__(self, name: str) -> Tuple[str, Image]:
         return (name, self._channels[name])
 
-    def __next__(self) -> Tuple[str,Image]:
+    def __next__(self) -> Tuple[str, Image]:
         for name in self._channels:
             yield (name, self._channels[name])
 
-    def __iter__(self) -> Iterator[Tuple[str,Image]]:
+    def __iter__(self) -> Iterator[Tuple[str, Image]]:
         return self.__next__()
 
     def __contains__(self, name: str) -> bool:
@@ -190,23 +202,26 @@ class ChannelList(object):
 
     def __str__(self) -> str:
         s = f"Series #{self._ID} with {len(self)} channels."
-        for name,channel in self: s += f"\n  {name} => '{channel.path}'"
+        for name, channel in self:
+            s += f"\n  {name} => '{channel.path}'"
         if self.is_masked():
             s += f"\n  mask({self.reference}) => '{self.mask.path}'"
         return s
 
-class Series(ChannelList):
-    _particles: Optional[List[Type[ParticleBase]]]=None
 
-    def __init__(self, ID: int, ground_block_side: Optional[int]=None):
+class Series(ChannelList):
+    _particles: Optional[List[Type[ParticleBase]]] = None
+
+    def __init__(self, ID: int, ground_block_side: Optional[int] = None):
         super(Series, self).__init__(ID, ground_block_side)
 
     @property
     def particles(self) -> Optional[List[Type[ParticleBase]]]:
-        if self._particles is None: logging.warning(
-            "particle attribute accessible after running extract_particles.")
+        if self._particles is None:
+            logging.warning("particle attribute accessible "
+                            + "after running extract_particles.")
         return self._particles
-    
+
     @property
     def aspect(self) -> np.ndarray:
         return super(Series, self).aspect
@@ -214,14 +229,16 @@ class Series(ChannelList):
     @aspect.setter
     def aspect(self, spacing: np.ndarray) -> None:
         if 0 != len(self):
-            for name,channel in self._channels.items(): channel.aspect = spacing
+            for name, channel in self._channels.items():
+                channel.aspect = spacing
             self._aspect = list(self._channels.values())[0].aspect
         if self._particles is not None:
             for particle in self._particles:
                 particle.aspect = spacing
 
-    def init_particles(self, channel_names: Optional[List[str]]=None,
-        particleClass: Type[ParticleBase]=ParticleBase) -> None:
+    def init_particles(self, channel_names: Optional[List[str]] = None,
+                       particleClass: Type[ParticleBase] = ParticleBase
+                       ) -> None:
         if not self.is_masked():
             logging.warning("mask is missing, no particles extracted.")
             return
@@ -233,7 +250,8 @@ class Series(ChannelList):
         self._particles = fextract(self.mask, particleClass)
         self.mask.unload()
 
-        for pbody in self._particles: pbody.source = self.mask.path
+        for pbody in self._particles:
+            pbody.source = self.mask.path
         if channel_names is not None:
             for name in channel_names:
                 assert name in self
@@ -244,8 +262,9 @@ class Series(ChannelList):
 
     @staticmethod
     def extract_particles(series: 'Series',
-        channel_list: Optional[List[str]]=None,
-        particleClass: Type[ParticleBase]=ParticleBase) -> 'Series':
+                          channel_list: Optional[List[str]] = None,
+                          particleClass: Type[ParticleBase] = ParticleBase
+                          ) -> 'Series':
         series.init_particles(channel_list, particleClass)
         return series
 
@@ -253,26 +272,31 @@ class Series(ChannelList):
         self._particles = [p for p in self._particles if p.label in label_list]
 
     def export_particles(self, path: str, compressed: bool,
-        showProgress: bool=False) -> None:
+                         showProgress: bool = False) -> None:
         assert os.path.isdir(path)
-        if showProgress: iterbar = tqdm
-        else: iterbar = lambda x, *args, **kwargs: x
+        if showProgress:
+            iterbar = tqdm
+        else:
+            def iterbar(x, *args, **kwargs):
+                return x
 
         for nucleus in iterbar(self.particles, desc="mask"):
-            nucleus.mask.to_tiff(os.path.join(path,
-                f"mask_series{self.ID:03d}_nucleus{nucleus.label:03d}"),
+            nucleus.mask.to_tiff(
+                os.path.join(
+                    path,
+                    f"mask_series{self.ID:03d}_nucleus{nucleus.label:03d}"),
                 compressed)
 
         for channel_name in iterbar(self.names, desc="channel"):
             for nucleus in iterbar(self.particles, desc="nucleus"):
                 Image(nucleus.region_of_interest.apply(
                     self[channel_name][1])).to_tiff(
-                    os.path.join(path, f"{channel_name}_series{self.ID:03d}_" +
-                        f"nucleus{nucleus.label:03d}"), compressed)
+                    os.path.join(path, f"{channel_name}_series{self.ID:03d}_"
+                                 + f"nucleus{nucleus.label:03d}"), compressed)
 
     @staticmethod
     def static_export_particles(series: 'Series', path: str, compressed: bool,
-        showProgress: bool=False) -> None:
+                                showProgress: bool = False) -> None:
         series.export_particles(path, compressed, showProgress)
 
     def __str__(self):
@@ -282,12 +306,13 @@ class Series(ChannelList):
             s += f"[{type(self._particles[0]).__name__}]."
         return s
 
-class SeriesList(object):
-    name: str=None
-    _series: List[Series]=None
-    label: Optional[str]=None
 
-    def __init__(self, name: str="", series_list: List[Series]=[]):
+class SeriesList(object):
+    name: str = None
+    _series: List[Series] = None
+    label: Optional[str] = None
+
+    def __init__(self, name: str = "", series_list: List[Series] = []):
         super(SeriesList, self).__init__()
         self._series = series_list
         self.name = name
@@ -297,60 +322,66 @@ class SeriesList(object):
         return list(set(itertools.chain(*[s.names for s in self._series])))
 
     @staticmethod
-    def from_directory(dpath: str, inreg: Pattern,
-        ref: Optional[str]=None, maskfix: Optional[Tuple[str, str]]=None,
-        aspect: Optional[np.ndarray]=None, labeled: bool=False,
-        ground_block_side: Optional[int]=None):
+    def from_directory(
+            dpath: str, inreg: Pattern, ref: Optional[str] = None,
+            maskfix: Optional[Tuple[str, str]] = None,
+            aspect: Optional[np.ndarray] = None, labeled: bool = False,
+            ground_block_side: Optional[int] = None):
 
         masks, channels = select_by_prefix_and_suffix(
             dpath, find_re(dpath, inreg), *maskfix)
         series = {}
 
         for path in tqdm(channels, desc="initializing channels"):
-            sid, channel_name = get_image_details(path,inreg)
+            sid, channel_name = get_image_details(path, inreg)
             if sid not in series:
                 series[sid] = Series(sid, ground_block_side)
-                if aspect is not None: series[sid].aspect = aspect
+                if aspect is not None:
+                    series[sid].aspect = aspect
 
             if channel_name in series[sid]:
-                logging.warning("found multiple instances of channel " +
-                    f"{channel_name} in series {sid}. Skipping '{path}'.")
+                logging.warning("found multiple instances of channel "
+                                + f"{channel_name} in series {sid}. "
+                                + f"Skipping '{path}'.")
                 continue
 
-            series[sid].add_channel_from_tiff(channel_name,
-                os.path.join(dpath, path))
-        
+            series[sid].add_channel_from_tiff(
+                channel_name, os.path.join(dpath, path))
+
         if ref is not None:
             for path in tqdm(masks, desc="initializing masks"):
-                sid, channel_name = get_image_details(path,inreg)
+                sid, channel_name = get_image_details(path, inreg)
                 if sid not in series:
                     series[sid] = Series(sid, ground_block_side)
-                    if aspect is not None: series[sid].aspect = aspect
+                    if aspect is not None:
+                        series[sid].aspect = aspect
 
                 if channel_name != ref:
-                    logging.warning("skipping mask for channel " +
-                        f"'{channel_name}', not reference ({ref}).")
+                    logging.warning("skipping mask for channel "
+                                    + f"'{channel_name}', "
+                                    + f"not reference ({ref}).")
                     continue
 
-                series[sid].add_mask_from_tiff(channel_name,
-                    os.path.join(dpath, path), labeled)
+                series[sid].add_mask_from_tiff(
+                    channel_name, os.path.join(dpath, path), labeled)
 
         clen = len(set([len(s) for s in series.values()]))
-        assert 1 == clen, f"inconsistent number of channels in '{dpath}' series"
+        assert 1 == clen, (
+            f"inconsistent number of channels in '{dpath}' series")
 
         return SeriesList(os.path.basename(dpath), series.values())
 
     def extract_particles(self, particleClass: Type[ParticleBase],
-        threads: int=1) -> None:
+                          threads: int = 1) -> None:
         threads = ggc.args.check_threads(threads)
         if 1 == threads:
             [series.init_particles(particleClass=particleClass)
                 for series in tqdm(self)]
         else:
             self._series = joblib.Parallel(n_jobs=threads, verbose=11)(
-                joblib.delayed(Series.extract_particles
-                    )(series, series.names, particleClass)
-                    for series in self)
+                joblib.delayed(Series.extract_particles)(
+                    series, series.names, particleClass)
+                for series in self)
 
     def export_particle_features(self, path: str) -> pd.DataFrame:
         fdata = []
@@ -364,7 +395,7 @@ class SeriesList(object):
                     volume=[nucleus.volume],
                     surface=[nucleus.surface],
                     shape=[nucleus.shape])
-                
+
                 for name in nucleus.channel_names:
                     ndata[f"{name}_isum"] = [nucleus.get_intensity_sum(name)]
                     ndata[f"{name}_imean"] = [nucleus.get_intensity_mean(name)]
@@ -375,10 +406,10 @@ class SeriesList(object):
         fdata.to_csv(path, index=False, sep="\t")
         return fdata
 
-    def particle_feature_labels(self) -> Dict[str,str]:
+    def particle_feature_labels(self) -> Dict[str, str]:
         dfu = dict(total_size='Size (vx)', volume='Volume (nm^3)',
-            shape='Shape', surface='Surface (nm^2)',
-            sizeXY='XY size (px)', sizeZ='Z size (px)')
+                   shape='Shape', surface='Surface (nm^2)',
+                   sizeXY='XY size (px)', sizeZ='Z size (px)')
         for channel in self.channel_names:
             dfu[f'{channel}_isum'] = f'"{channel}" intensity sum (a.u.)'
             dfu[f'{channel}_imean'] = f'"{channel}" intensity mean (a.u.)'
@@ -387,23 +418,24 @@ class SeriesList(object):
     def get_particle_single_px_stats(self) -> pd.DataFrame:
         box_stats = []
         for channel_name in tqdm(self.channel_names,
-            desc='calculating channel box stats'):
+                                 desc='calculating channel box stats'):
             odata = pd.DataFrame.from_dict(dict(value=[0], count=[0]))
             odata.set_index('value')
             for series in self:
                 channel = series[channel_name][1]
                 for nucleus in series.particles:
-                    odata = odata.add(fill_value=0,
+                    odata = odata.add(
+                        fill_value=0,
                         other=nucleus.get_intensity_value_counts(channel))
             odata.sort_index(inplace=True)
             odata['cumsum'] = np.cumsum(odata['count'])
 
             q1 = quantile_from_counts(odata['value'].values,
-                odata['cumsum'].values, .25, True)
+                                      odata['cumsum'].values, .25, True)
             median = quantile_from_counts(odata['value'].values,
-                odata['cumsum'].values, .5, True)
+                                          odata['cumsum'].values, .5, True)
             q3 = quantile_from_counts(odata['value'].values,
-                odata['cumsum'].values, .75, True)
+                                      odata['cumsum'].values, .75, True)
             iqr = q3-q1
             whisk_low = max(q1-iqr, odata['value'].min())
             whisk_high = min(q3+iqr, odata['value'].max())
@@ -411,16 +443,17 @@ class SeriesList(object):
                 odata['value'].values[odata['value'].values < whisk_low],
                 odata['value'].values[odata['value'].values > whisk_low])
 
-            box_stats.append(pd.DataFrame.from_dict(dict(root=[self.name],
-                channel=[channel_name], vmin=[odata['value'].min()],
-                whisk_low=[whisk_low], q1=[q1], median=[median], q3=[q3],
-                whisk_high=[whisk_high], vmax=[odata['value'].max()],
-                n_outliers = [len(outliers)], outliers = [outliers]
+            box_stats.append(pd.DataFrame.from_dict(dict(
+                root=[self.name], channel=[channel_name],
+                vmin=[odata['value'].min()], vmax=[odata['value'].max()],
+                whisk_low=[whisk_low], whisk_high=[whisk_high],
+                q1=[q1], median=[median], q3=[q3],
+                n_outliers=[len(outliers)], outliers=[outliers]
             )))
         return pd.concat(box_stats)
 
-    def export_particle_tiffs(self, path: str, threads: int=1,
-        compressed: bool=False) -> None:
+    def export_particle_tiffs(self, path: str, threads: int = 1,
+                              compressed: bool = False) -> None:
         threads = ggc.args.check_threads(threads)
         assert os.path.isdir(path)
         if 1 == threads:
@@ -438,7 +471,8 @@ class SeriesList(object):
         return self._series[i]
 
     def __next__(self) -> Series:
-        for s in self._series: yield s
+        for s in self._series:
+            yield s
 
     def __iter__(self) -> Iterator[Series]:
         return self.__next__()

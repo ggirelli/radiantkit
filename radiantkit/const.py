@@ -3,16 +3,18 @@
 @contact: gigi.ga90@gmail.com
 '''
 
-from enum import Enum
-
 __version__ = "0.0.1"
 
-default_inreg ="^([^\\.]*\\.)?(?P<channel_name>[^/]*)_(?P<series_id>[0-9]+)"
-default_inreg+="(?P<ext>(_cmle)?(\\.[^\\.]*)?\\.tiff?)$"
+from enum import Enum
+
+default_inreg = ("^([^\\.]*\\.)?(?P<channel_name>[^/]*)_(?P<series_id>[0-9]+)"
+                 + "(?P<ext>(_cmle)?(\\.[^\\.]*)?\\.tiff?)$")
+
 
 class ProjectionType(Enum):
     SUM_PROJECTION = 'SUM_PROJECTION'
     MAX_PROJECTION = 'MAX_PROJECTION'
+
 
 class SegmentationType(Enum):
     SUM_PROJECTION = ProjectionType.SUM_PROJECTION.value
@@ -21,6 +23,7 @@ class SegmentationType(Enum):
     @staticmethod
     def get_default():
         return SegmentationType.THREED
+
 
 class AnalysisType(Enum):
     SUM_PROJECTION = ProjectionType.SUM_PROJECTION.value
@@ -31,6 +34,7 @@ class AnalysisType(Enum):
     def get_default():
         return AnalysisType.MIDSECTION
 
+
 class MidsectionType(Enum):
     CENTRAL = 'CENTRAL'
     LARGEST = 'LARGEST'
@@ -38,6 +42,7 @@ class MidsectionType(Enum):
     @staticmethod
     def get_default():
         return MidsectionType.LARGEST
+
 
 class LaminaDistanceType(Enum):
     CENTER_MAX = 'CENTER_MAX'

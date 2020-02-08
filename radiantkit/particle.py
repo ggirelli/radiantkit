@@ -9,7 +9,7 @@ import logging
 import numpy as np
 import os
 import pandas as pd
-from radiantkit.image import Image, ImageBase, ImageBinary, ImageLabeled
+from radiantkit.image import Image, ImageBinary, ImageLabeled
 from radiantkit.selection import BoundingElement
 from radiantkit.stat import cell_cycle_fit, range_from_fit
 from skimage.measure import marching_cubes_lewiner, mesh_surface_area
@@ -17,16 +17,17 @@ from skimage.morphology import convex_hull_image
 from tqdm import tqdm
 from typing import Dict, List, Optional, Tuple, Type
 
+
 class ParticleSettings(object):
     _mask: Optional[ImageBinary] = None
     _region_of_interest: Optional[BoundingElement] = None
     label: Optional[int] = None
-    _total_size: Optional[int]=None
-    _surface: Optional[int]=None
-    _shape: Optional[float]=None
+    _total_size: Optional[int] = None
+    _surface: Optional[int] = None
+    _shape: Optional[float] = None
 
     def __init__(self, B: ImageBinary,
-        region_of_interest: BoundingElement):
+                 region_of_interest: BoundingElement):
         super(ParticleSettings, self).__init__()
         assert B.shape == region_of_interest.shape
         self._mask = B
@@ -39,7 +40,7 @@ class ParticleSettings(object):
     @property
     def aspect(self) -> np.ndarray:
         return self.mask.aspect
-    
+
     @aspect.setter
     def aspect(self, spacing: np.ndarray) -> None:
         self.mask.aspect = spacing
@@ -51,7 +52,8 @@ class ParticleSettings(object):
 
     @property
     def total_size(self) -> int:
-        if self._total_size is None: self._total_size = self._mask.foreground
+        if self._total_size is None:
+            self._total_size = self._mask.foreground
         return self._total_size
 
     @property
@@ -65,7 +67,7 @@ class ParticleSettings(object):
     @property
     def sizeZ(self) -> int:
         return self.size("Z")
-    
+
     @property
     def surface(self) -> float:
         if self._surface is None:
@@ -75,29 +77,32 @@ class ParticleSettings(object):
         return self._surface
 
     @property
-    def shape(self, spacing: Optional[np.ndarray]=None) -> float:
+    def shape(self, spacing: Optional[np.ndarray] = None) -> float:
         if self._shape is None:
-            if None == spacing: spacing = self.aspect
+            if spacing is None:
+                spacing = self.aspect
             if 2 == len(self.mask.shape):
                 convex_size = convex_hull_image(self.mask.pixels).sum()
                 self._shape = self.total_size/convex_size
             elif 3 == len(self.mask.shape):
                 sphere_surface = (np.pi*(6.0*self.total_size)**2)**(1/3.0)
                 self._shape = sphere_surface/self.surface
-            else: self._shape = 0
+            else:
+                self._shape = 0
         return self._shape
 
     def size(self, axes: str) -> int:
         assert all([axis in self.mask.axes for axis in axes])
         axes_ids = tuple([self.mask.axes.index(axis)
-            for axis in self.mask.axes if axis not in axes])
+                          for axis in self.mask.axes if axis not in axes])
         return self.mask.pixels.max(axes_ids).sum()
 
+
 class ParticleBase(ParticleSettings):
-    _intensity: Dict[str, Dict[str, float]]=None
+    _intensity: Dict[str, Dict[str, float]] = None
 
     def __init__(self, B: ImageBinary,
-        region_of_interest: BoundingElement):
+                 region_of_interest: BoundingElement):
         super(ParticleBase, self).__init__(B, region_of_interest)
         self._intensity = {}
 
@@ -108,37 +113,45 @@ class ParticleBase(ParticleSettings):
     def get_intensity_sum(self, channel_name: str) -> Optional[float]:
         if channel_name in self._intensity:
             return self._intensity[channel_name]['sum']
-        else: return np.nan
+        else:
+            return np.nan
 
     def get_intensity_mean(self, channel_name: str) -> Optional[float]:
         if channel_name in self._intensity:
             return self._intensity[channel_name]['mean']
-        else: return np.nan
+        else:
+            return np.nan
 
-    def init_intensity_features(self, I: Image,
-        channel_name: str='unknown') -> None:
-        if channel_name in self._intensity: logging.warning(
-            f"overwriting intensity mean of channel '{channel_name}'.")
-        else: self._intensity[channel_name] = {}
+    def init_intensity_features(
+            self, img: Image, channel_name: str = 'unknown') -> None:
+        if channel_name in self._intensity:
+            logging.warning(
+                f"overwriting intensity mean of channel '{channel_name}'.")
+        else:
+            self._intensity[channel_name] = {}
 
-        pixels = self._region_of_interest.apply(I)[self._mask.pixels]
-        if I.background is not None: pixels -= I.background
+        pixels = self._region_of_interest.apply(img)[self._mask.pixels]
+        if img.background is not None:
+            pixels -= img.background
         self._intensity[channel_name]['mean'] = np.mean(pixels)
         self._intensity[channel_name]['sum'] = np.sum(pixels)
 
-    def get_intensity_value_counts(self, I: Image) -> List[np.ndarray]:
-        pixels = self._region_of_interest.apply(I)[self._mask.pixels]
-        I.unload()
-        if I.background is not None: pixels -= I.background
+    def get_intensity_value_counts(self, img: Image) -> List[np.ndarray]:
+        pixels = self._region_of_interest.apply(img)[self._mask.pixels]
+        img.unload()
+        if img.background is not None:
+            pixels -= img.background
         odata = pd.DataFrame(np.unique(pixels, return_counts=True)).transpose()
         odata.columns = ['value', 'count']
         odata.set_index('value')
         return odata
 
+
 class Nucleus(ParticleBase):
     def __init__(self, B: ImageBinary,
-        region_of_interest: BoundingElement):
+                 region_of_interest: BoundingElement):
         super(Nucleus, self).__init__(B, region_of_interest)
+
 
 class NucleiList(object):
     def __init__(self, nuclei: List[Nucleus]):
@@ -148,35 +161,38 @@ class NucleiList(object):
     @property
     def nuclei(self):
         return self.__nuclei.copy()
-    
+
     @staticmethod
     def from_field_of_view(maskpath: str, rawpath: str,
-        doRescale: bool=True) -> List[Nucleus]:
-        I = Image.from_tiff(rawpath, doRescale=doRescale)
-        M = ImageBinary.from_tiff(maskpath)
-        assert I.shape == M.shape
+                           doRescale: bool = True) -> List[Nucleus]:
+        img = Image.from_tiff(rawpath, doRescale=doRescale)
+        mask = ImageBinary.from_tiff(maskpath)
+        assert img.shape == mask.shape
 
-        nuclei = ParticleFinder().get_particles_from_binary_image(M, Nucleus)
+        nuclei = ParticleFinder(
+            ).get_particles_from_binary_image(mask, Nucleus)
         for nucleus in nuclei:
-            nucleus.init_intensity_features(I)
+            nucleus.init_intensity_features(img)
             nucleus.source = rawpath
 
         return NucleiList(nuclei)
 
     @staticmethod
-    def from_multiple_fields_of_view(masklist: Tuple[str], ipath: str,
-        doRescale: bool=True, threads: int=1) -> List['NucleiList']:
+    def from_multiple_fields_of_view(
+            masklist: Tuple[str], ipath: str, doRescale: bool = True,
+            threads: int = 1) -> List['NucleiList']:
         if 1 == threads:
             nuclei = []
-            for rawpath,maskpath in tqdm(masklist):
+            for rawpath, maskpath in tqdm(masklist):
                 nuclei.append(NucleiList.from_field_of_view(
                     os.path.join(ipath, maskpath),
                     os.path.join(ipath, rawpath), doRescale))
         else:
-            nuclei = joblib.Parallel(n_jobs = threads, verbose = 11)(
+            nuclei = joblib.Parallel(n_jobs=threads, verbose=11)(
                 joblib.delayed(NucleiList.from_field_of_view)(
-                    os.path.join(ipath, maskpath), os.path.join(ipath, rawpath),
-                    doRescale) for rawpath,maskpath in masklist)
+                    os.path.join(ipath, maskpath),
+                    os.path.join(ipath, rawpath), doRescale)
+                for rawpath, maskpath in masklist)
 
         return NucleiList.concat(nuclei)
 
@@ -188,20 +204,20 @@ class NucleiList(object):
         return len(self.__nuclei)
 
     def get_data(self):
-        ndata = pd.DataFrame.from_dict({
-            'image':[n.source for n in self.nuclei],
-            'label':[n.label for n in self.nuclei],
-            'size':[n.total_size for n in self.nuclei]
-        })
-        channels = list(set(itertools.chain(*[n.channel_names
-            for n in self.nuclei])))
+        ndata = pd.DataFrame.from_dict(dict(
+            image=[n.source for n in self.nuclei],
+            label=[n.label for n in self.nuclei],
+            size=[n.total_size for n in self.nuclei]))
+        channels = list(set(itertools.chain(
+            *[n.channel_names for n in self.nuclei])))
         for channel in channels:
             ndata[f'isum_{channel}'] = [n.get_intensity_sum(channel)
-                for n in self.nuclei]
+                                        for n in self.nuclei]
         return ndata
 
-    def select_G1(self, k_sigma: float=2.5,
-        channel: str='unknown') -> Tuple[pd.DataFrame,Dict]:
+    def select_G1(
+            self, k_sigma: float = 2.5, channel: str = 'unknown'
+            ) -> Tuple[pd.DataFrame, Dict]:
         ndata = self.get_data()
         isum_label = f'isum_{channel}'
 
@@ -224,30 +240,33 @@ class NucleiList(object):
         ndata['pass'] = np.logical_and(ndata['pass_size'], ndata['pass_isum'])
         ndata['ref'] = channel
 
-        return (ndata, {
-            'size':{'range':size_range,'fit':size_fit},
-            'isum':{'range':isum_range,'fit':isum_fit}})
+        return (ndata, dict(
+            size=dict(range=size_range, fit=size_fit),
+            isum=dict(range=isum_range, fit=isum_fit)))
+
 
 class ParticleFinder(object):
     def __init__(self):
         super(ParticleFinder, self).__init__()
 
     @staticmethod
-    def get_particles_from_binary_image(B: ImageBinary,
-            particleClass: Type[ParticleBase] = ParticleBase
-        ) -> List[Type[ParticleBase]]:
+    def get_particles_from_binary_image(
+            B: ImageBinary, particleClass: Type[ParticleBase] = ParticleBase
+            ) -> List[Type[ParticleBase]]:
         return ParticleFinder.get_particles_from_labeled_image(
             B.label(), particleClass)
 
     @staticmethod
-    def get_particles_from_labeled_image(L: ImageLabeled,
-            particleClass: Type[ParticleBase] = ParticleBase
-        ) -> List[Type[ParticleBase]]:
-        assert L.pixels.min() != L.pixels.max(), 'monochromatic image detected.'
+    def get_particles_from_labeled_image(
+            L: ImageLabeled, particleClass: Type[ParticleBase] = ParticleBase
+            ) -> List[Type[ParticleBase]]:
+        assert L.pixels.min() != L.pixels.max(), (
+            'monochromatic image detected.')
 
         particle_list = []
         for current_label in np.unique(L.pixels):
-            if 0 == current_label: continue
+            if 0 == current_label:
+                continue
             B = ImageBinary(L.pixels == current_label)
 
             region_of_interest = BoundingElement.from_binary_image(B)

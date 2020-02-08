@@ -14,9 +14,11 @@ with open(os.path.join(here, 'README.md'), encoding='utf-8') as f:
 
 const_data = {}
 ver_path = convert_path('radiantkit/const.py')
-with open(ver_path) as ver_file: exec(ver_file.read(), const_data)
+with open(ver_path) as ver_file:
+    exec(ver_file.read(), const_data)
 
-setup(name='radiantkit',
+setup(
+    name='radiantkit',
     version=const_data['__version__'],
     description='Radial Image Analysis Toolkit',
     long_description=long_description,
@@ -53,7 +55,7 @@ setup(name='radiantkit',
     scripts=[],
     test_suite='nose.collector',
     tests_require=['nose'],
-    entry_points={'console_scripts':[
+    entry_points={'console_scripts': [
         'radiant = radiantkit.scripts.radiant:main'
     ]}
 )

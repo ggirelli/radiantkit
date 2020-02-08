@@ -7,6 +7,7 @@ import numpy as np
 from radiantkit.image import Image, ImageBinary
 from typing import Optional, Tuple, Type
 
+
 class BoundingElement(object):
     _bounds: Optional[Tuple[Tuple[int]]] = None
 
@@ -28,7 +29,7 @@ class BoundingElement(object):
         axes_bounds = []
         for axis_id in range(len(B.shape)):
             axis = B.pixels.sum(tuple([axis for axis in range(len(B.shape))
-                if axis != axis_id])) != 0
+                                       if axis != axis_id])) != 0
             axes_bounds.append((axis.argmax(), len(axis)-axis[::-1].argmax()))
         return BoundingElement(axes_bounds)
 
@@ -36,7 +37,8 @@ class BoundingElement(object):
         assert len(self._bounds) == len(I.shape)
         for axis_id in range(len(I.shape)):
             assert self._bounds[axis_id][1] <= I.shape[axis_id]
-        return I.pixels[tuple([slice(b0, b1) for b0,b1 in self._bounds])].copy()
+        return I.pixels[tuple([slice(b0, b1)
+                               for b0, b1 in self._bounds])].copy()
 
     def __repr__(self):
-        return  f"{len(self._bounds)}D Bounding Element: {self._bounds}"
+        return f"{len(self._bounds)}D Bounding Element: {self._bounds}"

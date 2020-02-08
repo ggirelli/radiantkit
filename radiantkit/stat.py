@@ -10,10 +10,12 @@ import scipy as sp
 from typing import Optional, Tuple
 import warnings
 
+
 class FitType(Enum):
     SOG = "sum_of_gaussians"
     GAUSSIAN = "gaussian"
     FWHM = "full_width_half_maximum"
+
 
 def gpartial(V: np.ndarray, d: int, sigma: float) -> np.ndarray:
     '''Calculate the partial derivative of V along dimension d using a filter
@@ -24,13 +26,13 @@ def gpartial(V: np.ndarray, d: int, sigma: float) -> np.ndarray:
         w = w + 1
     w = 2 * w + 1
     if 1 == sigma:
-        w = 11;
+        w = 11
 
     if sigma == 0:
-        dg = [0, -1, 1];
-        g = [0, .5, .5];
+        dg = [0, -1, 1]
+        g = [0, .5, .5]
     else:
-        g = stats.norm.pdf(np.linspace(-w/2., w/2., w+1), scale = sigma)
+        g = sp.stats.norm.pdf(np.linspace(-w/2., w/2., w+1), scale=sigma)
         x = np.linspace(-(w - 1) / 2, (w - 1) / 2, w + 1)
         k0 = 1 / np.sqrt(2 * np.pi * sigma**2.)
         k1 = 1 / (2 * sigma**2)
@@ -61,20 +63,24 @@ def gpartial(V: np.ndarray, d: int, sigma: float) -> np.ndarray:
 
     return V
 
+
 def gaussian(x: float, k: float, loc: float, scale: float) -> float:
     return k*sp.stats.norm.pdf(x, loc=loc, scale=scale)
+
 
 def gaussian_fit(xx: np.ndarray) -> Optional[np.ndarray]:
     df = sp.stats.gaussian_kde(xx)
     sd = np.std(xx)
     params = [df(xx).max()*sd/4*np.sqrt(2*np.pi), np.mean(xx), sd]
     with warnings.catch_warnings():
-        fitted_params,_ = sp.optimize.curve_fit(
+        fitted_params, _ = sp.optimize.curve_fit(
             gaussian, xx, df(xx), p0=params)
-    if all(fitted_params == params): return None
+    if all(fitted_params == params):
+        return None
     return fitted_params
 
-def plot_gaussian_fit(xx: np.ndarray, fitted_params:np.ndarray) -> None:
+
+def plot_gaussian_fit(xx: np.ndarray, fitted_params: np.ndarray) -> None:
     assert 3 == len(fitted_params)
     df = sp.stats.gaussian_kde(xx)
     plt.plot(xx, df(xx), '.')
@@ -82,25 +88,30 @@ def plot_gaussian_fit(xx: np.ndarray, fitted_params:np.ndarray) -> None:
     plt.plot(x2, gaussian(x2, *fitted_params), 'r')
     plt.show()
 
+
 def sog(x: float, k1: float, loc1: float, scale1: float,
-    k2: float, loc2: float, scale2: float) -> float:
+        k2: float, loc2: float, scale2: float) -> float:
     return gaussian(x, k1, loc1, scale1) + gaussian(x, k2, loc2, scale2)
+
 
 def sog_fit(xx: np.ndarray) -> Optional[np.ndarray]:
     df = sp.stats.gaussian_kde(xx)
     loc2 = np.mean(xx)+2.5*np.std(xx)
     sd1 = np.std(xx)
     params = [df(xx).max()*sd1/4*np.sqrt(2*np.pi), np.mean(xx), sd1,
-        df(loc2)[0]*sd1/4*np.sqrt(2*np.pi), loc2, sd1/4]
+              df(loc2)[0]*sd1/4*np.sqrt(2*np.pi), loc2, sd1/4]
     try:
         with warnings.catch_warnings():
-            fitted_params,_ = sp.optimize.curve_fit(
+            fitted_params, _ = sp.optimize.curve_fit(
                 sog, xx, df(xx), p0=params)
-    except RuntimeError as e: return None
-    if all(fitted_params == params): return None
+    except RuntimeError:
+        return None
+    if all(fitted_params == params):
+        return None
     return fitted_params
 
-def plot_sog_fit(xx: np.ndarray, fitted_params:np.ndarray) -> None:
+
+def plot_sog_fit(xx: np.ndarray, fitted_params: np.ndarray) -> None:
     assert 6 == len(fitted_params)
     df = sp.stats.gaussian_kde(xx)
     plt.plot(xx, df(xx), '.')
@@ -109,11 +120,12 @@ def plot_sog_fit(xx: np.ndarray, fitted_params:np.ndarray) -> None:
     plt.plot(x2, gaussian(x2, *fitted_params[3:]), 'g')
     plt.show()
 
-def fwhm(xx: np.ndarray) -> Tuple[float]:
-    logging.warning("FWHM not implemented yet. Using full data range.")
-    return (xx.min(), xx.max())
 
-def cell_cycle_fit(data: np.ndarray) -> Tuple[Optional[np.ndarray],str]:
+def fwhm(xx: np.ndarray) -> Tuple[float]:
+    raise NotImplementedError
+
+
+def cell_cycle_fit(data: np.ndarray) -> Tuple[Optional[np.ndarray], str]:
     fit = (sog_fit(data), FitType.SOG)
     if fit[0] is None:
         fit = (gaussian_fit(data), FitType.GAUSSIAN)
@@ -121,20 +133,25 @@ def cell_cycle_fit(data: np.ndarray) -> Tuple[Optional[np.ndarray],str]:
             fit = (fwhm(data), FitType.FWHM)
     return fit
 
+
 def sog_range_from_fit(data: np.ndarray, fitted_params: Tuple[float],
-    fit_type: str, k_sigma: float) -> Tuple[Tuple[float]]:
+                       fit_type: str, k_sigma: float) -> Tuple[Tuple[float]]:
     assert 6 == len(fitted_params)
     return gaussian_range_from_fit(data, fitted_params[:3], fit_type, k_sigma)
 
+
 def gaussian_range_from_fit(data: np.ndarray, fitted_params: Tuple[float],
-    fit_type: str, k_sigma: float) -> Tuple[Tuple[float]]:
+                            fit_type: str, k_sigma: float
+                            ) -> Tuple[Tuple[float]]:
     assert 3 == len(fitted_params)
     delta = k_sigma*fitted_params[2]
     return (max(fitted_params[1]-delta, data.min()),
-        min(fitted_params[1]+delta, data.max()))
+            min(fitted_params[1]+delta, data.max()))
+
 
 def range_from_fit(data: np.ndarray, fitted_params: Tuple[float],
-    fit_type: str, k_sigma: float) -> Optional[Tuple[Tuple[float]]]:
+                   fit_type: str, k_sigma: float
+                   ) -> Optional[Tuple[Tuple[float]]]:
     if FitType.SOG == fit_type:
         return sog_range_from_fit(data, fitted_params, fit_type, k_sigma)
     if FitType.GAUSSIAN == fit_type:
@@ -143,13 +160,15 @@ def range_from_fit(data: np.ndarray, fitted_params: Tuple[float],
         return fitted_params
     return None
 
+
 def quantile_from_counts(values: np.ndarray, counts: np.ndarray,
-    p: float, cumsummed: bool=False) -> float:
+                         p: float, cumsummed: bool = False) -> float:
     '''Hyndman, R. J. and Fan, Y. (1996),
     “Sample quantiles in statistical packages,”
     The American Statistician, 50(4), 361 - 365.'''
     assert p >= 0 and p <= 1
-    if not cumsummed: counts = np.cumsum(counts)
+    if not cumsummed:
+        counts = np.cumsum(counts)
     x = len(values)*p+.5
     if int(x) == x:
         loc = (counts >= x).argmax()

@@ -3,7 +3,6 @@
 @contact: gigi.ga90@gmail.com
 '''
 
-from enum import auto, Enum
 import logging
 import numpy as np
 import os
@@ -18,14 +17,15 @@ import tifffile
 from typing import List, Optional, Tuple, Union
 import warnings
 
+
 class ImageSettings(object):
-    _ALLOWED_AXES: str="VCTZYX"
-    _axes_order: str="VCTZYX"
-    _aspect: np.ndarray=np.ones(6)
+    _ALLOWED_AXES: str = "VCTZYX"
+    _axes_order: str = "VCTZYX"
+    _aspect: np.ndarray = np.ones(6)
 
     def __init__(self):
         super(ImageSettings, self).__init__()
-    
+
     @property
     def nd(self) -> int:
         return len(self._axes_order)
@@ -36,23 +36,25 @@ class ImageSettings(object):
 
     @aspect.setter
     def aspect(self, spacing: np.ndarray) -> None:
-        if len(self.aspect) == len(spacing): self._aspect = spacing
+        if len(self.aspect) == len(spacing):
+            self._aspect = spacing
         elif len(spacing) < len(self._axes_order):
             self.aspect[-len(spacing):] = spacing
-            logging.warning(f"aspect changed to {self.aspect} " +
-                f"(used only last {len(self.aspect)} values)")
+            logging.warning(f"aspect changed to {self.aspect} "
+                            + f"(used only last {len(self.aspect)} values)")
         else:
             self.aspect = spacing[-len(self.aspect):]
-            logging.warning(f"aspect changed to {self.aspect} " +
-                f"(used only last {len(self.aspect)} values)")
+            logging.warning(f"aspect changed to {self.aspect} "
+                            + f"(used only last {len(self.aspect)} values)")
+
 
 class ImageBase(ImageSettings):
     _path_to_local: Optional[str] = None
     _pixels: Optional[np.ndarray] = None
-    _shape: Tuple[int]=None
+    _shape: Tuple[int] = None
 
-    def __init__(self, pixels: np.ndarray, path: Optional[str]=None,
-        axes: Optional[str]=None):
+    def __init__(self, pixels: np.ndarray, path: Optional[str] = None,
+                 axes: Optional[str] = None):
         super(ImageSettings, self).__init__()
         assert len(pixels.shape) <= len(self._ALLOWED_AXES)
         self._pixels = pixels.copy()
@@ -67,7 +69,8 @@ class ImageBase(ImageSettings):
             self._axes_order = self._ALLOWED_AXES[-len(self.shape):]
         self._aspect = self._aspect[-len(self.shape):]
         if path is not None:
-            if os.path.isfile(path): self._path_to_local = path
+            if os.path.isfile(path):
+                self._path_to_local = path
 
     @property
     def shape(self) -> Tuple[int]:
@@ -97,16 +100,17 @@ class ImageBase(ImageSettings):
         assert all([1 == c.count(new_axes) for c in set(new_axes)])
         if len(new_axes) < len(self.axes):
             for c in self.axes:
-                if not c in new_axes:
+                if c not in new_axes:
                     axes_id = self.axes.index(c)
-                    self._pixels = np.delete(self.pixels,
+                    self._pixels = np.delete(
+                        self.pixels,
                         slice(1, self.pixels.shape[axes_id]), axes_id)
                     self._pixels = np.squeeze(self.pixels, axes_id)
                     self._aspect.pop(axes_id)
-        
+
         while len(new_axes) > len(self.axes):
             for c in new_axes:
-                if not c in self.axes:
+                if c not in self.axes:
                     self._axes_order = f"{c}{self.axes}"
                     new_shape = [1]
                     new_shape.extend(self._pixels.shape)
@@ -117,21 +121,23 @@ class ImageBase(ImageSettings):
             assert len(new_axes) == len(self.axes)
             assert all([c in new_axes for c in self.axes])
             new_axes_order = [new_axes.index(c) for c in self.axes]
-            self._pixels = np.moveaxis(self.pixels,
-                range(len(self.axes)), new_axes_order)
+            self._pixels = np.moveaxis(
+                self.pixels, range(len(self.axes)), new_axes_order)
             self._shape = self._pixels.shape
             self._aspect = self._aspect[new_axes_order]
             self._axes_order = new_axes
 
     @property
     def loaded(self):
-        if not self.is_loadable(): return True
-        else: return self._pixels is not None
+        if not self.is_loadable():
+            return True
+        else:
+            return self._pixels is not None
 
     @staticmethod
     def from_tiff(path: str) -> 'ImageBase':
         return ImageBase(read_tiff(path), path)
-    
+
     def _extract_nd(self) -> None:
         self._pixels = extract_nd(self._pixels, self.nd)
         assert len(self._pixels.shape) <= self.nd
@@ -139,7 +145,8 @@ class ImageBase(ImageSettings):
             self._axes_order = self._axes_order[-self.nd:]
 
     def _remove_empty_axes(self) -> None:
-        if len(self.pixels.shape) != self.nd: self._extract_nd()
+        if len(self.pixels.shape) != self.nd:
+            self._extract_nd()
         while 1 == self.pixels.shape[0]:
             new_shape = list(self.pixels.shape)
             new_shape.pop(0)
@@ -147,7 +154,8 @@ class ImageBase(ImageSettings):
             self._axes_order = self._axes_order[1:]
 
     def axis_shape(self, axis: str) -> int:
-        if not axis in self._axes_order: return None
+        if axis not in self._axes_order:
+            return None
         return self.shape[self._axes_order.index(axis)]
 
     def z_project(self, projection_type: const.ProjectionType) -> np.ndarray:
@@ -166,53 +174,60 @@ class ImageBase(ImageSettings):
             logging.error("cannot unload ImageBase without path_to_local.")
             return
         if not os.path.isfile(self._path_to_local):
-            logging.error("path_to_local not found, cannot unload: " +
-                self._path_to_local)
+            logging.error("path_to_local not found, cannot unload: "
+                          + self._path_to_local)
             return
         self._pixels = None
 
     def to_tiff(self, path: str, compressed: bool,
-        bundle_axes: Optional[str]=None, inMicrons: bool=False,
-        ResolutionZ: Optional[float]=None, forImageJ:
-        bool=False, **kwargs) -> None:
-        if bundle_axes is None: bundle_axes = self._axes_order
+                bundle_axes: Optional[str] = None, inMicrons: bool = False,
+                ResolutionZ: Optional[float] = None, forImageJ: bool = False,
+                **kwargs) -> None:
+        if bundle_axes is None:
+            bundle_axes = self._axes_order
         save_tiff(path, self.pixels, self.dtype, compressed, bundle_axes,
-            inMicrons, ResolutionZ, forImageJ, **kwargs)
+                  inMicrons, ResolutionZ, forImageJ, **kwargs)
 
     def get_offset(self, offset: int) -> np.ndarray:
-        if 0 == offset: return self.pixels
+        if 0 == offset:
+            return self.pixels
         if offset < 0:
             offset *= -1
-            return self.pixels[tuple([slice(offset,-offset)
-                for a in range(len(self.shape))])]
+            return self.pixels[tuple([slice(offset, -offset)
+                               for a in range(len(self.shape))])]
         else:
             canvas = np.zeros(np.array(self.shape)+2*offset)
-            canvas[tuple([slice(offset,self.shape[a]+offset)
-                for a in range(len(self.shape))])] = self.pixels
+            canvas[tuple([slice(offset, self.shape[a]+offset)
+                   for a in range(len(self.shape))])] = self.pixels
             return canvas
 
     def __repr__(self) -> str:
         s = f"{self.nd}D {self.__class__.__name__}: "
         s += f"{'x'.join([str(d) for d in self.shape])} [{self.axes}, "
         s += f"aspect: {'x'.join([str(d) for d in self.aspect])} nm]"
-        if self.loaded: s += ' [loaded]'
-        else: s += ' [unloaded]'
-        if self.is_loadable(): s += f"; From '{self._path_to_local}'"
+        if self.loaded:
+            s += ' [loaded]'
+        else:
+            s += ' [unloaded]'
+        if self.is_loadable():
+            s += f"; From '{self._path_to_local}'"
         return s
 
+
 class ImageLabeled(ImageBase):
-    def __init__(self, pixels: np.ndarray, path: Optional[str]=None,
-        axes: Optional[str]=None, doRelabel: bool=True):
+    def __init__(self, pixels: np.ndarray, path: Optional[str] = None,
+                 axes: Optional[str] = None, doRelabel: bool = True):
         super(ImageLabeled, self).__init__(pixels, path, axes)
-        if doRelabel: self._relabel()
+        if doRelabel:
+            self._relabel()
 
     @property
     def max(self):
         return self.pixels.max()
 
     @staticmethod
-    def from_tiff(path: str, axes: Optional[str]=None,
-        doRelabel: bool=True) -> 'ImageLabeled':
+    def from_tiff(path: str, axes: Optional[str] = None,
+                  doRelabel: bool = True) -> 'ImageLabeled':
         return ImageLabeled(read_tiff(path), path, axes, doRelabel)
 
     def _relabel(self) -> None:
@@ -234,12 +249,12 @@ class ImageLabeled(ImageBase):
     def size(self, lab: int, axes: str) -> int:
         assert all([axis in self.axes for axis in axes])
         axes_ids = tuple([self.axes.index(axis)
-            for axis in self.axes if axis not in axes])
+                          for axis in self.axes if axis not in axes])
         return (self.pixels == lab).max(axes_ids).sum()
 
-    def __remove_labels_by_size(self, labels: List[int],
-        sizes: List[int], pass_range: Tuple[Union[int,float]],
-        axes: str="total") -> None:
+    def __remove_labels_by_size(
+            self, labels: List[int], sizes: List[int],
+            pass_range: Tuple[Union[int, float]], axes: str = "total") -> None:
         assert 2 == len(pass_range)
         assert pass_range[0] <= pass_range[1]
 
@@ -247,15 +262,15 @@ class ImageLabeled(ImageBase):
         labels = np.array(labels)
         filtered = np.logical_or(sizes < pass_range[0], sizes > pass_range[1])
 
-        logging.info(f"removing {filtered.sum()}/{self.max} labels " +
-            f"outside of {axes} size range {pass_range}")
+        logging.info(f"removing {filtered.sum()}/{self.max} labels "
+                     + f"outside of {axes} size range {pass_range}")
         logging.debug(np.array((labels, sizes)))
         self._pixels[np.isin(self.pixels, labels[filtered])] = 0
         self._pixels = ski.measure.label(self.pixels)
         logging.info(f"retained {self.max} labels")
 
     def filter_size(self, axes: str,
-        pass_range: Tuple[Union[int,float]]) -> None:
+                    pass_range: Tuple[Union[int, float]]) -> None:
         labels = np.unique(self.pixels)
         labels = labels[0 != labels]
         sizes = []
@@ -264,7 +279,7 @@ class ImageLabeled(ImageBase):
             sizes.append(self.size(current_label, axes))
         self.__remove_labels_by_size(labels, sizes, pass_range, axes)
 
-    def filter_total_size(self, pass_range: Tuple[Union[int,float]]) -> None:
+    def filter_total_size(self, pass_range: Tuple[Union[int, float]]) -> None:
         labels, sizes = np.unique(self.pixels, return_counts=True)
         self.__remove_labels_by_size(labels, sizes, pass_range)
 
@@ -281,14 +296,16 @@ class ImageLabeled(ImageBase):
         s += f"; Max label: {self.pixels.max}"
         return s
 
-class ImageBinary(ImageBase):
-    _background: float=0
-    _foreground: float=0
 
-    def __init__(self, pixels: np.ndarray, path: Optional[str]=None,
-        axes: Optional[str]=None, doRebinarize: bool=True):
+class ImageBinary(ImageBase):
+    _background: float = 0
+    _foreground: float = 0
+
+    def __init__(self, pixels: np.ndarray, path: Optional[str] = None,
+                 axes: Optional[str] = None, doRebinarize: bool = True):
         super(ImageBinary, self).__init__(pixels, path, axes)
-        if doRebinarize: self._rebinarize()
+        if doRebinarize:
+            self._rebinarize()
         assert 1 == self.pixels.max()
         self._foreground = self.pixels.sum()
         self._background = np.prod(self.pixels.shape)-self._foreground
@@ -296,14 +313,14 @@ class ImageBinary(ImageBase):
     @property
     def background(self):
         return self._background
-    
+
     @property
     def foreground(self):
         return self._foreground
 
     @staticmethod
-    def from_tiff(path: str, axes: Optional[str]=None,
-        doRebinarize: bool=True) -> 'ImageBinary':
+    def from_tiff(path: str, axes: Optional[str] = None,
+                  doRebinarize: bool = True) -> 'ImageBinary':
         return ImageBinary(read_tiff(path), path, axes, doRebinarize)
 
     def _rebinarize(self) -> None:
@@ -312,16 +329,16 @@ class ImageBinary(ImageBase):
     def fill_holes(self) -> None:
         self._pixels = fill_holes(self.pixels)
 
-    def close(self, block_side: int=3) -> None:
+    def close(self, block_side: int = 3) -> None:
         self._pixels = closing2(self.pixels, block_side)
 
-    def open(self, block_side: int=3) -> None:
+    def open(self, block_side: int = 3) -> None:
         self._pixels = opening2(self.pixels, block_side)
 
-    def dilate(self, block_side: int=3) -> None:
+    def dilate(self, block_side: int = 3) -> None:
         self._pixels = dilate(self.pixels, block_side)
 
-    def erode(self, block_side: int=3) -> None:
+    def erode(self, block_side: int = 3) -> None:
         self._pixels = erode(self.pixels, block_side)
 
     def logical_and(self, B: 'ImageBinary') -> None:
@@ -342,13 +359,14 @@ class ImageBinary(ImageBase):
         return L
 
     def to_tiff(self, path: str, compressed: bool,
-        bundle_axes: Optional[str]=None, inMicrons: bool=False,
-        ResolutionZ: Optional[float]=None, forImageJ:
-        bool=False, **kwargs) -> None:
-        if bundle_axes is None: bundle_axes = self._axes_order
+                bundle_axes: Optional[str] = None, inMicrons: bool = False,
+                ResolutionZ: Optional[float] = None, forImageJ: bool = False,
+                **kwargs) -> None:
+        if bundle_axes is None:
+            bundle_axes = self._axes_order
         save_tiff(path, self.pixels*np.iinfo(self.dtype).max, self.dtype,
-            compressed, bundle_axes, inMicrons, ResolutionZ, forImageJ,
-            **kwargs)
+                  compressed, bundle_axes, inMicrons, ResolutionZ, forImageJ,
+                  **kwargs)
 
     def __repr__(self) -> str:
         s = super(ImageBinary, self).__repr__()
@@ -356,15 +374,16 @@ class ImageBinary(ImageBase):
         s += f"; Background voxels: {self.background}"
         return s
 
+
 class Image(ImageBase):
     _rescale_factor: float = 1.
-    _background: float=None
-    _foreground: float=None
+    _background: float = None
+    _foreground: float = None
 
-    def __init__(self, pixels: np.ndarray, path: Optional[str]=None,
-        axes: Optional[str]=None):
+    def __init__(self, pixels: np.ndarray, path: Optional[str] = None,
+                 axes: Optional[str] = None):
         super(Image, self).__init__(pixels, path, axes)
-    
+
     @property
     def background(self):
         return self._background
@@ -376,7 +395,7 @@ class Image(ImageBase):
     @property
     def rescale_factor(self) -> float:
         return self._rescale_factor
-    
+
     @rescale_factor.setter
     def rescale_factor(self, new_factor: float) -> None:
         self._pixels = self.pixels*self.rescale_factor
@@ -384,27 +403,31 @@ class Image(ImageBase):
         self._pixels = self.pixels/self.rescale_factor
 
     @staticmethod
-    def from_tiff(path: str, axes: Optional[str]=None,
-        doRescale: bool=True) -> 'Image':
-        I = Image(read_tiff(path), path, axes)
-        if doRescale: I.rescale_factor = I.get_huygens_rescaling_factor()
-        return I
+    def from_tiff(path: str, axes: Optional[str] = None,
+                  doRescale: bool = True) -> 'Image':
+        img = Image(read_tiff(path), path, axes)
+        if doRescale:
+            img.rescale_factor = img.get_huygens_rescaling_factor()
+        return img
 
     def get_huygens_rescaling_factor(self) -> float:
-        if self._path_to_local is None: return 1.
+        if self._path_to_local is None:
+            return 1.
         return get_huygens_rescaling_factor(self._path_to_local)
 
-    def threshold_global(self, thr: Union[int,float]) -> ImageBinary:
-        return ImageBinary(self.pixels>thr, doRebinarize=False)
+    def threshold_global(self, thr: Union[int, float]) -> ImageBinary:
+        return ImageBinary(self.pixels > thr, doRebinarize=False)
 
     def threshold_adaptive(self, block_size: int,
-        method: str, mode: str, *args, **kwargs) -> ImageBinary:
+                           method: str, mode: str,
+                           *args, **kwargs) -> ImageBinary:
         return ImageBinary(threshold_adaptive(self.pixels, block_size,
-            method, mode, *args, **kwargs), doRebinarize=False)
+                           method, mode, *args, **kwargs), doRebinarize=False)
 
-    def update_ground(self, M: Union[ImageBinary,ImageLabeled],
-        block_side: int=11) -> None:
-        if isinstance(M, ImageLabeled): M = M.binarize()
+    def update_ground(self, M: Union[ImageBinary, ImageLabeled],
+                      block_side: int = 11) -> None:
+        if isinstance(M, ImageLabeled):
+            M = M.binarize()
         M = dilate(M.pixels, block_side)
         self._foreground = np.median(self.pixels[M])
         self._background = np.median(self.pixels[np.logical_not(M)])
@@ -415,104 +438,125 @@ class Image(ImageBase):
             s += f"; Back/foreground: {(self.background, self.foreground)}"
         return s
 
+
 def get_huygens_rescaling_factor(path: str) -> float:
-    basename,ext = tuple(os.path.splitext(os.path.basename(path)))
+    basename, ext = tuple(os.path.splitext(os.path.basename(path)))
     path = os.path.join(os.path.dirname(path), f"{basename}_history.txt")
-    if not os.path.exists(path): return 1
+    if not os.path.exists(path):
+        return 1
     needle = 'Stretched to Integer type'
     with open(path, 'r') as fhistory:
         factor = fhistory.readlines()
         factor = [x for x in factor if needle in x]
-    if 0 == len(factor): return 1
-    elif 1 == len(factor): return float(factor[0].strip().split(' ')[-1])
-    else: return np.prod([float(f.strip().split(' ')[-1]) for f in factor])
+    if 0 == len(factor):
+        return 1
+    elif 1 == len(factor):
+        return float(factor[0].strip().split(' ')[-1])
+    else:
+        return np.prod([float(f.strip().split(' ')[-1]) for f in factor])
 
-def get_dtype(imax: Union[int,float]) -> str:
+
+def get_dtype(imax: Union[int, float]) -> str:
     depths = [8, 16]
     for depth in depths:
         if imax <= 2**depth-1:
             return("uint%d" % (depth,))
     return("uint")
 
+
 def read_tiff(path: str) -> np.ndarray:
     assert os.path.isfile(path), f"file not found: '{path}'"
     try:
         with warnings.catch_warnings(record=True) as warning_list:
-            I = ski.io.imread(path)
+            img = ski.io.imread(path)
             warning_list = [str(e) for e in warning_list]
             if any(["axes do not match shape" in e for e in warning_list]):
-                logging.warning(f"image axes do not match metadata in '{path}'")
+                logging.warning(
+                    f"image axes do not match metadata in '{path}'")
                 logging.warning("using the image axes.")
-    except (ValueError, TypeError) as e:
+    except (ValueError, TypeError):
         logging.critical(f"cannot read image '{path}', file seems corrupted.")
         raise
-    return I
+    return img
 
-def extract_nd(I: np.ndarray, nd: int) -> np.ndarray:
-    if len(I.shape) <= nd: return I
-    while len(I.shape) > nd: I = I[0]
-    if 0 in I.shape: logging.warning("the image contains empty dimensions.")
-    return I
 
-def save_tiff(path: str, I: np.ndarray, dtype: str, compressed: bool,
-    bundle_axes: str="CTZYX", inMicrons: bool=False,
-    ResolutionZ: Optional[float]=None, forImageJ: bool=False, **kwargs) -> None:
-    
-    while len(bundle_axes) > len(I.shape):
+def extract_nd(img: np.ndarray, nd: int) -> np.ndarray:
+    if len(img.shape) <= nd:
+        return img
+    while len(img.shape) > nd:
+        img = img[0]
+    if 0 in img.shape:
+        logging.warning("the image contains empty dimensions.")
+    return img
+
+
+def save_tiff(path: str, img: np.ndarray, dtype: str, compressed: bool,
+              bundle_axes: str = "CTZYX", inMicrons: bool = False,
+              ResolutionZ: Optional[float] = None, forImageJ: bool = False,
+              **kwargs) -> None:
+    while len(bundle_axes) > len(img.shape):
         new_shape = [1]
-        [new_shape.append(n) for n in I.shape]
-        I.shape = new_shape
+        [new_shape.append(n) for n in img.shape]
+        img.shape = new_shape
 
     assert_msg = "shape mismatch between bundled axes and image."
-    assert len(bundle_axes) == len(I.shape), assert_msg
+    assert len(bundle_axes) == len(img.shape), assert_msg
 
-    metadata = {'axes' : bundle_axes}
-    if inMicrons: metadata['unit'] = "um"
-    if ResolutionZ is not None: metadata['spacing'] = ResolutionZ
+    metadata = dict(axes=bundle_axes)
+    if inMicrons:
+        metadata['unit'] = "um"
+    if ResolutionZ is not None:
+        metadata['spacing'] = ResolutionZ
 
     if compressed:
-        tifffile.imsave(path, I.astype(dtype),
-            shape = I.shape, compress = 9,
-            dtype = dtype, imagej = forImageJ,
-            metadata = metadata, **kwargs)
+        tifffile.imsave(path, img.astype(dtype),
+                        shape=img.shape, compress=9,
+                        dtype=dtype, imagej=forImageJ,
+                        metadata=metadata, **kwargs)
     else:
-        tifffile.imsave(path, I.astype(dtype),
-            shape = I.shape, compress = 0,
-            dtype = dtype, imagej = forImageJ,
-            metadata = metadata, **kwargs)
+        tifffile.imsave(path, img.astype(dtype),
+                        shape=img.shape, compress=0,
+                        dtype=dtype, imagej=forImageJ,
+                        metadata=metadata, **kwargs)
 
-def z_project(I: np.ndarray,
-    projection_type: const.ProjectionType) -> np.ndarray:
+
+def z_project(img: np.ndarray,
+              projection_type: const.ProjectionType) -> np.ndarray:
     if projection_type == const.ProjectionType.SUM_PROJECTION:
-        I = I.sum(0).astype(I.dtype)
+        img = img.sum(0).astype(img.dtype)
     elif projection_type == const.ProjectionType.MAX_PROJECTION:
-        I = I.max(0).astype(I.dtype)
-    return I
+        img = img.max(0).astype(img.dtype)
+    return img
 
-def threshold_adaptive(I: np.ndarray, block_size: int,
-    method: str, mode: str, *args, **kwargs) -> np.ndarray:
+
+def threshold_adaptive(img: np.ndarray, block_size: int,
+                       method: str, mode: str,
+                       *args, **kwargs) -> np.ndarray:
     assert 1 == block_size % 2
 
-    def threshold_adaptive_slice(I: np.ndarray, block_size: int,
-        method: str, mode: str, *args, **kwargs) -> np.ndarray:
-        threshold = ski.filters.threshold_local(I, block_size, *args,
-            method = method, mode = mode, **kwargs)
-        return I >= threshold
+    def threshold_adaptive_slice(
+            img: np.ndarray, block_size: int, method: str, mode: str,
+            *args, **kwargs) -> np.ndarray:
+        threshold = ski.filters.threshold_local(
+            img, block_size, *args,
+            method=method, mode=mode, **kwargs)
+        return img >= threshold
 
-    if 2 == len(I.shape):
-        mask = threshold_adaptive_slice(I, block_size,
-            method, mode, *args, **kwargs)
-    elif 3 == len(I.shape):
-        mask = I.copy()
+    if 2 == len(img.shape):
+        mask = threshold_adaptive_slice(img, block_size, method, mode,
+                                        *args, **kwargs)
+    elif 3 == len(img.shape):
+        mask = img.copy()
         for slice_id in range(mask.shape[0]):
             logging.debug(f"ADAPT_THR SLICE#({slice_id})")
             mask[slice_id, :, :] = threshold_adaptive_slice(
                 mask[slice_id, :, :], block_size, method, mode,
                 *args, **kwargs)
     else:
-        logging.info("Local threshold not implemented for images with " +
-            f"{len(I.shape)} dimensions.")
+        logging.info("Local threshold not implemented for images with "
+                     + f"{len(img.shape)} dimensions.")
     return mask
+
 
 def fill_holes(mask: np.ndarray) -> np.ndarray:
     mask = ndi.binary_fill_holes(mask)
@@ -521,53 +565,58 @@ def fill_holes(mask: np.ndarray) -> np.ndarray:
             logging.debug(f"FILL_HOLES SLICE#({slice_id})")
             mask[slice_id, :, :] = ndi.binary_fill_holes(mask[slice_id, :, :])
     elif 2 != len(mask.shape):
-        logging.warning("3D hole filling not performed on images with " +
-            f"{len(mask.shape)} dimensions.")
+        logging.warning("3D hole filling not performed on images with "
+                        + f"{len(mask.shape)} dimensions.")
     return mask
 
-def closing2(mask: np.ndarray, block_side: int=3) -> np.ndarray:
+
+def closing2(mask: np.ndarray, block_side: int = 3) -> np.ndarray:
     assert 1 == mask.max()
     if 2 == len(mask.shape):
         mask = closing(mask, square(block_side))
     elif 3 == len(mask.shape):
         mask = closing(mask, cube(block_side))
     else:
-        logging.info("Close operation not implemented for images with " +
-            f"{len(mask.shape)} dimensions.")
+        logging.info("Close operation not implemented for images with "
+                     + f"{len(mask.shape)} dimensions.")
     return mask
 
-def opening2(mask: np.ndarray, block_side: int=3) -> np.ndarray:
+
+def opening2(mask: np.ndarray, block_side: int = 3) -> np.ndarray:
     assert 1 == mask.max()
     if 2 == len(mask.shape):
         mask = opening(mask, square(block_side))
     elif 3 == len(mask.shape):
         mask = opening(mask, cube(block_side))
     else:
-        logging.info("Open operation not implemented for images with " +
-            f"{len(mask.shape)} dimensions.")
+        logging.info("Open operation not implemented for images with "
+                     + f"{len(mask.shape)} dimensions.")
     return mask
 
-def dilate(mask: np.ndarray, block_side: int=3) -> np.ndarray:
+
+def dilate(mask: np.ndarray, block_side: int = 3) -> np.ndarray:
     assert 1 == mask.max()
     if 2 == len(mask.shape):
         mask = dilation(mask, square(block_side))
     elif 3 == len(mask.shape):
         mask = dilation(mask, cube(block_side))
     else:
-        logging.info("Dilate operation not implemented for images with " +
-            f"{len(mask.shape)} dimensions.")
+        logging.info("Dilate operation not implemented for images with "
+                     + f"{len(mask.shape)} dimensions.")
     return mask
 
-def erode(mask: np.ndarray, block_side: int=3) -> np.ndarray:
+
+def erode(mask: np.ndarray, block_side: int = 3) -> np.ndarray:
     assert 1 == mask.max()
     if 2 == len(mask.shape):
         mask = erosion(mask, square(block_side))
     elif 3 == len(mask.shape):
         mask = erosion(mask, cube(block_side))
     else:
-        logging.info("Erode operation not implemented for images with " +
-            f"{len(mask.shape)} dimensions.")
+        logging.info("Erode operation not implemented for images with "
+                     + f"{len(mask.shape)} dimensions.")
     return mask
+
 
 def clear_XY_borders(L: np.ndarray) -> np.ndarray:
     if 2 == len(L.shape):
@@ -579,41 +628,47 @@ def clear_XY_borders(L: np.ndarray) -> np.ndarray:
         border_labels.extend(np.unique(L[:, :, 0]).tolist())
         border_labels.extend(np.unique(L[:, :, -1]).tolist())
         border_labels = set(border_labels)
-        for lab in border_labels: L[L == lab] = 0
+        for lab in border_labels:
+            L[L == lab] = 0
         return ski.measure.label(L)
     else:
-        logging.warning("XY border clearing not implemented for images " +
-            f"with {len(L.shape)} dimensions.")
+        logging.warning("XY border clearing not implemented for images "
+                        + f"with {len(L.shape)} dimensions.")
         return L
 
+
 def clear_Z_borders(L: np.ndarray) -> np.ndarray:
-    if 2 == len(L.shape): return L
+    if 2 == len(L.shape):
+        return L
     elif 3 == len(L.shape):
         border_labels = []
         border_labels.extend(np.unique(L[0, :, :]).tolist())
         border_labels.extend(np.unique(L[-1, :, :]).tolist())
         border_labels = set(border_labels)
-        for lab in border_labels: L[L == lab] = 0
+        for lab in border_labels:
+            L[L == lab] = 0
         return ski.measure.label(L)
     else:
-        logging.warning("Z border clearing not implemented for images " +
-            f"with {len(L.shape)} dimensions.")
+        logging.warning("Z border clearing not implemented for images "
+                        + f"with {len(L.shape)} dimensions.")
         return L
 
+
 def inherit_labels(mask: Union[ImageBinary, ImageLabeled],
-    mask2d: Union[ImageBinary, ImageLabeled]) -> ImageLabeled:
+                   mask2d: Union[ImageBinary, ImageLabeled]) -> ImageLabeled:
     assert 2 == len(mask2d.shape)
     if 2 == len(mask.shape):
         assert mask2d.shape == mask.shape
-        return mask2d.pixels[np.logical_and(mask.pixels>0, mask2d.pixels>0)]
+        return mask2d.pixels[np.logical_and(
+            mask.pixels > 0, mask2d.pixels > 0)]
     elif 3 == len(mask.shape):
         assert mask2d.shape == mask[-2:].shape
         new_mask = mask.pixels.copy()
         for slice_id in range(mask.shape[0]):
-            new_mask[slice_id,:,:] = mask2d.pixels[np.logical_and(
-                mask.pixels[slice_id,:,:]>0, mask2d.pixels>0)]
+            new_mask[slice_id, :, :] = mask2d.pixels[np.logical_and(
+                mask.pixels[slice_id, :, :] > 0, mask2d.pixels > 0)]
         return ImageLabeled(new_mask, doRelabel=False)
     else:
-        self.logger.warning("mask combination not allowed for images " +
-            f"with {len(mask.shape)} dimensions.")
+        logging.warning("mask combination not allowed for images "
+                        + f"with {len(mask.shape)} dimensions.")
         return mask
