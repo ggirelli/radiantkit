@@ -1,4 +1,4 @@
-# GPSeqC Code of Conduct
+# RadIAnTkit Code of Conduct
 
 ## Our Pledge
 
