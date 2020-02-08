@@ -5,14 +5,14 @@
 
 import re
 from string import Template
-from typing import Iterator, List, Optional, Tuple
+from typing import Iterator, List, Optional, Pattern, Tuple
 
 
 class MultiRange(object):
     __current_item: Tuple[int] = (0, 0)
     __string_range: Optional[str] = None
     __extremes_list: Optional[List[Tuple[int]]] = None
-    __reg: re.Pattern = re.compile(r'^[0-9-, ]+$')
+    __reg: Pattern = re.compile(r'^[0-9-, ]+$')
     __length: Optional[int] = None
     __ready: bool = False
 
