@@ -6,11 +6,11 @@
 from enum import Enum
 import re
 from string import Template
-from typing import Iterator, List, Optional
+from typing import Iterator, List, Optional, Tuple
 
 class MultiRange(object):
     __string_range: Optional[str] = None
-    __extremes_list: Optional[list] = None
+    __extremes_list: Optional[List[Tuple[int]]] = None
     __reg: re.Pattern = re.compile(r'^[0-9-, ]+$')
     __length: Optional[int] = None
     __ready: bool = False
