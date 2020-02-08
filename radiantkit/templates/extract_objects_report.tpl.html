@@ -1,4 +1,4 @@
-{% include "include/dom_start.html" %}<div class="container">
+{% include "include/dom_start.tpl.html" %}<div class="container">
 	<h1 class="my-5">{{title}}</h1>
 	<div class="row">
 		<div class="col">
@@ -113,4 +113,4 @@
 	<div class="row p-2">
 		<p><small>Report generated on {{ now }} with <code>radiant extract_objects v{{args.version}}</code>.</small></p>
 	</div>
-</div>{% include "include/dom_end.html" %}
+</div>{% include "include/dom_end.tpl.html" %}
