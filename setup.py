@@ -53,9 +53,8 @@ setup(
         'tqdm==4.41.1'
     ],
     scripts=[],
-    test_suite='nose.collector',
-    tests_require=['nose'],
     entry_points={'console_scripts': [
-        'radiant = radiantkit.scripts.radiant:main'
-    ]}
+        'radiant = radiantkit.scripts.radiant:main']},
+    test_suite='nose.collector',
+    tests_require=['nose']
 )
