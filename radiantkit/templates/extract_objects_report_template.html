@@ -1,5 +1,5 @@
 {% include "include/dom_start.html" %}<div class="container">
-	<h1 class="my-5">RadIAnT-Kit - Nuclei selection</h1>
+	<h1 class="my-5">{{title}}</h1>
 	<div class="row">
 		<div class="col">
 			<nav>
@@ -24,12 +24,16 @@
 								<td>{{ args.input }}</td>
 							</tr>
 							<tr>
+								<th scope="row">Output</th>
+								<td>{{ args.output }}</td>
+							</tr>
+							<tr>
 								<th scope="row">Reference channel</th>
 								<td>{{ args.dna_channel }}</td>
 							</tr>
 							<tr>
-								<th scope="row">K-sigma</th>
-								<td>{{ args.k_sigma }}</td>
+								<th scope="row">Aspect (ZYX)</th>
+								<td>{{ args.aspect }}</td>
 							</tr>
 							<tr>
 								<th scope="row">Prefix</th>
@@ -52,10 +56,6 @@
 								<td>{{ args.do_rescaling|string }}</td>
 							</tr>
 							<tr>
-								<th scope="row">Remove labels</th>
-								<td>{{ args.remove_labels|string }}</td>
-							</tr>
-							<tr>
 								<th scope="row">Compressed</th>
 								<td>{{ args.compressed|string }}</td>
 							</tr>
@@ -71,45 +71,13 @@
 					</table>
 				</div>
 				<div class="tab-pane fade" id="nav-results" role="tabpanel" aria-labelledby="nav-results-tab">
-					<div id="select_nuclei" class="mx-auto" style="width: 1000px;"></div>
+					<div id="extract_objects" class="mx-auto" style="width: 1000px;"></div>
 					<script>
-						CONTAINER = document.getElementById('select_nuclei');
+						CONTAINER = document.getElementById('extract_objects');
 						PLOT_JSON = {{ plot_json|safe }};
 						Plotly.newPlot( CONTAINER, PLOT_JSON.data, PLOT_JSON.layout, {"responsive":true, "displayModeBar":true})
 					</script>
-
-					<p>{{ data['pass'].sum() }} nuclei out of {{ data.shape[0] }} ({{ "%.2f"|format(data['pass'].sum()/data.shape[0]*100|float) }}%) pass the filter</p>
-					<div class="row">
-						{% if details['size']['fit'] is not none %}
-						<div class="col col-6">
-							<h5>Nuclear size</h5>
-							Fit type: <code>{{ details['size']['fit'][1].value }}</code><br/>
-							k1 = {{ details['size']['fit'][0][0] }}<br/>
-							&mu;1 = {{ details['size']['fit'][0][1] }}<br/>
-							&sigma;1 = {{ details['size']['fit'][0][2] }}<br/>
-							{% if "sum_of_gaussians" == details['size']['fit'][1].value %}
-							k2 = {{ details['size']['fit'][0][3] }}<br/>
-							&mu;2 = {{ details['size']['fit'][0][4] }}<br/>
-							&sigma;2 = {{ details['size']['fit'][0][5] }}<br/>
-							{% endif %}
-						</div>
-						{% endif %}
-						{% if details['isum']['fit'] is not none %}
-						<div class="col col-6">
-							<h5>Nuclear integral intensity</h5>
-							Fit type: <code>{{ details['isum']['fit'][1].value }}</code><br/>
-							k1 = {{ details['isum']['fit'][0][0] }}<br/>
-							&mu;1 = {{ details['isum']['fit'][0][1] }}<br/>
-							&sigma;1 = {{ details['isum']['fit'][0][2] }}<br/>
-							{% if "sum_of_gaussians" == details['isum']['fit'][1].value %}
-							k2 = {{ details['isum']['fit'][0][3] }}<br/>
-							&mu;2 = {{ details['isum']['fit'][0][4] }}<br/>
-							&sigma;2 = {{ details['isum']['fit'][0][5] }}<br/>
-							{% endif %}
-						</div>
-						{% endif %}
-					</div>
-
+					<p><small><b>Note:</b> in "single pixel intensity" boxplots, only min and max outliers are reported (on the side of the boxplot).</small></p>
 				</div>
 				<div class="tab-pane fade" id="nav-data" role="tabpanel" aria-labelledby="nav-data-tab">
 					<table class="table table-hover text-center">
@@ -124,10 +92,10 @@
 						<tbody>
 							{% for series in series_list: %}
 							<tr>
-								<td>{{ series[args.dna_channel][1].path|dirname }}</td>
-								<td>{{ series[args.dna_channel][1].path|basename }}</td>
-								<td>{{ series[args.dna_channel][1].background }}</td>
-								<td>{{ series[args.dna_channel][1].foreground }}</td>
+								<td>{{ series[args.ref_channel][1].path|dirname }}</td>
+								<td>{{ series[args.ref_channel][1].path|basename }}</td>
+								<td>{{ series[args.ref_channel][1].background }}</td>
+								<td>{{ series[args.ref_channel][1].foreground }}</td>
 								<td>{{ series.mask.path|basename }}</td>
 								<td>{{ series.particles|length }}</td>
 							</tr>
@@ -143,6 +111,6 @@
 		</div>
 	</div>
 	<div class="row p-2">
-		<p><small>Report generated on {{ now }} with <code>radiant select_nuclei v{{args.version}}</code>.</small></p>
+		<p><small>Report generated on {{ now }} with <code>radiant extract_objects v{{args.version}}</code>.</small></p>
 	</div>
 </div>{% include "include/dom_end.html" %}

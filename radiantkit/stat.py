@@ -3,13 +3,17 @@
 @contact: gigi.ga90@gmail.com
 '''
 
+from enum import Enum
 from matplotlib import pyplot as plt
 import numpy as np
-from scipy.signal import convolve
-import scipy.optimize
-import scipy.stats
+import scipy as sp
 from typing import Optional, Tuple
 import warnings
+
+class FitType(Enum):
+    SOG = "sum_of_gaussians"
+    GAUSSIAN = "gaussian"
+    FWHM = "full_width_half_maximum"
 
 def gpartial(V: np.ndarray, d: int, sigma: float) -> np.ndarray:
     '''Calculate the partial derivative of V along dimension d using a filter
@@ -34,45 +38,45 @@ def gpartial(V: np.ndarray, d: int, sigma: float) -> np.ndarray:
 
     if 3 == len(V.shape):
         if 1 == d:
-            V = convolve(V, dg.reshape([1, 1, w+1]), 'same')
+            V = sp.signal.convolve(V, dg.reshape([1, 1, w+1]), 'same')
         else:
-            V = convolve(V, g.reshape([1, 1, w+1]), 'same')
+            V = sp.signal.convolve(V, g.reshape([1, 1, w+1]), 'same')
         if 2 == d:
-            V = convolve(V, dg.reshape([1, w+1, 1]), 'same')
+            V = sp.signal.convolve(V, dg.reshape([1, w+1, 1]), 'same')
         else:
-            V = convolve(V, g.reshape([1, w+1, 1]), 'same')
+            V = sp.signal.convolve(V, g.reshape([1, w+1, 1]), 'same')
         if 3 == d:
-            V = convolve(V, dg.reshape([w+1, 1, 1]), 'same')
+            V = sp.signal.convolve(V, dg.reshape([w+1, 1, 1]), 'same')
         else:
-            V = convolve(V, g.reshape([w+1, 1, 1]), 'same')
+            V = sp.signal.convolve(V, g.reshape([w+1, 1, 1]), 'same')
     elif 2 == len(V.shape):
         if 1 == d:
-            V = convolve(V, dg.reshape([1, w+1]), 'same')
+            V = sp.signal.convolve(V, dg.reshape([1, w+1]), 'same')
         else:
-            V = convolve(V, g.reshape([1, w+1]), 'same')
+            V = sp.signal.convolve(V, g.reshape([1, w+1]), 'same')
         if 2 == d:
-            V = convolve(V, dg.reshape([w+1, 1]), 'same')
+            V = sp.signal.convolve(V, dg.reshape([w+1, 1]), 'same')
         else:
-            V = convolve(V, g.reshape([w+1, 1]), 'same')
+            V = sp.signal.convolve(V, g.reshape([w+1, 1]), 'same')
 
     return V
 
 def gaussian(x: float, k: float, loc: float, scale: float) -> float:
-    return k*scipy.stats.norm.pdf(x, loc=loc, scale=scale)
+    return k*sp.stats.norm.pdf(x, loc=loc, scale=scale)
 
-def gaussian_fit(xx: np.ndarray) -> np.ndarray:
-    df = scipy.stats.gaussian_kde(xx)
+def gaussian_fit(xx: np.ndarray) -> Optional[np.ndarray]:
+    df = sp.stats.gaussian_kde(xx)
     sd = np.std(xx)
     params = [df(xx).max()*sd/4*np.sqrt(2*np.pi), np.mean(xx), sd]
     with warnings.catch_warnings():
-        fitted_params,_ = scipy.optimize.curve_fit(
+        fitted_params,_ = sp.optimize.curve_fit(
             gaussian, xx, df(xx), p0=params)
     if all(fitted_params == params): return None
     return fitted_params
 
 def plot_gaussian_fit(xx: np.ndarray, fitted_params:np.ndarray) -> None:
     assert 3 == len(fitted_params)
-    df = scipy.stats.gaussian_kde(xx)
+    df = sp.stats.gaussian_kde(xx)
     plt.plot(xx, df(xx), '.')
     x2 = np.linspace(xx.min(), xx.max(), 1000)
     plt.plot(x2, gaussian(x2, *fitted_params), 'r')
@@ -82,21 +86,23 @@ def sog(x: float, k1: float, loc1: float, scale1: float,
     k2: float, loc2: float, scale2: float) -> float:
     return gaussian(x, k1, loc1, scale1) + gaussian(x, k2, loc2, scale2)
 
-def sog_fit(xx: np.ndarray) -> np.ndarray:
-    df = scipy.stats.gaussian_kde(xx)
+def sog_fit(xx: np.ndarray) -> Optional[np.ndarray]:
+    df = sp.stats.gaussian_kde(xx)
     loc2 = np.mean(xx)+2.5*np.std(xx)
     sd1 = np.std(xx)
     params = [df(xx).max()*sd1/4*np.sqrt(2*np.pi), np.mean(xx), sd1,
         df(loc2)[0]*sd1/4*np.sqrt(2*np.pi), loc2, sd1/4]
-    with warnings.catch_warnings():
-        fitted_params,_ = scipy.optimize.curve_fit(
-            sog, xx, df(xx), p0=params)
+    try:
+        with warnings.catch_warnings():
+            fitted_params,_ = sp.optimize.curve_fit(
+                sog, xx, df(xx), p0=params)
+    except RuntimeError as e: return None
     if all(fitted_params == params): return None
     return fitted_params
 
 def plot_sog_fit(xx: np.ndarray, fitted_params:np.ndarray) -> None:
     assert 6 == len(fitted_params)
-    df = scipy.stats.gaussian_kde(xx)
+    df = sp.stats.gaussian_kde(xx)
     plt.plot(xx, df(xx), '.')
     x2 = np.linspace(xx.min(), xx.max(), 1000)
     plt.plot(x2, gaussian(x2, *fitted_params[:3]), 'r')
@@ -108,11 +114,11 @@ def fwhm(xx: np.ndarray) -> Tuple[float]:
     return (xx.min(), xx.max())
 
 def cell_cycle_fit(data: np.ndarray) -> Tuple[Optional[np.ndarray],str]:
-    fit = (sog_fit(data), 'sog')
+    fit = (sog_fit(data), FitType.SOG)
     if fit[0] is None:
-        fit = (gaussian_fit(data), 'gaussian')
+        fit = (gaussian_fit(data), FitType.GAUSSIAN)
         if fit[0] is None:
-            fit = (fwhm(data), 'fwhm')
+            fit = (fwhm(data), FitType.FWHM)
     return fit
 
 def sog_range_from_fit(data: np.ndarray, fitted_params: Tuple[float],
@@ -129,10 +135,26 @@ def gaussian_range_from_fit(data: np.ndarray, fitted_params: Tuple[float],
 
 def range_from_fit(data: np.ndarray, fitted_params: Tuple[float],
     fit_type: str, k_sigma: float) -> Optional[Tuple[Tuple[float]]]:
-    if "sog" == fit_type:
+    if FitType.SOG == fit_type:
         return sog_range_from_fit(data, fitted_params, fit_type, k_sigma)
-    if "gaussian" == fit_type:
+    if FitType.GAUSSIAN == fit_type:
         return gaussian_range_from_fit(data, fitted_params, fit_type, k_sigma)
-    if "fwhm" == fit_type:
+    if FitType.FWHM == fit_type:
         return fitted_params
     return None
+
+def quantile_from_counts(values: np.ndarray, counts: np.ndarray,
+    p: float, cumsummed: bool=False) -> float:
+    '''Hyndman, R. J. and Fan, Y. (1996),
+    “Sample quantiles in statistical packages,”
+    The American Statistician, 50(4), 361 - 365.'''
+    assert p >= 0 and p <= 1
+    if not cumsummed: counts = np.cumsum(counts)
+    x = len(values)*p+.5
+    if int(x) == x:
+        loc = (counts >= x).argmax()
+        return values[loc]
+    else:
+        x1 = values[(counts >= np.floor(x)).argmax()]
+        x2 = values[(counts >= np.ceil(x)).argmax()]
+        return (x1+x2)/2

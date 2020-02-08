@@ -7,21 +7,24 @@ from enum import Enum
 
 __version__ = "0.0.1"
 
+default_inreg ="^([^\\.]*\\.)?(?P<channel_name>[^/]*)_(?P<series_id>[0-9]+)"
+default_inreg+="(?P<ext>(_cmle)?(\\.[^\\.]*)?\\.tiff?)$"
+
 class ProjectionType(Enum):
     SUM_PROJECTION = 'SUM_PROJECTION'
     MAX_PROJECTION = 'MAX_PROJECTION'
 
 class SegmentationType(Enum):
-    SUM_PROJECTION = ProjectionType.SUM_PROJECTION
-    MAX_PROJECTION = ProjectionType.MAX_PROJECTION
+    SUM_PROJECTION = ProjectionType.SUM_PROJECTION.value
+    MAX_PROJECTION = ProjectionType.MAX_PROJECTION.value
     THREED = '3D'
     @staticmethod
     def get_default():
         return SegmentationType.THREED
 
 class AnalysisType(Enum):
-    SUM_PROJECTION = ProjectionType.SUM_PROJECTION
-    MAX_PROJECTION = ProjectionType.MAX_PROJECTION
+    SUM_PROJECTION = ProjectionType.SUM_PROJECTION.value
+    MAX_PROJECTION = ProjectionType.MAX_PROJECTION.value
     THREED = '3D'
     MIDSECTION = 'MIDSECTION'
     @staticmethod

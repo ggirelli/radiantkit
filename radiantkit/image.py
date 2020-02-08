@@ -9,9 +9,7 @@ import numpy as np
 import os
 from radiantkit import const
 from scipy import ndimage as ndi
-from skimage import filters
-from skimage.io import imread
-from skimage.measure import label
+import skimage as ski
 from skimage.morphology import square, cube
 from skimage.morphology import closing, opening
 from skimage.morphology import dilation, erosion
@@ -21,8 +19,9 @@ from typing import List, Optional, Tuple, Union
 import warnings
 
 class ImageSettings(object):
-    _ALLOWED_AXES: str = "VCTZYX"
-    _axes_order: str = "VCTZYX"
+    _ALLOWED_AXES: str="VCTZYX"
+    _axes_order: str="VCTZYX"
+    _aspect: np.ndarray=np.ones(6)
 
     def __init__(self):
         super(ImageSettings, self).__init__()
@@ -31,9 +30,26 @@ class ImageSettings(object):
     def nd(self) -> int:
         return len(self._axes_order)
 
+    @property
+    def aspect(self) -> np.ndarray:
+        return self._aspect
+
+    @aspect.setter
+    def aspect(self, spacing: np.ndarray) -> None:
+        if len(self.aspect) == len(spacing): self._aspect = spacing
+        elif len(spacing) < len(self._axes_order):
+            self.aspect[-len(spacing):] = spacing
+            logging.warning(f"aspect changed to {self.aspect} " +
+                f"(used only last {len(self.aspect)} values)")
+        else:
+            self.aspect = spacing[-len(self.aspect):]
+            logging.warning(f"aspect changed to {self.aspect} " +
+                f"(used only last {len(self.aspect)} values)")
+
 class ImageBase(ImageSettings):
     _path_to_local: Optional[str] = None
     _pixels: Optional[np.ndarray] = None
+    _shape: Tuple[int]=None
 
     def __init__(self, pixels: np.ndarray, path: Optional[str]=None,
         axes: Optional[str]=None):
@@ -41,17 +57,21 @@ class ImageBase(ImageSettings):
         assert len(pixels.shape) <= len(self._ALLOWED_AXES)
         self._pixels = pixels.copy()
         self._remove_empty_axes()
+        self._shape = self._pixels.shape
         if axes is not None:
             assert len(axes) == len(self.shape)
-            assert all([c in self._ALLOWED_AXES for c in new_axes])
-            assert all([1 == c.count(new_axes) for c in set(new_axes)])
+            assert all([c in self._ALLOWED_AXES for c in axes])
+            assert all([1 == axes.count(c) for c in set(axes)])
             self._axes_order = axes
         else:
             self._axes_order = self._ALLOWED_AXES[-len(self.shape):]
+        self._aspect = self._aspect[-len(self.shape):]
+        if path is not None:
+            if os.path.isfile(path): self._path_to_local = path
 
     @property
     def shape(self) -> Tuple[int]:
-        return self._pixels.shape
+        return self._shape
 
     @property
     def pixels(self) -> np.ndarray:
@@ -82,6 +102,7 @@ class ImageBase(ImageSettings):
                     self._pixels = np.delete(self.pixels,
                         slice(1, self.pixels.shape[axes_id]), axes_id)
                     self._pixels = np.squeeze(self.pixels, axes_id)
+                    self._aspect.pop(axes_id)
         
         while len(new_axes) > len(self.axes):
             for c in new_axes:
@@ -90,13 +111,22 @@ class ImageBase(ImageSettings):
                     new_shape = [1]
                     new_shape.extend(self._pixels.shape)
                     self._pixels.shape = new_shape
+                    self._aspect = np.append(1, self._aspect)
 
         if new_axes != self.axes:
             assert len(new_axes) == len(self.axes)
             assert all([c in new_axes for c in self.axes])
-            self._pixels = np.moveaxis(self.pixels, range(len(self.axes)),
-                [new_axes.index(c) for c in self.axes])
+            new_axes_order = [new_axes.index(c) for c in self.axes]
+            self._pixels = np.moveaxis(self.pixels,
+                range(len(self.axes)), new_axes_order)
+            self._shape = self._pixels.shape
+            self._aspect = self._aspect[new_axes_order]
             self._axes_order = new_axes
+
+    @property
+    def loaded(self):
+        if not self.is_loadable(): return True
+        else: return self._pixels is not None
 
     @staticmethod
     def from_tiff(path: str) -> 'ImageBase':
@@ -128,12 +158,12 @@ class ImageBase(ImageSettings):
 
     def load_from_local(self) -> None:
         assert self._path_to_local is not None
-        assert os.path.isfile(self._path_to_local)
-        self.from_tiff(self._path_to_local)
+        assert os.path.isfile(self._path_to_local), self._path_to_local
+        self._pixels = self.from_tiff(self._path_to_local).pixels
 
     def unload(self) -> None:
         if self._path_to_local is None:
-            logging.error("cannot unload Image without path_to_local.")
+            logging.error("cannot unload ImageBase without path_to_local.")
             return
         if not os.path.isfile(self._path_to_local):
             logging.error("path_to_local not found, cannot unload: " +
@@ -149,6 +179,27 @@ class ImageBase(ImageSettings):
         save_tiff(path, self.pixels, self.dtype, compressed, bundle_axes,
             inMicrons, ResolutionZ, forImageJ, **kwargs)
 
+    def get_offset(self, offset: int) -> np.ndarray:
+        if 0 == offset: return self.pixels
+        if offset < 0:
+            offset *= -1
+            return self.pixels[tuple([slice(offset,-offset)
+                for a in range(len(self.shape))])]
+        else:
+            canvas = np.zeros(np.array(self.shape)+2*offset)
+            canvas[tuple([slice(offset,self.shape[a]+offset)
+                for a in range(len(self.shape))])] = self.pixels
+            return canvas
+
+    def __repr__(self) -> str:
+        s = f"{self.nd}D {self.__class__.__name__}: "
+        s += f"{'x'.join([str(d) for d in self.shape])} [{self.axes}, "
+        s += f"aspect: {'x'.join([str(d) for d in self.aspect])} nm]"
+        if self.loaded: s += ' [loaded]'
+        else: s += ' [unloaded]'
+        if self.is_loadable(): s += f"; From '{self._path_to_local}'"
+        return s
+
 class ImageLabeled(ImageBase):
     def __init__(self, pixels: np.ndarray, path: Optional[str]=None,
         axes: Optional[str]=None, doRelabel: bool=True):
@@ -160,13 +211,13 @@ class ImageLabeled(ImageBase):
         return self.pixels.max()
 
     @staticmethod
-    def from_tiff(self, path: str, axes: Optional[str]=None,
+    def from_tiff(path: str, axes: Optional[str]=None,
         doRelabel: bool=True) -> 'ImageLabeled':
         return ImageLabeled(read_tiff(path), path, axes, doRelabel)
 
     def _relabel(self) -> None:
         self._pixels = self._pixels.copy() > self._pixels.min()
-        self._pixels = label(self._pixels)
+        self._pixels = ski.measure.label(self._pixels)
 
     def clear_XY_borders(self) -> None:
         self._pixels = clear_XY_borders(self._pixels)
@@ -200,7 +251,7 @@ class ImageLabeled(ImageBase):
             f"outside of {axes} size range {pass_range}")
         logging.debug(np.array((labels, sizes)))
         self._pixels[np.isin(self.pixels, labels[filtered])] = 0
-        self._pixels = label(self.pixels)
+        self._pixels = ski.measure.label(self.pixels)
         logging.info(f"retained {self.max} labels")
 
     def filter_size(self, axes: str,
@@ -220,12 +271,35 @@ class ImageLabeled(ImageBase):
     def inherit_labels(self, mask2d: 'ImageLabeled') -> None:
         self._pixels = inherit_labels(self, mask2d)
 
+    def binarize(self) -> 'ImageBinary':
+        B = ImageBinary(self.pixels, None, self._axes_order)
+        B.aspect = self.aspect
+        return B
+
+    def __repr__(self) -> str:
+        s = super(ImageLabeled, self).__repr__()
+        s += f"; Max label: {self.pixels.max}"
+        return s
+
 class ImageBinary(ImageBase):
+    _background: float=0
+    _foreground: float=0
+
     def __init__(self, pixels: np.ndarray, path: Optional[str]=None,
         axes: Optional[str]=None, doRebinarize: bool=True):
         super(ImageBinary, self).__init__(pixels, path, axes)
         if doRebinarize: self._rebinarize()
         assert 1 == self.pixels.max()
+        self._foreground = self.pixels.sum()
+        self._background = np.prod(self.pixels.shape)-self._foreground
+
+    @property
+    def background(self):
+        return self._background
+    
+    @property
+    def foreground(self):
+        return self._foreground
 
     @staticmethod
     def from_tiff(path: str, axes: Optional[str]=None,
@@ -263,7 +337,9 @@ class ImageBinary(ImageBase):
         self._pixels = np.logical_not(self.pixels)
 
     def label(self) -> ImageLabeled:
-        return ImageLabeled(self.pixels)
+        L = ImageLabeled(self.pixels, None, self._axes_order)
+        L.aspect = self.aspect
+        return L
 
     def to_tiff(self, path: str, compressed: bool,
         bundle_axes: Optional[str]=None, inMicrons: bool=False,
@@ -274,13 +350,29 @@ class ImageBinary(ImageBase):
             compressed, bundle_axes, inMicrons, ResolutionZ, forImageJ,
             **kwargs)
 
+    def __repr__(self) -> str:
+        s = super(ImageBinary, self).__repr__()
+        s += f"; Foreground voxels: {self.foreground}"
+        s += f"; Background voxels: {self.background}"
+        return s
+
 class Image(ImageBase):
     _rescale_factor: float = 1.
+    _background: float=None
+    _foreground: float=None
 
     def __init__(self, pixels: np.ndarray, path: Optional[str]=None,
         axes: Optional[str]=None):
         super(Image, self).__init__(pixels, path, axes)
     
+    @property
+    def background(self):
+        return self._background
+
+    @property
+    def foreground(self):
+        return self._foreground
+
     @property
     def rescale_factor(self) -> float:
         return self._rescale_factor
@@ -292,8 +384,11 @@ class Image(ImageBase):
         self._pixels = self.pixels/self.rescale_factor
 
     @staticmethod
-    def from_tiff(path: str, axes: Optional[str]=None) -> 'Image':
-        return Image(read_tiff(path), path, axes)
+    def from_tiff(path: str, axes: Optional[str]=None,
+        doRescale: bool=True) -> 'Image':
+        I = Image(read_tiff(path), path, axes)
+        if doRescale: I.rescale_factor = I.get_huygens_rescaling_factor()
+        return I
 
     def get_huygens_rescaling_factor(self) -> float:
         if self._path_to_local is None: return 1.
@@ -306,6 +401,19 @@ class Image(ImageBase):
         method: str, mode: str, *args, **kwargs) -> ImageBinary:
         return ImageBinary(threshold_adaptive(self.pixels, block_size,
             method, mode, *args, **kwargs), doRebinarize=False)
+
+    def update_ground(self, M: Union[ImageBinary,ImageLabeled],
+        block_side: int=11) -> None:
+        if isinstance(M, ImageLabeled): M = M.binarize()
+        M = dilate(M.pixels, block_side)
+        self._foreground = np.median(self.pixels[M])
+        self._background = np.median(self.pixels[np.logical_not(M)])
+
+    def __repr__(self) -> str:
+        s = super(Image, self).__repr__()
+        if self.background is not None:
+            s += f"; Back/foreground: {(self.background, self.foreground)}"
+        return s
 
 def get_huygens_rescaling_factor(path: str) -> float:
     basename,ext = tuple(os.path.splitext(os.path.basename(path)))
@@ -330,7 +438,7 @@ def read_tiff(path: str) -> np.ndarray:
     assert os.path.isfile(path), f"file not found: '{path}'"
     try:
         with warnings.catch_warnings(record=True) as warning_list:
-            I = imread(path)
+            I = ski.io.imread(path)
             warning_list = [str(e) for e in warning_list]
             if any(["axes do not match shape" in e for e in warning_list]):
                 logging.warning(f"image axes do not match metadata in '{path}'")
@@ -387,7 +495,7 @@ def threshold_adaptive(I: np.ndarray, block_size: int,
 
     def threshold_adaptive_slice(I: np.ndarray, block_size: int,
         method: str, mode: str, *args, **kwargs) -> np.ndarray:
-        threshold = filters.threshold_local(I, block_size, *args,
+        threshold = ski.filters.threshold_local(I, block_size, *args,
             method = method, mode = mode, **kwargs)
         return I >= threshold
 
@@ -472,7 +580,7 @@ def clear_XY_borders(L: np.ndarray) -> np.ndarray:
         border_labels.extend(np.unique(L[:, :, -1]).tolist())
         border_labels = set(border_labels)
         for lab in border_labels: L[L == lab] = 0
-        return label(L)
+        return ski.measure.label(L)
     else:
         logging.warning("XY border clearing not implemented for images " +
             f"with {len(L.shape)} dimensions.")
@@ -486,7 +594,7 @@ def clear_Z_borders(L: np.ndarray) -> np.ndarray:
         border_labels.extend(np.unique(L[-1, :, :]).tolist())
         border_labels = set(border_labels)
         for lab in border_labels: L[L == lab] = 0
-        return label(L)
+        return ski.measure.label(L)
     else:
         logging.warning("Z border clearing not implemented for images " +
             f"with {len(L.shape)} dimensions.")

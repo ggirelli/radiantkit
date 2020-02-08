@@ -11,8 +11,8 @@ from joblib import delayed, Parallel
 import numpy as np
 import os
 from radiantkit.const import __version__
-from radiantkit import const, segmentation
-from radiantkit.image import Image, ImageBinary, ImageLabeled
+from radiantkit import const, path
+from radiantkit import image, segmentation
 import re
 import sys
 from tqdm import tqdm
@@ -43,14 +43,14 @@ levels. By default, the script generates compressed binary tiff images; use the
 
 Input images that have the specified prefix and suffix are not segmented.''',
         formatter_class = argparse.RawDescriptionHelpFormatter,
-        help = f"{__name__.split('.')[-1]} -h")
+        help = "Segment tiff images (default optimized for DAPI staining).")
 
     parser.add_argument('input', type=str,
         help='Path to folder containing deconvolved tiff images.')
 
-    parser.add_argument('-o', type=str, metavar="DIRPATH", dest="output",
-        help='''Path to output folder where to save binarized images (created
-        if missing). Defaults to the input folder.''')
+    parser.add_argument('-o', metavar = "DIRPATH", type = str, default = None,
+        help = """Path to output TIFF folder. Defaults to the input folder""",
+        dest = "output")
     parser.add_argument('--outprefix', type=str, metavar="TEXT",
         help="""Prefix for output binarized images name.
         Default: ''.""", default='')
@@ -69,46 +69,50 @@ Input images that have the specified prefix and suffix are not segmented.''',
     parser.add_argument('--mask-2d', type=str, metavar="DIRPATH",
         help="""Path to folder with 2D masks with matching name,
         to combine with 3D masks.""")
-    parser.add_argument('--dilate-fill-erode', type=int, metavar="NUMBER",
-        help="""Number of pixels for dilation/erosion steps
-        in a dilate-fill-erode operation. Default: 0. Set to 0 to skip.""",
-        default=0)
 
     parser.add_argument('--clear-Z',
         action='store_const', dest='do_clear_Z',
         const=True, default=False,
         help="""Remove objects touching the bottom/top of the stack.""",)
-    parser.add_argument('--labeled',
-        action='store_const', dest='labeled',
-        const=True, default=False,
-        help='Export masks as labeled instead of binary.')
-    parser.add_argument('--uncompressed',
-        action='store_const', dest='compressed',
-        const=False, default=True,
-        help='Generate uncompressed TIFF binary masks.')
-    
-    parser.add_argument('--debug',
-        action='store_const', dest='debug_mode',
-        const=True, default=False,
-        help='Log also debugging messages. Silenced by --silent.')
-    parser.add_argument('--silent',
-        action='store_const', dest='silent',
-        const=True, default=False,
-        help='Limits logs to critical events only.')
-    
-    default_inreg='^.*\.tiff?$'
-    parser.add_argument('--inreg', type=str, metavar="REGEXP",
-        help="""Regular expression to identify input TIFF images.
-        Default: '%s'""" % (default_inreg,), default=default_inreg)
-    parser.add_argument('-t', type=int, metavar="NUMBER", dest="threads",
-        help="""Number of threads for parallelization. Default: 1""",
-        default=1)
-    parser.add_argument('-y', '--do-all', action='store_const',
-        help="""Do not ask for settings confirmation and proceed.""",
-        const=True, default=False)
 
     parser.add_argument('--version', action='version',
         version='%s %s' % (sys.argv[0], __version__,))
+
+    advanced = parser.add_argument_group("advanced arguments")
+    advanced.add_argument('--dilate-fill-erode', type=int, metavar="NUMBER",
+        help="""Number of pixels for dilation/erosion steps
+        in a dilate-fill-erode operation. Default: 0. Set to 0 to skip.""",
+        default=0)
+    advanced.add_argument('--labeled',
+        action='store_const', dest='labeled',
+        const=True, default=False,
+        help='Export masks as labeled instead of binary.')
+    advanced.add_argument('--uncompressed',
+        action='store_const', dest='compressed',
+        const=False, default=True,
+        help='Generate uncompressed TIFF binary masks.')
+    advanced.add_argument('--no-rescaling',
+        action='store_const', dest='do_rescaling',
+        const=False, default=True,
+        help='Do not rescale image even if deconvolved.')
+    advanced.add_argument('--debug',
+        action='store_const', dest='debug_mode',
+        const=True, default=False,
+        help='Log also debugging messages. Silenced by --silent.')
+    advanced.add_argument('--silent',
+        action='store_const', dest='silent',
+        const=True, default=False,
+        help='Limits logs to critical events only.')
+    default_inreg='^.*\.tiff?$'
+    advanced.add_argument('--inreg', type=str, metavar="REGEXP",
+        help="""Regular expression to identify input TIFF images.
+        Default: '%s'""" % (default_inreg,), default=default_inreg)
+    advanced.add_argument('-t', type=int, metavar="NUMBER", dest="threads",
+        help="""Number of threads for parallelization. Default: 1""",
+        default=1)
+    advanced.add_argument('-y', '--do-all', action='store_const',
+        help="""Do not ask for settings confirmation and proceed.""",
+        const=True, default=False)
 
     parser.set_defaults(parse=parse_arguments, run=run)
 
@@ -143,31 +147,30 @@ def parse_arguments(args: argparse.Namespace) -> argparse.Namespace:
     return args
 
 def print_settings(args: argparse.Namespace, clear: bool = True) -> str:
-    s = f"""
-# Automatic 3D segmentation v{args.version}
+    s = f"""# Automatic 3D segmentation v{args.version}
 
----------- SETTING :  VALUE ----------
+    ---------- SETTING : VALUE ----------
 
-   Input directory :  '{args.input}'
-  Output directory :  '{args.output}'
+       Input directory : '{args.input}'
+      Output directory : '{args.output}'
 
-       Mask prefix :  '{args.outprefix}'
-       Mask suffix :  '{args.outsuffix}'
-     Neighbourhood :  {args.neighbour}
-          2D masks : '{args.mask_2d}'
-           Labeled :  {args.labeled}
-        Compressed :  {args.compressed}
+           Mask prefix : '{args.outprefix}'
+           Mask suffix : '{args.outsuffix}'
+         Neighbourhood : {args.neighbour}
+              2D masks : '{args.mask_2d}'
+               Labeled : {args.labeled}
+            Compressed : {args.compressed}
 
- Dilate-fill-erode :  {args.dilate_fill_erode}
- Minimum Z portion :  {args.min_Z:.2f}
-    Minimum radius :  [{args.radius[0]:.2f}, {args.radius[1]:.2f}] vx
-           Clear Z :  {args.do_clear_Z}
+     Dilate-fill-erode : {args.dilate_fill_erode}
+     Minimum Z portion : {args.min_Z:.2f}
+        Minimum radius : [{args.radius[0]:.2f}, {args.radius[1]:.2f}] vx
+               Clear Z : {args.do_clear_Z}
 
-           Threads :  {args.threads}
-            Regexp :  {args.inreg.pattern}
-             Debug :  {args.debug_mode}
-            Silent :  {args.silent}
-
+               Rescale : {args.do_rescaling}
+               Threads : {args.threads}
+                Regexp : {args.inreg.pattern}
+                 Debug : {args.debug_mode}
+                Silent : {args.silent}
     """
     if clear: print("\033[H\033[J")
     print(s)
@@ -189,11 +192,11 @@ def run_segmentation(args: argparse.Namespace,
     logging.getLogger().setLevel(loglevel)
     logging.info(f"Segmenting image '{imgpath}'")
 
-    I = Image.from_tiff(os.path.join(imgdir, imgpath))
+    I = image.Image.from_tiff(os.path.join(imgdir, imgpath),
+        doRescale=args.do_rescaling)
     logging.info(f"image axes: {I.axes}")
     logging.info(f"image shape: {I.shape}")
-    I.rescale_factor = I.get_huygens_rescaling_factor()
-    logging.info(f"rescaling factor: {I.rescale_factor}")
+    if args.do_rescaling: logging.info(f"rescaling factor: {I.rescale_factor}")
 
     binarizer = segmentation.Binarizer()
     binarizer.segmentation_type = const.SegmentationType.THREED
@@ -207,7 +210,7 @@ def run_segmentation(args: argparse.Namespace,
             mask2_path = os.path.join(
                 args.manual_2d_masks, os.path.basename(imgpath))
             if os.path.isfile(mask2d_path):
-                mask2d = ImageLabeled.from_tiff(mask2_path, axes="YX",
+                mask2d = image.ImageLabeled.from_tiff(mask2_path, axes="YX",
                     doRelabel=False)
 
     M = binarizer.run(I, mask2d)
@@ -242,8 +245,8 @@ def run_segmentation(args: argparse.Namespace,
 
     imgbase,imgext = os.path.splitext(imgpath)
     if not args.labeled:
-        logging.info("writing binary output")
-        M = ImageBinary(L.pixels)
+        logging.info("writing output")
+        M = image.ImageBinary(L.pixels)
         M.to_tiff(os.path.join(args.output,
             f"{args.outprefix}{imgbase}{args.outsuffix}{imgext}"),
             args.compressed)
@@ -255,16 +258,17 @@ def run_segmentation(args: argparse.Namespace,
 
 def run(args: argparse.Namespace) -> None:
     confirm_arguments(args)
-
-    imglist = [f for f in os.listdir(args.input) 
-        if os.path.isfile(os.path.join(args.input, f))
-        and not type(None) == type(re.match(args.inreg, f))]
+    imglist = path.find_re(args.input, args.inreg)
     
     if 0 != len(args.outsuffix): imglist = [f for f in imglist
         if not os.path.splitext(f)[0].endswith(args.outsuffix)]
     if 0 != len(args.outprefix): imglist = [f for f in imglist
         if not os.path.splitext(f)[0].startswith(args.outprefix)]
     
+    logLevel = logging.getLogger().level
+    if args.debug_mode: logLevel = "DEBUG"
+    if args.silent: logLevel = "CRITICAL"
+
     logging.info(f"found {len(imglist)} image(s) to segment.")
     if 1 == args.threads:
         for imgpath in tqdm(imglist): run_segmentation(
@@ -272,5 +276,5 @@ def run(args: argparse.Namespace) -> None:
     else:
         Parallel(n_jobs = args.threads, verbose = 11)(
             delayed(run_segmentation)(
-                args, imgpath, args.input, logging.getLogger().level)
+                args, imgpath, args.input, logLevel)
             for imgpath in imglist)

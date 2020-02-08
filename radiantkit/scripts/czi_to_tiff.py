@@ -41,39 +41,37 @@ would be:"a488_003.tiff".
 Please, remember to escape the "$" when running from command line if using
 double quotes, i.e., "\\$". Alternatively, use single quotes, i.e., '$'.''',
         formatter_class = argparse.RawDescriptionHelpFormatter,
-        help = f"{__name__.split('.')[-1]} -h")
+        help = "Convert a czi file into single channel tiff images.")
 
     parser.add_argument('input', type = str,
         help = '''Path to the czi file to convert.''')
 
-    parser.add_argument('-o', '--outdir', metavar = "outdir", type = str,
-        help = """Path to output TIFF folder, created if missing. Default to a
-        folder with the input file basename.""", default = None)
-
-    parser.add_argument('-T', '--template', metavar = "template", type = str,
-        help = """Template for output file name. See main description for more
-        details. Default: '{TNTFields.CHANNEL_NAME}_{TNTFields.SERIES_ID}'""",
-        default = f"{TNTFields.CHANNEL_NAME}_{TNTFields.SERIES_ID}")
-    parser.add_argument('-f', '--fields', metavar = "fields", type = str,
-        help = """Extract only specified fields of view. Can be specified as
-        when specifying which pages to print. E.g., '1-2,5,8-9'.""",
-        default = None)
-    parser.add_argument('-c', '--channels', metavar = "channels", type = str,
-        help = """Extract only specified channels. Should be specified as a list
-        of space-separated channel names. E.g., 'dapi cy5 a488'.""",
-        default = None, nargs = "+")
-
-    parser.add_argument('-C', '--compressed',
-        action = 'store_const', dest = 'doCompress',
-        const = True, default = False,
-        help = 'Force compressed TIFF as output.')
-    parser.add_argument('-n', '--dry-run',
-        action = 'store_const', dest = 'dry',
-        const = True, default = False,
-        help = 'Describe input data and stop.')
+    parser.add_argument('--outdir', metavar = "DIRPATH", type = str,
+        help = """Path to output TIFF folder. Defaults to the input file
+        basename.""", default = None)
+    parser.add_argument('--fields', metavar = "STRING", type = str,
+        help = """Extract only fields of view specified as when printing a set
+        of pages. E.g., '1-2,5,8-9'.""", default = None)
+    parser.add_argument('--channels', metavar = "STRING", type = str,
+        help = """Extract only specified channels. Specified as space-separated
+        channel names. E.g., 'dapi cy5 a488'.""", default = None, nargs = "+")
 
     parser.add_argument('--version', action = 'version',
         version = f'{sys.argv[0]} {__version__}')
+
+    advanced = parser.add_argument_group("advanced arguments")
+    advanced.add_argument('--template', metavar = "STRING", type = str,
+        help = """Template for output file name. See main description for more
+        details. Default: '{TNTFields.CHANNEL_NAME}_{TNTFields.SERIES_ID}'""",
+        default = f"{TNTFields.CHANNEL_NAME}_{TNTFields.SERIES_ID}")
+    advanced.add_argument('--compressed',
+        action = 'store_const', dest = 'doCompress',
+        const = True, default = False,
+        help = 'Write compressed TIFF as output.')
+    advanced.add_argument('-n', '--dry-run',
+        action = 'store_const', dest = 'dry',
+        const = True, default = False,
+        help = 'Describe input data and stop.')
 
     parser.set_defaults(parse=parse_arguments, run=run)
 
