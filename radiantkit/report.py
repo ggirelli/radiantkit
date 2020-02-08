@@ -32,7 +32,7 @@ class Report(object):
 
 def report_select_nuclei(args: argparse.Namespace,
     opath: str, online: bool=False, **kwargs) -> None:
-    report = Report('select_nuclei_report_template.html')
+    report = Report('select_nuclei_report.tpl.html')
     details = kwargs['details']
 
     figure = ra.plot.plot_nuclear_selection(kwargs['data'], args.dna_channel,
@@ -47,7 +47,7 @@ def report_select_nuclei(args: argparse.Namespace,
 
 def report_extract_objects(args: argparse.Namespace,
     opath: str, online: bool=False, **kwargs) -> None:
-    report = Report('extract_objects_report_template.html')
+    report = Report('extract_objects_report.tpl.html')
 
     figure = ra.plot.plot_nuclear_features(kwargs['data'], kwargs['spx_data'],
         kwargs['series_list'].particle_feature_labels())
