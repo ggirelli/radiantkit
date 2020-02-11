@@ -113,7 +113,7 @@ interactive data visualization.
         Must contain 'channel_name' and 'series_id' fields.
         Default: '{default_inreg}'""", default=default_inreg)
     advanced.add_argument(
-        '-t', type=int, metavar="NUMBER", dest="threads", default=1,
+        '--threads', type=int, metavar="NUMBER", dest="threads", default=1,
         help="""Number of threads for parallelization. Default: 1""")
     advanced.add_argument(
         '-y', '--do-all', action='store_const', const=True, default=False,
