@@ -221,7 +221,7 @@ class ChannelList(object):
 
 
 class Series(ChannelList):
-    _particles: List[Type[ParticleBase]]
+    _particles: List[ParticleBase]
 
     def __init__(self, ID: int, ground_block_side: Optional[int] = None):
         super(Series, self).__init__(ID, ground_block_side)
@@ -461,7 +461,7 @@ class SeriesList(object):
             dfu[f'{channel}_imean'] = f'"{channel}" intensity mean (a.u.)'
         return dfu
 
-    def get_particles(self) -> Iterator[Type[ParticleBase]]:
+    def get_particles(self) -> Iterator[ParticleBase]:
         for s in self:
             if s.particles is None:
                 continue
