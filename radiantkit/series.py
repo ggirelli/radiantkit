@@ -33,12 +33,14 @@ class ChannelList(object):
     _ground_block_side: int = 11
     __current_channel: int = 0
 
-    def __init__(self, ID: int, ground_block_side: Optional[int] = None):
+    def __init__(self, ID: int, ground_block_side: Optional[int] = None,
+                 aspect: Optional[np.ndarray] = None):
         super(ChannelList, self).__init__()
         self._ID = ID
         self._channels = {}
         if ground_block_side is not None:
             self._ground_block_side = ground_block_side
+        self._aspect = aspect
 
     @property
     def ID(self) -> int:
@@ -223,7 +225,8 @@ class ChannelList(object):
 class Series(ChannelList):
     _particles: List[ParticleBase]
 
-    def __init__(self, ID: int, ground_block_side: Optional[int] = None):
+    def __init__(self, ID: int, ground_block_side: Optional[int] = None,
+                 aspect: Optional[np.ndarray] = None):
         super(Series, self).__init__(ID, ground_block_side)
 
     @property
@@ -247,6 +250,16 @@ class Series(ChannelList):
             for particle in self._particles:
                 particle.set_aspect(spacing)
 
+    def __init_particles_intensity_features(
+            self, channel_names: Optional[List[str]] = None):
+        if channel_names is not None:
+            for name in channel_names:
+                assert name in self
+                for pbody in self._particles:
+                    pbody.init_intensity_features(
+                        self[name][1], name)
+            self.unload(name)
+
     def init_particles(self, channel_names: Optional[List[str]] = None,
                        particleClass: Type[ParticleBase] = ParticleBase
                        ) -> None:
@@ -264,13 +277,7 @@ class Series(ChannelList):
 
         for pbody in self._particles:
             pbody.source = self.mask.path
-        if channel_names is not None:
-            for name in channel_names:
-                assert name in self
-                for pbody in self._particles:
-                    pbody.init_intensity_features(
-                        self[name][1], name)
-            self.unload(name)
+        self.__init_particles_intensity_features(channel_names)
 
     @staticmethod
     def extract_particles(series: 'Series',
@@ -283,33 +290,27 @@ class Series(ChannelList):
     def keep_particles(self, label_list: List[int]) -> None:
         self._particles = [p for p in self._particles if p.label in label_list]
 
-    def export_particles(self, path: str, compressed: bool,
-                         showProgress: bool = False) -> None:
+    def export_particles(self, path: str, compressed: bool) -> None:
         assert os.path.isdir(path)
-        if showProgress:
-            iterbar = tqdm
-        else:
-            def iterbar(x, *args, **kwargs):
-                return x
 
-        for nucleus in iterbar(self.particles, desc="mask"):
+        for nucleus in self.particles:
             nucleus.mask.to_tiff(
                 os.path.join(
                     path,
                     f"mask_series{self.ID:03d}_nucleus{nucleus.label:03d}"),
                 compressed)
 
-        for channel_name in iterbar(self.names, desc="channel"):
-            for nucleus in iterbar(self.particles, desc="nucleus"):
+        for channel_name in self.names:
+            for nucleus in self.particles:
                 Image(nucleus.region_of_interest.apply(
                     self[channel_name][1])).to_tiff(
                     os.path.join(path, f"{channel_name}_series{self.ID:03d}_"
                                  + f"nucleus{nucleus.label:03d}"), compressed)
 
     @staticmethod
-    def static_export_particles(series: 'Series', path: str, compressed: bool,
-                                showProgress: bool = False) -> None:
-        series.export_particles(path, compressed, showProgress)
+    def static_export_particles(series: 'Series', path: str,
+                                compressed: bool) -> None:
+        series.export_particles(path, compressed)
 
     def __str__(self):
         s = super(Series, self).__str__()
@@ -349,9 +350,7 @@ class SeriesList(object):
             sid, channel_name = image_details
 
             if sid not in series:
-                series[sid] = Series(sid, ground_block_side)
-                if aspect is not None:
-                    series[sid].aspect = aspect
+                series[sid] = Series(sid, ground_block_side, aspect)
 
             if channel_name in series[sid]:
                 logging.warning("found multiple instances of channel "
@@ -366,9 +365,9 @@ class SeriesList(object):
     @staticmethod
     def __initialize_masks(
             ref: str, dpath: str, series: SeriesDict, masks: List[str],
-            inreg: Pattern, aspect: Optional[np.ndarray] = None,
-            labeled: bool = False, ground_block_side: Optional[int] = None
-            ) -> SeriesDict:
+            inreg: Pattern, labeled: bool = False,
+            aspect: Optional[np.ndarray] = None,
+            ground_block_side: Optional[int] = None) -> SeriesDict:
         for path in tqdm(masks, desc="initializing masks"):
             image_details = get_image_details(path, inreg)
             if image_details is None:
@@ -376,9 +375,7 @@ class SeriesList(object):
             sid, channel_name = image_details
 
             if sid not in series:
-                series[sid] = Series(sid, ground_block_side)
-                if aspect is not None:
-                    series[sid].aspect = aspect
+                series[sid] = Series(sid, ground_block_side, aspect)
 
             if channel_name != ref:
                 logging.warning("skipping mask for channel "
@@ -407,7 +404,7 @@ class SeriesList(object):
         if ref is not None:
             series = SeriesList.__initialize_masks(
                 ref, dpath, series, channels, inreg,
-                aspect, labeled, ground_block_side)
+                labeled, aspect, ground_block_side)
 
         clen = len(set([len(s) for s in series.values()]))
         assert 1 == clen, (
