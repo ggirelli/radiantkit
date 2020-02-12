@@ -11,7 +11,7 @@ import plotly.graph_objects as go  # type: ignore
 from plotly.subplots import make_subplots  # type: ignore
 from radiantkit import path as pt, stat
 from scipy.stats import gaussian_kde  # type: ignore
-from typing import Dict, Optional, Tuple
+from typing import Dict, Optional
 
 
 def export(path: str, exp_format: str = 'pdf') -> None:
@@ -27,9 +27,9 @@ def export(path: str, exp_format: str = 'pdf') -> None:
 
 def plot_nuclear_selection(
         data: pd.DataFrame, ref: str,
-        size_range: Tuple[float, float], isum_range: Tuple[float, float],
-        size_fit: Optional[Tuple[np.ndarray, str]] = None,
-        isum_fit: Optional[Tuple[np.ndarray, str]] = None,
+        size_range: stat.Interval, isum_range: stat.Interval,
+        size_fit: Optional[stat.FitResult] = None,
+        isum_fit: Optional[stat.FitResult] = None,
         npoints: int = 1000) -> go.Figure:
     assert all([x in data.columns
                 for x in ["size", f"isum_{ref}", "pass", "label", "image"]])

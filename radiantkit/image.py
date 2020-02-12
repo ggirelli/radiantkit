@@ -6,7 +6,7 @@
 import logging
 import numpy as np  # type: ignore
 import os
-from radiantkit import const
+from radiantkit import const, stat
 from scipy import ndimage as ndi  # type: ignore
 import skimage as ski  # type: ignore
 from skimage.morphology import square, cube  # type: ignore
@@ -254,8 +254,7 @@ class ImageLabeled(ImageBase):
 
     def __remove_labels_by_size(
             self, labels: List[int], sizes: np.ndarray,
-            pass_range: Tuple[Union[int, float], Union[int, float]],
-            axes: str = "total") -> None:
+            pass_range: stat.Interval, axes: str = "total") -> None:
         assert 2 == len(pass_range)
         assert pass_range[0] <= pass_range[1]
 

@@ -47,4 +47,4 @@ def parse_arguments(args: argparse.Namespace) -> argparse.Namespace:
 
 
 def run(args: argparse.Namespace) -> None:
-    pass
+    raise NotImplementedError

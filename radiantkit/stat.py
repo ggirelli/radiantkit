@@ -17,6 +17,10 @@ class FitType(Enum):
     FWHM = "full_width_half_maximum"
 
 
+Interval = Tuple[float, float]
+FitResult = Tuple[np.ndarray, FitType]
+
+
 def gpartial(V: np.ndarray, d: int, sigma: float) -> np.ndarray:
     '''Calculate the partial derivative of V along dimension d using a filter
     of size sigma. Based on code by Erik Wernersson, PhD.'''
@@ -125,7 +129,7 @@ def fwhm(xx: np.ndarray) -> Tuple[float]:
     raise NotImplementedError
 
 
-def cell_cycle_fit(data: np.ndarray) -> Tuple[Optional[np.ndarray], FitType]:
+def cell_cycle_fit(data: np.ndarray) -> FitResult:
     fit = (sog_fit(data), FitType.SOG)
     if fit[0] is None:
         fit = (gaussian_fit(data), FitType.GAUSSIAN)
@@ -151,14 +155,14 @@ def gaussian_range_from_fit(data: np.ndarray, fitted_params: np.ndarray,
 
 def range_from_fit(data: np.ndarray, fitted_params: np.ndarray,
                    fit_type: FitType, k_sigma: float
-                   ) -> Optional[Tuple[float, ...]]:
+                   ) -> Tuple[float, ...]:
     if FitType.SOG == fit_type:
         return sog_range_from_fit(data, fitted_params, fit_type, k_sigma)
     if FitType.GAUSSIAN == fit_type:
         return gaussian_range_from_fit(data, fitted_params, fit_type, k_sigma)
     if FitType.FWHM == fit_type:
         return fitted_params
-    return None
+    raise NotImplementedError
 
 
 def quantile_from_counts(values: np.ndarray, counts: np.ndarray,

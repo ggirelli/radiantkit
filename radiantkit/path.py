@@ -9,6 +9,10 @@ import re
 from typing import List, Optional, Pattern, Tuple
 
 
+FileList = List[str]
+RawMaskPair = Tuple[str, str]
+
+
 def add_leading_dot(s: str) -> str:
     if '.' != s[0]:
         s = '.' + s
@@ -22,16 +26,16 @@ def add_extension(path: str, ext: str) -> str:
     return path
 
 
-def find_re(ipath: str, ireg: Pattern) -> List[str]:
+def find_re(ipath: str, ireg: Pattern) -> FileList:
     flist = [f for f in os.listdir(ipath)
              if (os.path.isfile(os.path.join(ipath, f))
                  and re.match(ireg, f) is not None)]
     return flist
 
 
-def select_by_prefix_and_suffix(dpath: str, ilist: List[str],
+def select_by_prefix_and_suffix(dpath: str, ilist: FileList,
                                 prefix: str = "", suffix: str = ""
-                                ) -> Tuple[List[str], List[str]]:
+                                ) -> Tuple[FileList, FileList]:
     olist = ilist.copy()
     if 0 != len(suffix):
         olist = [f for f in olist if os.path.splitext(f)[0].endswith(suffix)]
@@ -42,8 +46,8 @@ def select_by_prefix_and_suffix(dpath: str, ilist: List[str],
 
 def pair_raw_mask_images(
         dpath: str, flist: List[str], prefix: str = "", suffix: str = ""
-        ) -> List[Tuple[str, str]]:
-    olist: List[Tuple[str, str]] = []
+        ) -> List[RawMaskPair]:
+    olist: List[RawMaskPair] = []
     for fpath in flist:
         fbase, fext = os.path.splitext(fpath)
         fbase = fbase[len(prefix):-len(suffix)]

@@ -4,6 +4,7 @@
 '''
 
 import logging
+from logging import Logger
 from radiantkit import const
 from radiantkit.image import Image, ImageBinary, ImageLabeled
 from skimage.filters import threshold_otsu  # type: ignore
@@ -23,10 +24,9 @@ class BinarizerSettings(object):
     do_clear_XY_borders: bool = True
     do_clear_Z_borders: bool = False
     do_fill_holes: bool = True
-    logger: logging.Logger
+    logger: Logger
 
-    def __init__(self,
-                 logger: logging.Logger = logging.getLogger("radiantkit")):
+    def __init__(self, logger: Logger = logging.getLogger("radiantkit")):
         super(BinarizerSettings, self).__init__()
         self.logger = logger
 
@@ -42,8 +42,7 @@ class BinarizerSettings(object):
 
 
 class Binarizer(BinarizerSettings):
-    def __init__(self,
-                 logger: logging.Logger = logging.getLogger("radiantkit")):
+    def __init__(self, logger: Logger = logging.getLogger("radiantkit")):
         super(Binarizer, self).__init__(logger)
 
     def run(self, img: Image,

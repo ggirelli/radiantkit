@@ -8,15 +8,18 @@ from radiantkit.image import ImageBase, ImageBinary
 from typing import Tuple
 
 
-class BoundingElement(object):
-    _bounds: Tuple[Tuple[int, int], ...]
+point = Tuple[int, int]
 
-    def __init__(self, axes_bounds: Tuple[Tuple[int, int], ...]):
+
+class BoundingElement(object):
+    _bounds: Tuple[point, ...]
+
+    def __init__(self, axes_bounds: Tuple[point, ...]):
         super(BoundingElement, self).__init__()
         self._bounds = axes_bounds
 
     @property
-    def bounds(self) -> Tuple[Tuple[int, int], ...]:
+    def bounds(self) -> Tuple[point, ...]:
         return self._bounds
 
     @property
