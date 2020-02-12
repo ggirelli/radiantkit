@@ -37,7 +37,7 @@ definition.
         help="Find out of focus fields of view.")
 
     parser.add_argument(
-        'imdir', type=str, help='Path to folder with tiff images.')
+        'input', type=str, help='Path to folder with tiff images.')
     parser.add_argument(
         'output', type=str, help='Path to output tsv file.')
 
