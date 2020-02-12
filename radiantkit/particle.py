@@ -4,23 +4,24 @@
 '''
 
 import itertools
-import joblib
+import joblib  # type: ignore
 import logging
-import numpy as np
+import numpy as np  # type: ignore
 import os
-import pandas as pd
+import pandas as pd  # type: ignore
 from radiantkit.image import Image, ImageBinary, ImageLabeled
 from radiantkit.selection import BoundingElement
 from radiantkit.stat import cell_cycle_fit, range_from_fit
-from skimage.measure import marching_cubes_lewiner, mesh_surface_area
-from skimage.morphology import convex_hull_image
-from tqdm import tqdm
-from typing import Dict, List, Optional, Tuple, Type
+from skimage.measure import marching_cubes_lewiner  # type: ignore
+from skimage.measure import mesh_surface_area
+from skimage.morphology import convex_hull_image  # type: ignore
+from tqdm import tqdm  # type: ignore
+from typing import Any, Dict, List, Optional, Tuple, Type
 
 
 class ParticleSettings(object):
-    _mask: Optional[ImageBinary] = None
-    _region_of_interest: Optional[BoundingElement] = None
+    _mask: ImageBinary
+    _region_of_interest: BoundingElement
     label: Optional[int] = None
     _total_size: Optional[int] = None
     _surface: Optional[int] = None
@@ -41,9 +42,8 @@ class ParticleSettings(object):
     def aspect(self) -> np.ndarray:
         return self.mask.aspect
 
-    @aspect.setter
-    def aspect(self, spacing: np.ndarray) -> None:
-        self.mask.aspect = spacing
+    def set_aspect(self, spacing: np.ndarray) -> None:
+        self._mask.aspect = spacing
         self._surface = None
 
     @property
@@ -76,7 +76,6 @@ class ParticleSettings(object):
             self._surface = mesh_surface_area(verts, faces)
         return self._surface
 
-    @property
     def shape(self, spacing: Optional[np.ndarray] = None) -> float:
         if self._shape is None:
             if spacing is None:
@@ -99,7 +98,8 @@ class ParticleSettings(object):
 
 
 class ParticleBase(ParticleSettings):
-    _intensity: Dict[str, Dict[str, float]] = None
+    _intensity: Dict[str, Dict[str, float]]
+    source: str
 
     def __init__(self, B: ImageBinary,
                  region_of_interest: BoundingElement):
@@ -164,7 +164,7 @@ class NucleiList(object):
 
     @staticmethod
     def from_field_of_view(maskpath: str, rawpath: str,
-                           doRescale: bool = True) -> List[Nucleus]:
+                           doRescale: bool = True) -> 'NucleiList':
         img = Image.from_tiff(rawpath, doRescale=doRescale)
         mask = ImageBinary.from_tiff(maskpath)
         assert img.shape == mask.shape
@@ -180,7 +180,7 @@ class NucleiList(object):
     @staticmethod
     def from_multiple_fields_of_view(
             masklist: Tuple[str], ipath: str, doRescale: bool = True,
-            threads: int = 1) -> List['NucleiList']:
+            threads: int = 1) -> 'NucleiList':
         if 1 == threads:
             nuclei = []
             for rawpath, maskpath in tqdm(masklist):
@@ -225,11 +225,13 @@ class NucleiList(object):
         assert size_fit[0] is not None
         size_range = range_from_fit(
             ndata['size'].values, *size_fit, k_sigma)
+        assert size_range is not None
 
         isum_fit = cell_cycle_fit(ndata[isum_label].values)
         assert isum_fit[0] is not None
         isum_range = range_from_fit(
             ndata[isum_label].values, *isum_fit, k_sigma)
+        assert isum_range is not None
 
         ndata['pass_size'] = np.logical_and(
             ndata['size'].values >= size_range[0],
@@ -252,14 +254,14 @@ class ParticleFinder(object):
     @staticmethod
     def get_particles_from_binary_image(
             B: ImageBinary, particleClass: Type[ParticleBase] = ParticleBase
-            ) -> List[Type[ParticleBase]]:
+            ) -> List[Any]:
         return ParticleFinder.get_particles_from_labeled_image(
             B.label(), particleClass)
 
     @staticmethod
     def get_particles_from_labeled_image(
             L: ImageLabeled, particleClass: Type[ParticleBase] = ParticleBase
-            ) -> List[Type[ParticleBase]]:
+            ) -> List[Any]:
         assert L.pixels.min() != L.pixels.max(), (
             'monochromatic image detected.')
 

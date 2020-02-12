@@ -4,12 +4,11 @@
 '''
 
 import argparse
-from ggc.prompt import ask
-from ggc.args import check_threads, export_settings
-import itertools
-from joblib import delayed, Parallel
+from ggc.prompt import ask  # type: ignore
+from ggc.args import check_threads, export_settings  # type: ignore
+from joblib import delayed, Parallel  # type: ignore
 import logging
-import numpy as np
+import numpy as np  # type: ignore
 from os import listdir, mkdir
 from os.path import join as path_join, isdir, isfile
 from radiantkit import const
@@ -17,8 +16,8 @@ from radiantkit import particle, series
 from radiantkit.scripts.select_nuclei import extract_passing_nuclei_per_series
 import re
 import sys
-from tqdm import tqdm
-from typing import Dict
+from tqdm import tqdm  # type: ignore
+from typing import List
 
 logging.basicConfig(
     level=logging.INFO, format='%(asctime)s '
@@ -234,7 +233,7 @@ def confirm_arguments(args: argparse.Namespace) -> None:
         export_settings(OH, settings_string)
 
 
-def build_conditions(args: argparse.Namespace) -> Dict:
+def build_conditions(args: argparse.Namespace) -> List[series.SeriesList]:
     conditions = []
     for condition_name in listdir(args.input):
         condition_folder = path_join(args.input, condition_name)
@@ -271,15 +270,15 @@ def run(args: argparse.Namespace) -> None:
                                 for s in tqdm(condition)]
         else:
             condition.series = Parallel(n_jobs=args.threads, verbose=11)(
-                delayed(series.extract_particles)(
+                delayed(series.Series.extract_particles)(
                     s, [args.ref], particleClass=particle.Nucleus)
                 for s in condition)
 
         if not args.skip_nuclear_selection:
             logging.info("selecting G1 nuclei")
-            ndata, details = particle.NucleiList(list(itertools.chain(
-                *[s.particles for s in condition]))
-                ).select_G1(args.k_sigma, args.ref)
+            ndata, details = particle.NucleiList(
+                list(condition.get_particles()
+                     ).select_G1(args.k_sigma, args.ref))
 
             passed = extract_passing_nuclei_per_series(ndata, args.inreg)
             for s in condition:

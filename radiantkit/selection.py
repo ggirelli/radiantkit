@@ -3,25 +3,25 @@
 @contact: gigi.ga90@gmail.com
 '''
 
-import numpy as np
-from radiantkit.image import Image, ImageBinary
-from typing import Optional, Tuple, Type
+import numpy as np  # type: ignore
+from radiantkit.image import ImageBase, ImageBinary
+from typing import Tuple
 
 
 class BoundingElement(object):
-    _bounds: Optional[Tuple[Tuple[int]]] = None
+    _bounds: Tuple[Tuple[int, int], ...]
 
-    def __init__(self, axes_bounds: Tuple[Tuple[int]]):
+    def __init__(self, axes_bounds: Tuple[Tuple[int, int], ...]):
         super(BoundingElement, self).__init__()
         self._bounds = axes_bounds
 
     @property
-    def bounds(self) -> Tuple[Tuple[int]]:
+    def bounds(self) -> Tuple[Tuple[int, int], ...]:
         return self._bounds
 
     @property
-    def shape(self) -> Tuple[int]:
-        return tuple([int(b1-b0) for (b0, b1) in self._bounds])
+    def shape(self) -> Tuple[int, ...]:
+        return tuple([int(b1-b0) for (b0, b1) in self.bounds])
 
     @staticmethod
     def from_binary_image(B: ImageBinary) -> 'BoundingElement':
@@ -31,9 +31,9 @@ class BoundingElement(object):
             axis = B.pixels.sum(tuple([axis for axis in range(len(B.shape))
                                        if axis != axis_id])) != 0
             axes_bounds.append((axis.argmax(), len(axis)-axis[::-1].argmax()))
-        return BoundingElement(axes_bounds)
+        return BoundingElement(tuple(axes_bounds))
 
-    def apply(self, I: Type[Image]) -> np.ndarray:
+    def apply(self, I: ImageBase) -> np.ndarray:
         assert len(self._bounds) == len(I.shape)
         for axis_id in range(len(I.shape)):
             assert self._bounds[axis_id][1] <= I.shape[axis_id]

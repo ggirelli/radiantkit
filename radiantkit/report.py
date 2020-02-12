@@ -8,12 +8,11 @@ from datetime import datetime
 import jinja2 as jj2
 import os
 import radiantkit as ra
-from typing import Optional
 
 
 class Report(object):
-    _env: Optional[jj2.Environment] = None
-    _template: Optional[jj2.Template] = None
+    _env: jj2.Environment
+    _template: jj2.Template
 
     def __init__(self, template: str):
         super(Report, self).__init__()

@@ -3,14 +3,14 @@
 @contact: gigi.ga90@gmail.com
 '''
 
-from matplotlib.backends.backend_pdf import PdfPages
-import matplotlib.pyplot as plt
-import numpy as np
-import pandas as pd
-import plotly.graph_objects as go
-from plotly.subplots import make_subplots
+from matplotlib.backends.backend_pdf import PdfPages  # type: ignore
+import matplotlib.pyplot as plt  # type: ignore
+import numpy as np  # type: ignore
+import pandas as pd  # type: ignore
+import plotly.graph_objects as go  # type: ignore
+from plotly.subplots import make_subplots  # type: ignore
 from radiantkit import path as pt, stat
-from scipy.stats import gaussian_kde
+from scipy.stats import gaussian_kde  # type: ignore
 from typing import Dict, Optional, Tuple
 
 
@@ -27,7 +27,7 @@ def export(path: str, exp_format: str = 'pdf') -> None:
 
 def plot_nuclear_selection(
         data: pd.DataFrame, ref: str,
-        size_range: Tuple[float], isum_range: Tuple[float],
+        size_range: Tuple[float, float], isum_range: Tuple[float, float],
         size_fit: Optional[Tuple[np.ndarray, str]] = None,
         isum_fit: Optional[Tuple[np.ndarray, str]] = None,
         npoints: int = 1000) -> go.Figure:

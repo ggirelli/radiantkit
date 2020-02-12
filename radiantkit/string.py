@@ -9,9 +9,9 @@ from typing import Iterator, List, Optional, Pattern, Tuple
 
 
 class MultiRange(object):
-    __current_item: Tuple[int] = (0, 0)
-    __string_range: Optional[str] = None
-    __extremes_list: Optional[List[Tuple[int]]] = None
+    __current_item: Tuple[int, int] = (0, 0)
+    __string_range: str
+    __extremes_list: List[Tuple[int, int]]
     __reg: Pattern = re.compile(r'^[0-9-, ]+$')
     __length: Optional[int] = None
     __ready: bool = False
@@ -33,7 +33,7 @@ class MultiRange(object):
                 extremes = [extremes[0], extremes[0]]
             assert 2 == len(extremes), "a range should be specified as A-B"
             assert extremes[1] >= extremes[0]
-            self.__extremes_list.append(tuple(extremes))
+            self.__extremes_list.append((extremes[0], extremes[1]))
 
         self.__extremes_list = sorted(
             self.__extremes_list, key=lambda x: x[0])

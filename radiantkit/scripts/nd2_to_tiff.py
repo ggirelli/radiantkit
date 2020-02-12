@@ -26,7 +26,7 @@ logging.basicConfig(
 def init_parser(subparsers: argparse._SubParsersAction
                 ) -> argparse.ArgumentParser:
     parser = subparsers.add_parser(
-        __name__.split(".")[-1], description='''
+        __name__.split(".")[-1], description=f'''
 Convert a nd2 file into single channel tiff images.
 
 In the case of 3+D images, the script also checks for consistent deltaZ

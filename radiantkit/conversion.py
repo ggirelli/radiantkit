@@ -4,13 +4,13 @@
 '''
 
 import argparse
-from czifile import CziFile
+from czifile import CziFile  # type: ignore
 from logging import Logger, getLogger
-from nd2reader import ND2Reader
-from nd2reader.parser import Parser as ND2Parser
-import numpy as np
+from nd2reader import ND2Reader  # type: ignore
+from nd2reader.parser import Parser as ND2Parser  # type: ignore
+import numpy as np  # type: ignore
 from radiantkit.string import TIFFNameTemplate as TNTemplate
-from typing import Iterable, List, Optional, Set, Tuple, Type
+from typing import Iterable, List, Optional, Set, Tuple
 import warnings
 import xml.etree.ElementTree as ET
 
@@ -20,7 +20,7 @@ class ND2Reader2(ND2Reader):
         super(ND2Reader2, self).__init__(filename)
 
     def log_details(
-            self, logger: Optional[Type[Logger]] = getLogger()) -> None:
+            self, logger: Logger = getLogger()) -> None:
         logger.info(f"Found {self.field_count()} field(s) of view, "
                     + f"with {self.channel_count()} channel(s).")
 
@@ -96,6 +96,7 @@ class ND2Reader2(ND2Reader):
 
 class CziFile2(CziFile):
     __pixels: Optional[np.ndarray] = None
+    axes: str
 
     def __init__(self, filename):
         super(CziFile2, self).__init__(filename)
@@ -108,7 +109,7 @@ class CziFile2(CziFile):
         return self.__pixels
 
     def log_details(self,
-                    logger: Optional[Type[Logger]] = getLogger()) -> None:
+                    logger: Logger = getLogger()) -> None:
         logger.info(f"Found {self.field_count()} field(s) of view, "
                     + f"with {self.channel_count()} channel(s).")
         logger.info(f"Channels: {list(self.get_channel_names())}.")
@@ -142,6 +143,8 @@ class CziFile2(CziFile):
     def get_channel_names(self) -> Iterable[str]:
         channel_path = "Metadata/DisplaySetting/Channels/Channel/DyeName"
         for x in ET.fromstring(self.metadata()).findall(channel_path):
+            if x.text is None:
+                continue
             yield x.text.replace(" ", "").lower()
 
     def channel_count(self) -> int:
@@ -153,11 +156,13 @@ class CziFile2(CziFile):
             "channel count mismatch.")
         return n
 
-    def get_axis_resolution(self, axis: str) -> dict:
+    def get_axis_resolution(self, axis: str) -> Optional[float]:
         resolution_path = "Metadata/Scaling/Items/Distance"
         for x in ET.fromstring(self.metadata()).findall(resolution_path):
             if x.attrib["Id"] == axis:
-                return float(x[0].text)
+                if x[0].text is not None:
+                    return float(x[0].text)
+        return None
 
     def get_resolution(self) -> dict:
         resolution = {}
@@ -179,14 +184,14 @@ class CziFile2(CziFile):
     def reorder_axes(self, bundle_axes: str) -> None:
         if self.axes == bundle_axes:
             return
-        bundle_axes = list(bundle_axes)
-        assert len(bundle_axes) == len(self.axes)
-        assert all([axis in self.axes for axis in bundle_axes])
+        bundle_axes_list = list(bundle_axes)
+        assert len(bundle_axes_list) == len(self.axes)
+        assert all([axis in self.axes for axis in bundle_axes_list])
         self.__pixels = np.moveaxis(
             self.pixels, range(len(self.axes)),
-            [bundle_axes.index(axis) for axis in self.axes])
+            [bundle_axes_list.index(axis) for axis in self.axes])
         self.shape = self.pixels.shape
-        self.axes = bundle_axes
+        self.axes = "".join(bundle_axes_list)
 
     def get_channel_pixels(self, args: argparse.Namespace,
                            field_id: Optional[int] = None
