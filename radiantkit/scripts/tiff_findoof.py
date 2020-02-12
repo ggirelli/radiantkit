@@ -5,18 +5,18 @@
 
 
 import argparse
-from ggc.args import check_threads
-from joblib import delayed, Parallel
+from ggc.args import check_threads  # type: ignore
+from joblib import delayed, Parallel  # type: ignore
 import logging
-import matplotlib as mplt
-import numpy as np
+import matplotlib as mplt  # type: ignore
+import numpy as np  # type: ignore
 import os
-import pandas as pd
+import pandas as pd  # type: ignore
 from radiantkit.const import __version__
 import radiantkit.image as imt
 from radiantkit import path, plot, stat
 import sys
-from tqdm import tqdm
+from tqdm import tqdm  # type: ignore
 
 mplt.use('ps')
 
@@ -117,7 +117,7 @@ def plot_profile(args: argparse.Namespace, series_data: pd.DataFrame,
 
 
 def is_OOF(args: argparse.Namespace, ipath: str,
-           logger: logging.RootLogger) -> pd.DataFrame:
+           logger: logging.Logger) -> pd.DataFrame:
     img = imt.Image.from_tiff(os.path.join(args.input, ipath)).pixels
 
     slice_descriptors = []

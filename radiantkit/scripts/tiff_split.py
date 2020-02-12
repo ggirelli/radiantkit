@@ -5,15 +5,16 @@
 
 import argparse
 import configparser as cp
-from ggc.prompt import ask
+from ggc.prompt import ask  # type: ignore
 import logging
-import numpy as np
+import numpy as np  # type: ignore
 import os
 from radiantkit.const import __version__
 import radiantkit.image as imt
 from typing import List
 import sys
-from tqdm import tqdm
+from tqdm import tqdm  # type: ignore
+from typing import Tuple
 
 logging.basicConfig(
     level=logging.INFO, format='%(asctime)s '
@@ -205,7 +206,8 @@ def enlarge_XY_tiff(img: np.ndarray, offset: List[int]) -> np.ndarray:
     return(new_image)
 
 
-def get_pixel_loss(img: np.ndarray, side: List[int], step: float) -> int:
+def get_pixel_loss(img: np.ndarray, side: List[int], step: List[float]
+                   ) -> Tuple[int, ...]:
     N = len(img.shape)
     assert len(side) <= N
 
@@ -216,12 +218,12 @@ def get_pixel_loss(img: np.ndarray, side: List[int], step: float) -> int:
         missed = [img.shape[-i-1] % side[i] % step[i]
                   for i in range(len(side))]
 
-    loss = []
+    lost_parts = []
     for i in range(len(side)):
         otherd = [img.shape[j] for j in range(N) if not N-i-1 == j]
         otherd.append(missed[-i-1])
-        loss.append(np.prod(otherd))
-    loss = int(np.sum(loss) - np.prod(img.shape[:-2]) * np.prod(missed))
+        lost_parts.append(np.prod(otherd))
+    loss = int(np.sum(lost_parts)-np.prod(img.shape[:-2])*np.prod(missed))
 
     return (*missed, loss, loss/np.prod(img.shape)*100)
 

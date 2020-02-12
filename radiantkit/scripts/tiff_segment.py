@@ -5,17 +5,18 @@
 
 import logging
 import argparse
-from ggc.prompt import ask
-from ggc.args import check_threads, export_settings
-from joblib import delayed, Parallel
-import numpy as np
+from ggc.prompt import ask  # type: ignore
+from ggc.args import check_threads, export_settings  # type: ignore
+from joblib import delayed, Parallel  # type: ignore
+import numpy as np  # type: ignore
 import os
 from radiantkit.const import __version__
 from radiantkit import const, path
 from radiantkit import image, segmentation
 import re
 import sys
-from tqdm import tqdm
+from tqdm import tqdm  # type: ignore
+from typing import Tuple
 
 logging.basicConfig(
     level=logging.INFO, format='%(asctime)s '
@@ -221,7 +222,6 @@ def run_segmentation(args: argparse.Namespace, imgpath: str, imgdir: str,
     binarizer = segmentation.Binarizer()
     binarizer.segmentation_type = const.SegmentationType.THREED
     binarizer.local_side = args.neighbour
-    binarizer.min_z_size = args.min_Z
     binarizer.do_clear_Z_borders = args.do_clear_Z
 
     mask2d = None
@@ -234,6 +234,7 @@ def run_segmentation(args: argparse.Namespace, imgpath: str, imgdir: str,
                     mask2d_path, axes="YX", doRelabel=False)
 
     M = binarizer.run(img, mask2d)
+    assert isinstance(M, image.ImageBinary)
 
     if 0 != args.dilate_fill_erode:
         logging.info("dilating")
@@ -245,10 +246,13 @@ def run_segmentation(args: argparse.Namespace, imgpath: str, imgdir: str,
     logging.info("labeling")
     L = M.label()
 
+    size_range: Tuple[float, float]
     if 2 == len(L.axes):
-        size_range = tuple(np.round(np.pi*np.square(args.radius), 6))
+        size_range = (np.round(np.pi*np.square(args.radius[0]), 6)[0],
+                      np.round(np.pi*np.square(args.radius[0]), 6)[1])
     else:
-        size_range = tuple(np.round(4/3*np.pi*np.power(args.radius, 3), 6))
+        size_range = (np.round(4/3*np.pi*np.power(args.radius, 3), 6)[0],
+                      np.round(4/3*np.pi*np.power(args.radius, 3), 6)[1])
     logging.info(f"filtering total size: {size_range}")
     L.filter_total_size(size_range)
     z_size_range = (args.min_Z*img.axis_shape("Z"), np.inf)
@@ -290,9 +294,9 @@ def run(args: argparse.Namespace) -> None:
 
     logLevel = logging.getLogger().level
     if args.debug_mode:
-        logLevel = "DEBUG"
+        logLevel = 10  # DEBUG
     if args.silent:
-        logLevel = "CRITICAL"
+        logLevel = 50  # CRITICAL
 
     logging.info(f"found {len(imglist)} image(s) to segment.")
     if 1 == args.threads:

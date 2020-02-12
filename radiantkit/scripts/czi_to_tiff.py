@@ -13,7 +13,7 @@ from radiantkit.string import MultiRange
 from radiantkit.string import TIFFNameTemplateFields as TNTFields
 from radiantkit.string import TIFFNameTemplate as TNTemplate
 import sys
-from tqdm import tqdm
+from tqdm import tqdm  # type: ignore
 
 logging.basicConfig(
     level=logging.INFO, format='%(asctime)s '

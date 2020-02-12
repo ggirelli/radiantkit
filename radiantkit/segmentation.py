@@ -5,7 +5,7 @@
 
 import logging
 from radiantkit import const
-from radiantkit.image import ImageBase, Image, ImageBinary, ImageLabeled
+from radiantkit.image import Image, ImageBinary, ImageLabeled
 from skimage.filters import threshold_otsu  # type: ignore
 from typing import Optional, Union
 
@@ -46,25 +46,25 @@ class Binarizer(BinarizerSettings):
                  logger: logging.Logger = logging.getLogger("radiantkit")):
         super(Binarizer, self).__init__(logger)
 
-    def run(self, I: Image,
+    def run(self, img: Image,
             mask2d: Optional[Union[ImageBinary, ImageLabeled]] = None
-            ) -> ImageBase:
+            ) -> Union[Image, ImageBinary]:
         if not self.do_global and not self.do_local:
             self.logger.warning("no threshold applied.")
-            return I
+            return img
 
         if self.segmentation_type in (const.SegmentationType.SUM_PROJECTION,
                                       const.SegmentationType.MAX_PROJECTION):
             self.logger.info(f"projecting over Z [{self.segmentation_type}].")
-            I.z_project(const.ProjectionType(self.segmentation_type))
+            img.z_project(const.ProjectionType(self.segmentation_type))
 
         mask_list = []
         global_threshold = 0
         if self.do_global:
-            global_threshold = threshold_otsu(I.pixels)
+            global_threshold = threshold_otsu(img.pixels)
             self.logger.info(
                 f"applying global threshold of {global_threshold}")
-            gmask = I.threshold_global(global_threshold)
+            gmask = img.threshold_global(global_threshold)
             if self.global_closing:
                 gmask.close()
             mask_list.append(gmask)
@@ -72,7 +72,7 @@ class Binarizer(BinarizerSettings):
             self.logger.info("applying adaptive threshold to neighbourhood "
                              + f"with side of {self.local_side} px. "
                              + f"({self.local_method}, {self.local_mode})")
-            local_mask = I.threshold_adaptive(
+            local_mask = img.threshold_adaptive(
                 self.local_side, self.local_method, self.local_mode)
             if self.local_closing:
                 local_mask.close()

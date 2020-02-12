@@ -4,7 +4,7 @@
 '''
 
 import argparse
-from ggc.prompt import ask  # type: ignore
+from ggc.prompt import ask  # type ignore
 from ggc.args import check_threads, export_settings  # type: ignore
 from joblib import delayed, Parallel  # type: ignore
 import logging

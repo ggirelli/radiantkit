@@ -156,13 +156,13 @@ class CziFile2(CziFile):
             "channel count mismatch.")
         return n
 
-    def get_axis_resolution(self, axis: str) -> Optional[float]:
+    def get_axis_resolution(self, axis: str) -> float:
         resolution_path = "Metadata/Scaling/Items/Distance"
         for x in ET.fromstring(self.metadata()).findall(resolution_path):
             if x.attrib["Id"] == axis:
                 if x[0].text is not None:
                     return float(x[0].text)
-        return None
+        return 1
 
     def get_resolution(self) -> dict:
         resolution = {}

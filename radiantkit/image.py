@@ -283,7 +283,7 @@ class ImageLabeled(ImageBase):
 
     def filter_total_size(
             self,
-            pass_range: Tuple[Union[int, float], Union[int, float]]) -> None:
+            pass_range: Tuple[float, float]) -> None:
         labels, sizes = np.unique(self.pixels, return_counts=True)
         self.__remove_labels_by_size(labels, sizes, pass_range)
 

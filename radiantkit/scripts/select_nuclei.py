@@ -4,13 +4,13 @@
 '''
 
 import argparse as argp
-import ggc
-import joblib
+import ggc  # type: ignore
+import joblib  # type: ignore
 import itertools
 import logging as log
-import numpy as np
+import numpy as np  # type: ignore
 import os
-import pandas as pd
+import pandas as pd  # type: ignore
 from radiantkit.const import __version__, default_inreg
 from radiantkit.image import ImageBinary, ImageLabeled
 from radiantkit.particle import NucleiList, Nucleus
@@ -19,7 +19,7 @@ from radiantkit.series import Series, SeriesList
 from radiantkit.report import report_select_nuclei
 import re
 import sys
-from tqdm import tqdm
+from tqdm import tqdm  # type: ignore
 from typing import Dict, List, Pattern
 
 log.basicConfig(
@@ -191,8 +191,11 @@ def confirm_arguments(args: argp.Namespace) -> None:
 def extract_passing_nuclei_per_series(
         ndata: pd.DataFrame, inreg: Pattern) -> Dict[int, List[int]]:
     passed = ndata.loc[ndata['pass'], ['image', 'label']]
-    passed['series_id'] = [get_image_details(p, inreg)[0]
-                           for p in passed['image'].values]
+    passed['series_id'] = []
+    for p in passed['image'].values:
+        image_details = get_image_details(p, inreg)
+        assert image_details is not None
+        passed['series_id'].append(image_details[0])
     passed.drop('image', 1, inplace=True)
     passed = dict([
         (sid, passed.loc[passed['series_id'] == sid, 'label'].values)
@@ -203,6 +206,8 @@ def extract_passing_nuclei_per_series(
 def remove_labels_from_series_mask(
         series: Series, labels: List[int],
         labeled: bool, compressed: bool) -> None:
+    if series.mask is None:
+        return None
     series.mask.load_from_local()
     os.rename(series.mask.path, f"{series.mask.path}.old")
     if labeled:
@@ -211,7 +216,10 @@ def remove_labels_from_series_mask(
         L = ImageLabeled(L)
         L.to_tiff(series.mask.path, compressed)
     else:
-        L = series.mask.label().pixels
+        if isinstance(series.mask, ImageBinary):
+            L = series.mask.label().pixels
+        else:
+            L = series.mask.pixels
         L[np.logical_not(np.isin(L, labels))] = 0
         M = ImageBinary(L)
         M.to_tiff(series.mask.path, compressed)
