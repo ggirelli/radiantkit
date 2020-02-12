@@ -319,6 +319,9 @@ class Series(ChannelList):
         return s
 
 
+SeriesDict = Dict[int, Series]
+
+
 class SeriesList(object):
     name: str
     series: List[Series]
@@ -335,16 +338,10 @@ class SeriesList(object):
         return list(set(itertools.chain(*[s.names for s in self.series])))
 
     @staticmethod
-    def from_directory(
-            dpath: str, inreg: Pattern, ref: Optional[str] = None,
-            maskfix: Tuple[str, str] = ("", ""),
-            aspect: Optional[np.ndarray] = None, labeled: bool = False,
-            ground_block_side: Optional[int] = None):
-
-        masks, channels = select_by_prefix_and_suffix(
-            dpath, find_re(dpath, inreg), *maskfix)
-        series: Dict[int, Series] = {}
-
+    def __initialize_channels(
+            dpath: str, series: SeriesDict, channels: List[str],
+            inreg: Pattern, aspect: Optional[np.ndarray] = None,
+            ground_block_side: Optional[int] = None) -> SeriesDict:
         for path in tqdm(channels, desc="initializing channels"):
             image_details = get_image_details(path, inreg)
             if image_details is None:
@@ -364,27 +361,53 @@ class SeriesList(object):
 
             series[sid].add_channel_from_tiff(
                 channel_name, os.path.join(dpath, path))
+        return series
+
+    @staticmethod
+    def __initialize_masks(
+            ref: str, dpath: str, series: SeriesDict, masks: List[str],
+            inreg: Pattern, aspect: Optional[np.ndarray] = None,
+            labeled: bool = False, ground_block_side: Optional[int] = None
+            ) -> SeriesDict:
+        for path in tqdm(masks, desc="initializing masks"):
+            image_details = get_image_details(path, inreg)
+            if image_details is None:
+                continue
+            sid, channel_name = image_details
+
+            if sid not in series:
+                series[sid] = Series(sid, ground_block_side)
+                if aspect is not None:
+                    series[sid].aspect = aspect
+
+            if channel_name != ref:
+                logging.warning("skipping mask for channel "
+                                + f"'{channel_name}', "
+                                + f"not reference ({ref}).")
+                continue
+
+            series[sid].add_mask_from_tiff(
+                channel_name, os.path.join(dpath, path), labeled)
+        return series
+
+    @staticmethod
+    def from_directory(
+            dpath: str, inreg: Pattern, ref: Optional[str] = None,
+            maskfix: Tuple[str, str] = ("", ""),
+            aspect: Optional[np.ndarray] = None, labeled: bool = False,
+            ground_block_side: Optional[int] = None):
+
+        masks, channels = select_by_prefix_and_suffix(
+            dpath, find_re(dpath, inreg), *maskfix)
+        series: SeriesDict = {}
+
+        series = SeriesList.__initialize_channels(
+            dpath, series, channels, inreg, aspect, ground_block_side)
 
         if ref is not None:
-            for path in tqdm(masks, desc="initializing masks"):
-                image_details = get_image_details(path, inreg)
-                if image_details is None:
-                    continue
-                sid, channel_name = image_details
-
-                if sid not in series:
-                    series[sid] = Series(sid, ground_block_side)
-                    if aspect is not None:
-                        series[sid].aspect = aspect
-
-                if channel_name != ref:
-                    logging.warning("skipping mask for channel "
-                                    + f"'{channel_name}', "
-                                    + f"not reference ({ref}).")
-                    continue
-
-                series[sid].add_mask_from_tiff(
-                    channel_name, os.path.join(dpath, path), labeled)
+            series = SeriesList.__initialize_masks(
+                ref, dpath, series, channels, inreg,
+                aspect, labeled, ground_block_side)
 
         clen = len(set([len(s) for s in series.values()]))
         assert 1 == clen, (
