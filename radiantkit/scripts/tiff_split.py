@@ -127,6 +127,50 @@ tiff_split big_image.tif split_out_dir 100 -e -O 10 20''',
     return parser
 
 
+def update_args_from_step(args: argparse.Namespace, relative_steps: bool
+                          ) -> Tuple[argparse.Namespace, bool]:
+    assert all([step > 0 for step in args.step])
+    step_is_relative = all([step <= 1 for step in args.step])
+    step_is_absolute = all([step > 1 for step in args.step])
+    assert step_is_absolute or step_is_relative
+
+    while len(args.step) < len(args.side):
+        args.step.append(args.step[0])
+    args.step = args.step[:len(args.side)]
+
+    if step_is_absolute:
+        relative_steps = False
+        args.overlap = np.array(
+            [args.side[i] - args.step[i]
+             for i in range(len(args.step))]).astype('int')
+    elif step_is_relative:
+        args.overlap = [np.round(1-s, 3) for s in args.step]
+
+    return args, relative_steps
+
+
+def update_args_from_overlap(args: argparse.Namespace, relative_steps: bool
+                             ) -> Tuple[argparse.Namespace, bool]:
+    assert all([overlap >= 0 for overlap in args.overlap])
+    overlap_is_relative = all([overlap < 1 for overlap in args.overlap])
+    overlap_is_absolute = all([overlap > 1 for overlap in args.overlap])
+    assert overlap_is_absolute or overlap_is_relative
+
+    while len(args.overlap) < len(args.side):
+        args.overlap.append(args.overlap[0])
+    args.overlap = args.overlap[:len(args.side)]
+
+    if overlap_is_absolute:
+        relative_steps = False
+        args.step = np.array(
+            [args.side[i] - args.overlap[i]
+             for i in range(len(args.overlap))]).astype('int')
+    elif overlap_is_relative:
+        args.overlap = [np.round(1-s, 3) for s in args.overlap]
+
+    return args, relative_steps
+
+
 def parse_arguments(args: argparse.Namespace) -> argparse.Namespace:
     args.version = __version__
 
@@ -146,40 +190,10 @@ def parse_arguments(args: argparse.Namespace) -> argparse.Namespace:
 
     relative_steps = True
     if args.step is not None:
-        assert all([step > 0 for step in args.step])
-        step_is_relative = all([step <= 1 for step in args.step])
-        step_is_absolute = all([step > 1 for step in args.step])
-        assert step_is_absolute or step_is_relative
-
-        while len(args.step) < len(args.side):
-            args.step.append(args.step[0])
-        args.step = args.step[:len(args.side)]
-
-        if step_is_absolute:
-            relative_steps = False
-            args.overlap = np.array(
-                [args.side[i] - args.step[i]
-                 for i in range(len(args.step))]).astype('int')
-        elif step_is_relative:
-            args.overlap = [np.round(1-s, 3) for s in args.step]
+        args, relative_steps = update_args_from_step(args, relative_steps)
 
     if args.overlap is not None:
-        assert all([overlap >= 0 for overlap in args.overlap])
-        overlap_is_relative = all([overlap < 1 for overlap in args.overlap])
-        overlap_is_absolute = all([overlap > 1 for overlap in args.overlap])
-        assert overlap_is_absolute or overlap_is_relative
-
-        while len(args.overlap) < len(args.side):
-            args.overlap.append(args.overlap[0])
-        args.overlap = args.overlap[:len(args.side)]
-
-        if overlap_is_absolute:
-            relative_steps = False
-            args.step = np.array(
-                [args.side[i] - args.overlap[i]
-                 for i in range(len(args.overlap))]).astype('int')
-        elif overlap_is_relative:
-            args.overlap = [np.round(1-s, 3) for s in args.overlap]
+        args, relative_steps = update_args_from_overlap(args, relative_steps)
 
     if (args.overlap is not None or args.step is not None) and relative_steps:
         args.step = np.array(
