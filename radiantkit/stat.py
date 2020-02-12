@@ -21,17 +21,17 @@ Interval = Tuple[float, float]
 FitResult = Tuple[np.ndarray, FitType]
 
 
-def gpartial(V: np.ndarray, d: int, sigma: float) -> np.ndarray:
-    '''Calculate the partial derivative of V along dimension d using a filter
-    of size sigma. Based on code by Erik Wernersson, PhD.'''
-
+def gpartial_w(sigma: float) -> int:
     w = round(8 * sigma + 2)
     if 0 == w % 2:
         w = w + 1
     w = 2 * w + 1
     if 1 == sigma:
         w = 11
+    return w
 
+
+def gpartial_g_dg(w: int, sigma: float) -> Tuple[np.ndarray, np.ndarray]:
     if sigma == 0:
         dg = np.array([0, -1, 1])
         g = np.array([0, .5, .5])
@@ -41,31 +41,48 @@ def gpartial(V: np.ndarray, d: int, sigma: float) -> np.ndarray:
         k0 = 1 / np.sqrt(2 * np.pi * sigma**2.)
         k1 = 1 / (2 * sigma**2)
         dg = -2 * k0 * k1 * x * np.exp(-k1 * x**2.)
+    return g, dg
 
-    if 3 == len(V.shape):
-        if 1 == d:
-            V = sp.signal.convolve(V, dg.reshape([1, 1, w+1]), 'same')
-        else:
-            V = sp.signal.convolve(V, g.reshape([1, 1, w+1]), 'same')
-        if 2 == d:
-            V = sp.signal.convolve(V, dg.reshape([1, w+1, 1]), 'same')
-        else:
-            V = sp.signal.convolve(V, g.reshape([1, w+1, 1]), 'same')
-        if 3 == d:
-            V = sp.signal.convolve(V, dg.reshape([w+1, 1, 1]), 'same')
-        else:
-            V = sp.signal.convolve(V, g.reshape([w+1, 1, 1]), 'same')
-    elif 2 == len(V.shape):
-        if 1 == d:
-            V = sp.signal.convolve(V, dg.reshape([1, w+1]), 'same')
-        else:
-            V = sp.signal.convolve(V, g.reshape([1, w+1]), 'same')
-        if 2 == d:
-            V = sp.signal.convolve(V, dg.reshape([w+1, 1]), 'same')
-        else:
-            V = sp.signal.convolve(V, g.reshape([w+1, 1]), 'same')
 
+def gpartial_2D(V: np.ndarray, d: int, sigma: float) -> np.ndarray:
+    w = gpartial_w(sigma)
+    g, dg = gpartial_g_dg(w, sigma)
+    if 1 == d:
+        V = sp.signal.convolve(V, dg.reshape([1, w+1]), 'same')
+    else:
+        V = sp.signal.convolve(V, g.reshape([1, w+1]), 'same')
+    if 2 == d:
+        V = sp.signal.convolve(V, dg.reshape([w+1, 1]), 'same')
+    else:
+        V = sp.signal.convolve(V, g.reshape([w+1, 1]), 'same')
     return V
+
+
+def gpartial_3D(V: np.ndarray, d: int, sigma: float) -> np.ndarray:
+    w = gpartial_w(sigma)
+    g, dg = gpartial_g_dg(w, sigma)
+    if 1 == d:
+        V = sp.signal.convolve(V, dg.reshape([1, 1, w+1]), 'same')
+    else:
+        V = sp.signal.convolve(V, g.reshape([1, 1, w+1]), 'same')
+    if 2 == d:
+        V = sp.signal.convolve(V, dg.reshape([1, w+1, 1]), 'same')
+    else:
+        V = sp.signal.convolve(V, g.reshape([1, w+1, 1]), 'same')
+    if 3 == d:
+        V = sp.signal.convolve(V, dg.reshape([w+1, 1, 1]), 'same')
+    else:
+        V = sp.signal.convolve(V, g.reshape([w+1, 1, 1]), 'same')
+    return V
+
+
+def gpartial(V: np.ndarray, d: int, sigma: float) -> np.ndarray:
+    '''Calculate the partial derivative of V along dimension d using a filter
+    of size sigma. Based on code by Erik Wernersson, PhD.'''
+    if 3 == len(V.shape):
+        return gpartial_3D(V, d, sigma)
+    elif 2 == len(V.shape):
+        return gpartial_2D(V, d, sigma)
 
 
 def gaussian(x: float, k: float, loc: float, scale: float) -> float:
