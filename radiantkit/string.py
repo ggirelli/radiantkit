@@ -86,7 +86,7 @@ class MultiRange(object):
         self.__current_item = (0, 0)
         return self
 
-    def __len__(self) -> int:
+    def __len__(self) -> Optional[int]:
         return self.length
 
 
