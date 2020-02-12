@@ -4,17 +4,17 @@
 '''
 
 import logging
-import numpy as np
+import numpy as np  # type: ignore
 import os
-from radiantkit import const
-from scipy import ndimage as ndi
-import skimage as ski
-from skimage.morphology import square, cube
+from radiantkit import const, stat
+from scipy import ndimage as ndi  # type: ignore
+import skimage as ski  # type: ignore
+from skimage.morphology import square, cube  # type: ignore
 from skimage.morphology import closing, opening
 from skimage.morphology import dilation, erosion
-from skimage.segmentation import clear_border
-import tifffile
-from typing import List, Optional, Tuple, Union
+from skimage.segmentation import clear_border  # type: ignore
+import tifffile  # type: ignore
+from typing import Any, Dict, List, Optional, Tuple, Union
 import warnings
 
 
@@ -51,7 +51,7 @@ class ImageSettings(object):
 class ImageBase(ImageSettings):
     _path_to_local: Optional[str] = None
     _pixels: Optional[np.ndarray] = None
-    _shape: Tuple[int] = None
+    _shape: Tuple[int]
 
     def __init__(self, pixels: np.ndarray, path: Optional[str] = None,
                  axes: Optional[str] = None):
@@ -96,7 +96,7 @@ class ImageBase(ImageSettings):
 
     @axes.setter
     def axes(self, new_axes: str) -> None:
-        assert all([c in self.__ALLOWED_AXES for c in new_axes])
+        assert all([c in self._ALLOWED_AXES for c in new_axes])
         assert all([1 == c.count(new_axes) for c in set(new_axes)])
         if len(new_axes) < len(self.axes):
             for c in self.axes:
@@ -113,8 +113,8 @@ class ImageBase(ImageSettings):
                 if c not in self.axes:
                     self._axes_order = f"{c}{self.axes}"
                     new_shape = [1]
-                    new_shape.extend(self._pixels.shape)
-                    self._pixels.shape = new_shape
+                    new_shape.extend(self.pixels.shape)
+                    self.pixels.shape = new_shape
                     self._aspect = np.append(1, self._aspect)
 
         if new_axes != self.axes:
@@ -153,7 +153,7 @@ class ImageBase(ImageSettings):
             self.pixels.shape = new_shape
             self._axes_order = self._axes_order[1:]
 
-    def axis_shape(self, axis: str) -> int:
+    def axis_shape(self, axis: str) -> Optional[int]:
         if axis not in self._axes_order:
             return None
         return self.shape[self._axes_order.index(axis)]
@@ -231,7 +231,7 @@ class ImageLabeled(ImageBase):
         return ImageLabeled(read_tiff(path), path, axes, doRelabel)
 
     def _relabel(self) -> None:
-        self._pixels = self._pixels.copy() > self._pixels.min()
+        self._pixels = self.pixels.copy() > self.pixels.min()
         self._pixels = ski.measure.label(self._pixels)
 
     def clear_XY_borders(self) -> None:
@@ -253,33 +253,36 @@ class ImageLabeled(ImageBase):
         return (self.pixels == lab).max(axes_ids).sum()
 
     def __remove_labels_by_size(
-            self, labels: List[int], sizes: List[int],
-            pass_range: Tuple[Union[int, float]], axes: str = "total") -> None:
+            self, labels: List[int], sizes: np.ndarray,
+            pass_range: stat.Interval, axes: str = "total") -> None:
         assert 2 == len(pass_range)
         assert pass_range[0] <= pass_range[1]
 
-        sizes = np.array(sizes)
         labels = np.array(labels)
-        filtered = np.logical_or(sizes < pass_range[0], sizes > pass_range[1])
+        filtered = np.logical_or(sizes < pass_range[0],
+                                 sizes > pass_range[1])
 
         logging.info(f"removing {filtered.sum()}/{self.max} labels "
                      + f"outside of {axes} size range {pass_range}")
         logging.debug(np.array((labels, sizes)))
-        self._pixels[np.isin(self.pixels, labels[filtered])] = 0
+        self.pixels[np.isin(self.pixels, labels[filtered])] = 0
         self._pixels = ski.measure.label(self.pixels)
         logging.info(f"retained {self.max} labels")
 
-    def filter_size(self, axes: str,
-                    pass_range: Tuple[Union[int, float]]) -> None:
+    def filter_size(
+            self, axes: str,
+            pass_range: Tuple[Union[int, float], Union[int, float]]) -> None:
         labels = np.unique(self.pixels)
         labels = labels[0 != labels]
         sizes = []
         for current_label in labels:
             logging.debug(f"Calculating {axes} size for label {current_label}")
             sizes.append(self.size(current_label, axes))
-        self.__remove_labels_by_size(labels, sizes, pass_range, axes)
+        self.__remove_labels_by_size(labels, np.array(sizes), pass_range, axes)
 
-    def filter_total_size(self, pass_range: Tuple[Union[int, float]]) -> None:
+    def filter_total_size(
+            self,
+            pass_range: Tuple[float, float]) -> None:
         labels, sizes = np.unique(self.pixels, return_counts=True)
         self.__remove_labels_by_size(labels, sizes, pass_range)
 
@@ -377,8 +380,8 @@ class ImageBinary(ImageBase):
 
 class Image(ImageBase):
     _rescale_factor: float = 1.
-    _background: float = None
-    _foreground: float = None
+    _background: float
+    _foreground: float
 
     def __init__(self, pixels: np.ndarray, path: Optional[str] = None,
                  axes: Optional[str] = None):
@@ -469,8 +472,9 @@ def read_tiff(path: str) -> np.ndarray:
     try:
         with warnings.catch_warnings(record=True) as warning_list:
             img = ski.io.imread(path)
-            warning_list = [str(e) for e in warning_list]
-            if any(["axes do not match shape" in e for e in warning_list]):
+            warnings_messages = [str(e) for e in warning_list]
+            if any(["axes do not match shape" in e
+                    for e in warnings_messages]):
                 logging.warning(
                     f"image axes do not match metadata in '{path}'")
                 logging.warning("using the image axes.")
@@ -496,13 +500,14 @@ def save_tiff(path: str, img: np.ndarray, dtype: str, compressed: bool,
               **kwargs) -> None:
     while len(bundle_axes) > len(img.shape):
         new_shape = [1]
-        [new_shape.append(n) for n in img.shape]
+        for n in img.shape:
+            new_shape.append(n)
         img.shape = new_shape
 
     assert_msg = "shape mismatch between bundled axes and image."
     assert len(bundle_axes) == len(img.shape), assert_msg
 
-    metadata = dict(axes=bundle_axes)
+    metadata: Dict[str, Any] = dict(axes=bundle_axes)
     if inMicrons:
         metadata['unit'] = "um"
     if ResolutionZ is not None:
@@ -622,13 +627,12 @@ def clear_XY_borders(L: np.ndarray) -> np.ndarray:
     if 2 == len(L.shape):
         return clear_border(L)
     elif 3 == len(L.shape):
-        border_labels = []
+        border_labels: List[int] = []
         border_labels.extend(np.unique(L[:, 0, :]).tolist())
         border_labels.extend(np.unique(L[:, -1, :]).tolist())
         border_labels.extend(np.unique(L[:, :, 0]).tolist())
         border_labels.extend(np.unique(L[:, :, -1]).tolist())
-        border_labels = set(border_labels)
-        for lab in border_labels:
+        for lab in set(border_labels):
             L[L == lab] = 0
         return ski.measure.label(L)
     else:
@@ -641,11 +645,10 @@ def clear_Z_borders(L: np.ndarray) -> np.ndarray:
     if 2 == len(L.shape):
         return L
     elif 3 == len(L.shape):
-        border_labels = []
+        border_labels: List[int] = []
         border_labels.extend(np.unique(L[0, :, :]).tolist())
         border_labels.extend(np.unique(L[-1, :, :]).tolist())
-        border_labels = set(border_labels)
-        for lab in border_labels:
+        for lab in set(border_labels):
             L[L == lab] = 0
         return ski.measure.label(L)
     else:
@@ -655,14 +658,15 @@ def clear_Z_borders(L: np.ndarray) -> np.ndarray:
 
 
 def inherit_labels(mask: Union[ImageBinary, ImageLabeled],
-                   mask2d: Union[ImageBinary, ImageLabeled]) -> ImageLabeled:
+                   mask2d: Union[ImageBinary, ImageLabeled]
+                   ) -> Optional[ImageLabeled]:
     assert 2 == len(mask2d.shape)
     if 2 == len(mask.shape):
         assert mask2d.shape == mask.shape
         return mask2d.pixels[np.logical_and(
             mask.pixels > 0, mask2d.pixels > 0)]
     elif 3 == len(mask.shape):
-        assert mask2d.shape == mask[-2:].shape
+        assert mask2d.shape == mask.shape[-2:]
         new_mask = mask.pixels.copy()
         for slice_id in range(mask.shape[0]):
             new_mask[slice_id, :, :] = mask2d.pixels[np.logical_and(
@@ -671,4 +675,4 @@ def inherit_labels(mask: Union[ImageBinary, ImageLabeled],
     else:
         logging.warning("mask combination not allowed for images "
                         + f"with {len(mask.shape)} dimensions.")
-        return mask
+        return None

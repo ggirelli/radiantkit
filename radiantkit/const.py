@@ -25,16 +25,6 @@ class SegmentationType(Enum):
         return SegmentationType.THREED
 
 
-class AnalysisType(Enum):
-    SUM_PROJECTION = ProjectionType.SUM_PROJECTION.value
-    MAX_PROJECTION = ProjectionType.MAX_PROJECTION.value
-    THREED = '3D'
-    MIDSECTION = 'MIDSECTION'
-    @staticmethod
-    def get_default():
-        return AnalysisType.MIDSECTION
-
-
 class MidsectionType(Enum):
     CENTRAL = 'CENTRAL'
     LARGEST = 'LARGEST'

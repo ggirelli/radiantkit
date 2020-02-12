@@ -3,16 +3,17 @@
 @contact: gigi.ga90@gmail.com
 '''
 
-from setuptools import setup, find_packages
+from setuptools import setup, find_packages  # type: ignore
 from distutils.util import convert_path
 from codecs import open
 import os
+from typing import Any, Dict
 
 here = os.path.abspath(os.path.dirname(__file__))
 with open(os.path.join(here, 'README.md'), encoding='utf-8') as f:
     long_description = f.read()
 
-const_data = {}
+const_data: Dict[str, Any] = {}
 ver_path = convert_path('radiantkit/const.py')
 with open(ver_path) as ver_file:
     exec(ver_file.read(), const_data)

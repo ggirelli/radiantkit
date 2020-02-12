@@ -4,8 +4,8 @@
 '''
 
 import argparse
-from ggc.args import check_threads
-from joblib import Parallel, delayed
+from ggc.args import check_threads  # type: ignore
+from joblib import Parallel, delayed  # type: ignore
 import logging
 import os
 from radiantkit.const import __version__

@@ -6,7 +6,7 @@
 import argparse
 import logging
 import os
-import pims
+import pims  # type: ignore
 from radiantkit.const import __version__
 from radiantkit.conversion import ND2Reader2
 import radiantkit.image as imt
@@ -14,7 +14,7 @@ from radiantkit.string import MultiRange
 from radiantkit.string import TIFFNameTemplateFields as TNTFields
 from radiantkit.string import TIFFNameTemplate as TNTemplate
 import sys
-from tqdm import tqdm
+from tqdm import tqdm  # type: ignore
 from typing import List, Optional
 
 logging.basicConfig(
@@ -26,7 +26,7 @@ logging.basicConfig(
 def init_parser(subparsers: argparse._SubParsersAction
                 ) -> argparse.ArgumentParser:
     parser = subparsers.add_parser(
-        __name__.split(".")[-1], description='''
+        __name__.split(".")[-1], description=f'''
 Convert a nd2 file into single channel tiff images.
 
 In the case of 3+D images, the script also checks for consistent deltaZ
@@ -133,7 +133,7 @@ def export_field_3d(
         args: argparse.Namespace, nd2I: ND2Reader2,
         field_id: int, channels: Optional[List[str]] = None) -> None:
     if channels is None:
-        channels = nd2I.get_channel_names()
+        channels = list(nd2I.get_channel_names())
     if args.deltaZ is not None:
         resolutionZ = args.deltaZ
     else:
@@ -170,7 +170,7 @@ def export_field_2d(args: argparse.Namespace, nd2I: ND2Reader2,
                     field_id: int, channels: Optional[List[str]] = None
                     ) -> None:
     if channels is None:
-        channels = nd2I.get_channel_names()
+        channels = list(nd2I.get_channel_names())
 
     try:
         if not nd2I.hasMultiChannels():

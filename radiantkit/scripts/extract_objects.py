@@ -4,7 +4,7 @@
 '''
 
 import argparse as argp
-import ggc
+import ggc  # type: ignore
 import logging as log
 import os
 from radiantkit.const import __version__, default_inreg
