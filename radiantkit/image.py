@@ -513,16 +513,12 @@ def save_tiff(path: str, img: np.ndarray, dtype: str, compressed: bool,
     if ResolutionZ is not None:
         metadata['spacing'] = ResolutionZ
 
-    if compressed:
-        tifffile.imsave(path, img.astype(dtype),
-                        shape=img.shape, compress=9,
-                        dtype=dtype, imagej=forImageJ,
-                        metadata=metadata, **kwargs)
-    else:
-        tifffile.imsave(path, img.astype(dtype),
-                        shape=img.shape, compress=0,
-                        dtype=dtype, imagej=forImageJ,
-                        metadata=metadata, **kwargs)
+    compressionLevel = 0 if not compressed else 9
+
+    tifffile.imsave(path, img.astype(dtype),
+                    shape=img.shape, compress=compressionLevel,
+                    dtype=dtype, imagej=forImageJ,
+                    metadata=metadata, **kwargs)
 
 
 def z_project(img: np.ndarray,
