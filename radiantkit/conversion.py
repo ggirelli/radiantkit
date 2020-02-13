@@ -29,10 +29,10 @@ class ND2Reader2(ND2Reader):
         if self.is3D:
             logger.info(f"XYZ size: {self.sizes['x']} x "
                         + f"{self.sizes['y']} x {self.sizes['z']}")
-            resolutionZ = []
+            resolutionZ = set()
             for field_id in range(self.field_count()):
-                resolutionZ.append(self.get_resolutionZ(field_id))
-            logger.info(f"Delta Z value(s): {list(set(resolutionZ))}")
+                resolutionZ.add(self.get_resolutionZ(field_id))
+            logger.info(f"Delta Z value(s): {set(resolutionZ)}")
         else:
             logger.info(f"XY size: {self.sizes['x']} x {self.sizes['y']}")
 
