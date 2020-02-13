@@ -11,7 +11,7 @@ from joblib import delayed, Parallel  # type: ignore
 import numpy as np  # type: ignore
 import os
 from radiantkit.const import __version__
-from radiantkit import const, path
+from radiantkit import const, path, string
 from radiantkit import image, segmentation
 import re
 import sys
@@ -136,18 +136,13 @@ def parse_arguments(args: argparse.Namespace) -> argparse.Namespace:
         args.output = args.input
 
     args.inreg = re.compile(args.inreg)
-    if 0 != len(args.outprefix):
-        if '.' != args.outprefix[-1]:
-            args.outprefix = f"{args.outprefix}."
-    if 0 != len(args.outsuffix):
-        if '.' != args.outsuffix[0]:
-            args.outsuffix = f".{args.outsuffix}"
+    args.outprefix = string.add_leading_dot(args.outprefix)
+    args.outsuffix = string.add_trailing_dot(args.outsuffix)
 
     assert 1 == args.neighbour % 2
     assert args.min_Z >= 0 and args.min_Z <= 1
 
-    args.combineWith2D = args.mask_2d is not None
-    if args.combineWith2D:
+    if args.mask_2d is not None:
         assert os.path.isdir(args.mask_2d), (
             f"2D mask folder not found, '{args.mask_2d}'")
 
@@ -225,7 +220,7 @@ def run_segmentation(args: argparse.Namespace, imgpath: str, imgdir: str,
     binarizer.do_clear_Z_borders = args.do_clear_Z
 
     mask2d = None
-    if args.combineWith2D:
+    if args.mask_2d is not None:
         if os.path.isdir(args.manual_2d_masks):
             mask2d_path = os.path.join(
                 args.manual_2d_masks, os.path.basename(imgpath))
@@ -285,18 +280,12 @@ def run(args: argparse.Namespace) -> None:
     confirm_arguments(args)
     imglist = path.find_re(args.input, args.inreg)
 
-    if 0 != len(args.outsuffix):
-        imglist = [f for f in imglist
-                   if not os.path.splitext(f)[0].endswith(args.outsuffix)]
-    if 0 != len(args.outprefix):
-        imglist = [f for f in imglist
-                   if not os.path.splitext(f)[0].startswith(args.outprefix)]
+    imglist, _ = path.select_by_prefix_and_suffix(
+        args.input, imglist, args.outprefix, args.outsuffix)
 
     logLevel = logging.getLogger().level
-    if args.debug_mode:
-        logLevel = 10  # DEBUG
-    if args.silent:
-        logLevel = 50  # CRITICAL
+    logLevel = 10 if args.debug_mode else 0
+    logLevel = 50 if args.silent else logLevel
 
     logging.info(f"found {len(imglist)} image(s) to segment.")
     if 1 == args.threads:

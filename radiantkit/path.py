@@ -5,6 +5,7 @@
 
 import logging
 import os
+from radiantkit import string
 import re
 from typing import List, Optional, Pattern, Tuple
 
@@ -13,14 +14,8 @@ FileList = List[str]
 RawMaskPair = Tuple[str, str]
 
 
-def add_leading_dot(s: str) -> str:
-    if '.' != s[0]:
-        s = '.' + s
-    return s
-
-
 def add_extension(path: str, ext: str) -> str:
-    ext = add_leading_dot(ext)
+    ext = string.add_leading_dot(ext)
     if not path.endswith(ext):
         path += ext
     return path
