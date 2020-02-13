@@ -31,7 +31,7 @@ class ND2Reader2(ND2Reader):
                         + f"{self.sizes['y']} x {self.sizes['z']}")
             resolutionZ: Set[float] = set()
             for field_id in range(self.field_count()):
-                resolutionZ.union(self.get_resolutionZ(field_id))
+                resolutionZ = resolutionZ.union(self.get_resolutionZ(field_id))
             logger.info(f"Delta Z value(s): {set(resolutionZ)}")
         else:
             logger.info(f"XY size: {self.sizes['x']} x {self.sizes['y']}")
