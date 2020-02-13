@@ -219,7 +219,7 @@ def check_argument_compatibility(
 
     args.channels = check_channels(args.channels, nd2I)
 
-    if not args.template.can_export_single_channels(
+    if not args.template.can_export_channels(
             nd2I.channel_count(), args.channels):
         logging.critical("when exporting more than 1 channel, the template "
                          + f"must include either {TNTFields.CHANNEL_ID} or "
