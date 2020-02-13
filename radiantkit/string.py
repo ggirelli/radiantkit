@@ -50,21 +50,25 @@ class MultiRange(object):
                 self.__length += b-a+1
         return self.__length
 
+    def __check_overlap(self, i: int) -> bool:
+        A = self.__extremes_list[i]
+        B = self.__extremes_list[i+1]
+        if A[1] >= B[0] and A[1] < B[1]:
+            self.__extremes_list[i] = (A[0], B[1])
+            self.__extremes_list.pop(i+1)
+            return True
+        elif A[1] >= B[1]:
+            self.__extremes_list.pop(i+1)
+            return True
+        return False
+
     def __clean_extremes_list(self) -> None:
         is_clean = False
         while not is_clean:
             popped = 0
             i = 0
             while i < len(self.__extremes_list)-1:
-                A = self.__extremes_list[i]
-                B = self.__extremes_list[i+1]
-                if A[1] >= B[0] and A[1] < B[1]:
-                    self.__extremes_list[i] = (A[0], B[1])
-                    self.__extremes_list.pop(i+1)
-                    popped = 1
-                    break
-                elif A[1] >= B[1]:
-                    self.__extremes_list.pop(i+1)
+                if self.__check_overlap(i):
                     popped = 1
                     break
                 i += 1
