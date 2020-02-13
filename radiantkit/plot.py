@@ -157,10 +157,7 @@ def plot_nuclear_features(
     layout = {}
     for ci in range(n_features):
         colname = data.columns[ci+n_id_cols]
-        if colname in labels:
-            collab = labels[colname]
-        else:
-            collab = colname
+        collab = labels[colname] if colname in labels else colname
 
         for root in np.unique(data['root'].values):
             fig.add_trace(go.Box(
@@ -169,10 +166,7 @@ def plot_nuclear_features(
                 notched=True, marker_color=pal[np.argmax(root_list == root)]),
                 row=ci//n_plot_grid_col+1, col=ci % n_plot_grid_col+1)
 
-        if ci == 0:
-            layout[f"yaxis"] = dict(title=collab)
-        else:
-            layout[f"yaxis{ci+1}"] = dict(title=collab)
+        layout["yaxis" if ci == 0 else f"yaxis{ci+1}"] = dict(title=collab)
 
     for ci in range(n_features, n_features+len(channel_list)):
         channel = channel_list[ci-n_features]
