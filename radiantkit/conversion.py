@@ -29,6 +29,10 @@ class ND2Reader2(ND2Reader):
         if self.is3D:
             logger.info(f"XYZ size: {self.sizes['x']} x "
                         + f"{self.sizes['y']} x {self.sizes['z']}")
+            resolutionZ = []
+            for field_id in range(self.field_count()):
+                resolutionZ.append(self.get_resolutionZ(field_id))
+            logger.info(f"Delta Z value(s): {set(resolutionZ)}")
         else:
             logger.info(f"XY size: {self.sizes['x']} x {self.sizes['y']}")
 
@@ -118,6 +122,7 @@ class CziFile2(CziFile):
         if self.is3D:
             z_size = self.pixels.shape[self.axes.index("Z")]
             logger.info(f"XYZ size: {x_size} x {y_size} x {z_size}")
+            logger.info(f"Delta Z value: {self.get_axis_resolution('Z')}")
         else:
             logger.info(f"XY size: {x_size} x {y_size}")
 
