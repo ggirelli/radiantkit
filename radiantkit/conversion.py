@@ -16,15 +16,8 @@ import xml.etree.ElementTree as ET
 
 
 class ND2Reader2(ND2Reader):
-    _filename: str
-
     def __init__(self, filename):
         super(ND2Reader2, self).__init__(filename)
-        self._filename = filename
-
-    @property
-    def filename(self) -> str:
-        return self._filename
 
     def log_details(
             self, logger: Logger = getLogger()) -> None:
