@@ -13,10 +13,10 @@ import numpy as np  # type: ignore
 import os
 import pandas as pd  # type: ignore
 from radiantkit.const import __version__
-import radiantkit.image as imt
-from radiantkit import path, plot, stat
+from radiantkit import image, path, plot, stat
 import sys
 from tqdm import tqdm  # type: ignore
+from typing import List
 
 mplt.use('ps')
 
@@ -116,19 +116,25 @@ def plot_profile(args: argparse.Namespace, series_data: pd.DataFrame,
     plot.export(path)
 
 
-def is_OOF(args: argparse.Namespace, ipath: str,
-           logger: logging.Logger) -> pd.DataFrame:
-    img = imt.Image.from_tiff(os.path.join(args.input, ipath)).pixels
-
+def describe_slices(args: argparse.Namespace, img: image.Image) -> List[float]:
     slice_descriptors = []
     for zi in range(img.shape[0]):
         if args.intensity_sum:
-            slice_descriptors.append(img[zi].sum())
+            slice_descriptors.append(img.pixels[zi].sum())
         else:
-            dx = stat.gpartial(img[zi, :, :], 1, 1)
-            dy = stat.gpartial(img[zi, :, :], 2, 1)
+            dx = stat.gpartial(img.pixels[zi, :, :], 1, 1)
+            dy = stat.gpartial(img.pixels[zi, :, :], 2, 1)
             slice_descriptors.append(
                 np.mean(np.mean((dx**2 + dy**2) ** (1/2))))
+    return slice_descriptors
+
+
+def is_OOF(args: argparse.Namespace, ipath: str,
+           logger: logging.Logger) -> pd.DataFrame:
+    img = image.Image.from_tiff(os.path.join(args.input, ipath))
+
+    slice_descriptors = describe_slices(args, img)
+
     profile_data = pd.DataFrame.from_dict(dict(
         path=np.repeat(ipath, img.shape[0]),
         x=np.array(range(img.shape[0]))+1,
@@ -160,8 +166,6 @@ def run(args: argparse.Namespace) -> None:
         FH.setLevel(logging.INFO)
         logger.addHandler(FH)
 
-    if not "/" == args.input[-1]:
-        args.input += "/"
     if not os.path.isdir(args.input):
         logger.error(f"image directory not found: '{args.input}'")
         sys.exit()
@@ -169,10 +173,8 @@ def run(args: argparse.Namespace) -> None:
     imlist = path.find_re(args.input, args.pattern)
 
     if 1 == args.threads:
-        if args.silent:
-            t = imlist
-        else:
-            t = tqdm(imlist, desc=os.path.dirname(args.input))
+        t = imlist if args.silent else tqdm(
+            imlist, desc=os.path.dirname(args.input))
         series_data = [is_OOF(args, impath, logger) for impath in t]
     else:
         verbosity = 11 if not args.silent else 0

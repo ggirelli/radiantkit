@@ -198,3 +198,20 @@ def quantile_from_counts(values: np.ndarray, counts: np.ndarray,
         x1 = values[(counts >= np.floor(x)).argmax()]
         x2 = values[(counts >= np.ceil(x)).argmax()]
         return (x1+x2)/2
+
+
+def radius_interval_to_area(rInterval: Interval) -> Interval:
+    return (np.round(np.pi*np.square(rInterval[0]), 6),
+            np.round(np.pi*np.square(rInterval[1]), 6))
+
+
+def radius_interval_to_volume(rInterval: Interval) -> Interval:
+    return (np.round(4/3*np.pi*np.power(rInterval[0], 3), 6),
+            np.round(4/3*np.pi*np.power(rInterval[1], 3), 6))
+
+
+def radius_interval_to_size(rInterval: Interval, n_axes: int = 3) -> Interval:
+    if 2 == n_axes:
+        return radius_interval_to_area(rInterval)
+    else:
+        return radius_interval_to_volume(rInterval)

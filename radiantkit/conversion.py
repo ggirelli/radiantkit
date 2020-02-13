@@ -16,8 +16,15 @@ import xml.etree.ElementTree as ET
 
 
 class ND2Reader2(ND2Reader):
+    _filename: str
+
     def __init__(self, filename):
         super(ND2Reader2, self).__init__(filename)
+        self._filename = filename
+
+    @property
+    def filename(self) -> str:
+        return self._filename
 
     def log_details(
             self, logger: Logger = getLogger()) -> None:
@@ -69,9 +76,8 @@ class ND2Reader2(ND2Reader):
         else:
             self.bundle_axes = "yxc" if "c" in self.axes else "yx"
 
-    @staticmethod
-    def get_resolutionZ(nd2path: str, field_id: int) -> Set[int]:
-        with open(nd2path, "rb") as ND2H:
+    def get_resolutionZ(self, field_id: int) -> Set[float]:
+        with open(self.filename, "rb") as ND2H:
             parser = ND2Parser(ND2H)
             Zdata = np.array(parser._raw_metadata.z_data)
             Zlevels = np.array(parser.metadata['z_levels']).astype('int')

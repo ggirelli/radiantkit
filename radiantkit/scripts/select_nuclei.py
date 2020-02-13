@@ -11,12 +11,11 @@ import logging as log
 import numpy as np  # type: ignore
 import os
 import pandas as pd  # type: ignore
-from radiantkit.const import __version__, default_inreg
+from radiantkit import const
 from radiantkit.image import ImageBinary, ImageLabeled
 from radiantkit.particle import NucleiList, Nucleus
-from radiantkit.path import get_image_details
 from radiantkit.series import Series, SeriesList
-from radiantkit.report import report_select_nuclei
+from radiantkit import path, report, string
 import re
 import sys
 from tqdm import tqdm  # type: ignore
@@ -74,7 +73,7 @@ interactive data visualization.
         Default: 'mask'.""", default='mask')
 
     parser.add_argument('--version', action='version',
-                        version='%s %s' % (sys.argv[0], __version__,))
+                        version='%s %s' % (sys.argv[0], const.__version__,))
 
     report = parser.add_argument_group("report arguments")
     report.add_argument(
@@ -111,7 +110,7 @@ interactive data visualization.
         '--inreg', type=str, metavar="REGEXP",
         help=f"""Regular expression to identify input TIFF images.
         Must contain 'channel_name' and 'series_id' fields.
-        Default: '{default_inreg}'""", default=default_inreg)
+        Default: '{const.default_inreg}'""", default=const.default_inreg)
     advanced.add_argument(
         '--threads', type=int, metavar="NUMBER", dest="threads", default=1,
         help="""Number of threads for parallelization. Default: 1""")
@@ -125,18 +124,14 @@ interactive data visualization.
 
 
 def parse_arguments(args: argp.Namespace) -> argp.Namespace:
-    args.version = __version__
+    args.version = const.__version__
 
     assert '(?P<channel_name>' in args.inreg
     assert '(?P<series_id>' in args.inreg
     args.inreg = re.compile(args.inreg)
 
-    if 0 != len(args.mask_prefix):
-        if '.' != args.mask_prefix[-1]:
-            args.mask_prefix = f"{args.mask_prefix}."
-    if 0 != len(args.mask_suffix):
-        if '.' != args.mask_suffix[0]:
-            args.mask_suffix = f".{args.mask_suffix}"
+    args.mask_prefix = string.add_leading_dot(args.mask_prefix)
+    args.mask_suffix = string.add_trailing_dot(args.mask_suffix)
 
     if not 0 != args.block_side % 2:
         log.warning("changed ground block side from "
@@ -193,7 +188,7 @@ def extract_passing_nuclei_per_series(
     passed = ndata.loc[ndata['pass'], ['image', 'label']]
     passed['series_id'] = []
     for p in passed['image'].values:
-        image_details = get_image_details(p, inreg)
+        image_details = path.get_image_details(p, inreg)
         assert image_details is not None
         passed['series_id'].append(image_details[0])
     passed.drop('image', 1, inplace=True)
@@ -237,14 +232,7 @@ def run(args: argp.Namespace) -> None:
              + f": {series_list.channel_names}")
 
     log.info(f"extracting nuclei")
-    if 1 == args.threads:
-        series_list = [Series.extract_particles(s, [args.dna_channel], Nucleus)
-                       for s in tqdm(series_list)]
-    else:
-        series_list = joblib.Parallel(n_jobs=args.threads, verbose=11)(
-            joblib.delayed(Series.extract_particles)(
-                s, [args.dna_channel], Nucleus)
-            for s in series_list)
+    series_list.extract_particles(Nucleus, [args.dna_channel], args.threads)
 
     nuclei = NucleiList(list(itertools.chain(
         *[s.particles for s in series_list])))
@@ -283,6 +271,6 @@ def run(args: argp.Namespace) -> None:
     if args.mk_report:
         report_path = os.path.join(args.input, "select_nuclei.report.html")
         log.info(f"writing report to\n{report_path}")
-        report_select_nuclei(
+        report.report_select_nuclei(
             args, report_path, args.online_report,
             data=nuclei_data, details=details, series_list=series_list)

@@ -260,8 +260,9 @@ class Series(ChannelList):
                         self[name][1], name)
             self.unload(name)
 
-    def init_particles(self, channel_names: Optional[List[str]] = None,
-                       particleClass: Type[ParticleBase] = ParticleBase
+    def init_particles(self,
+                       particleClass: Type[ParticleBase] = ParticleBase,
+                       channel_list: Optional[List[str]] = None
                        ) -> None:
         if self.mask is None:
             logging.warning("mask is missing, no particles extracted.")
@@ -277,14 +278,14 @@ class Series(ChannelList):
 
         for pbody in self._particles:
             pbody.source = self.mask.path
-        self.__init_particles_intensity_features(channel_names)
+        self.__init_particles_intensity_features(channel_list)
 
     @staticmethod
     def extract_particles(series: 'Series',
-                          channel_list: Optional[List[str]] = None,
-                          particleClass: Type[ParticleBase] = ParticleBase
+                          particleClass: Type[ParticleBase] = ParticleBase,
+                          channel_list: Optional[List[str]] = None
                           ) -> 'Series':
-        series.init_particles(channel_list, particleClass)
+        series.init_particles(particleClass, channel_list)
         return series
 
     def keep_particles(self, label_list: List[int]) -> None:
@@ -413,15 +414,16 @@ class SeriesList(object):
         return SeriesList(os.path.basename(dpath), list(series.values()))
 
     def extract_particles(self, particleClass: Type[ParticleBase],
+                          channel_list: Optional[List[str]] = None,
                           threads: int = 1) -> None:
         threads = ggc.args.check_threads(threads)
         if 1 == threads:
-            [series.init_particles(particleClass=particleClass)
+            [series.init_particles(particleClass, channel_list)
                 for series in tqdm(self)]
         else:
             self.series = joblib.Parallel(n_jobs=threads, verbose=11)(
                 joblib.delayed(Series.extract_particles)(
-                    series, series.names, particleClass)
+                    series, particleClass, channel_list)
                 for series in self)
 
     def export_particle_features(self, path: str) -> pd.DataFrame:
@@ -458,7 +460,7 @@ class SeriesList(object):
             dfu[f'{channel}_imean'] = f'"{channel}" intensity mean (a.u.)'
         return dfu
 
-    def get_particles(self) -> Iterator[ParticleBase]:
+    def get_particles(self, threads: int = 1) -> Iterator[ParticleBase]:
         for s in self:
             if s.particles is None:
                 continue

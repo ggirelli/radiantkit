@@ -14,7 +14,7 @@ import radiantkit.image as imt
 from typing import List
 import sys
 from tqdm import tqdm  # type: ignore
-from typing import Tuple
+from typing import Iterable, Tuple
 
 logging.basicConfig(
     level=logging.INFO, format='%(asctime)s '
@@ -171,6 +171,25 @@ def update_args_from_overlap(args: argparse.Namespace, relative_steps: bool
     return args, relative_steps
 
 
+def check_step_and_overlap(args: argparse.Namespace) -> argparse.Namespace:
+    relative_steps = True
+    if args.step is not None:
+        args, relative_steps = update_args_from_step(args, relative_steps)
+
+    if args.overlap is not None:
+        args, relative_steps = update_args_from_overlap(args, relative_steps)
+
+    if (args.overlap is not None or args.step is not None) and relative_steps:
+        args.step = np.array(
+            [np.round(args.side[i]*args.step[i])
+             for i in range(len(args.step))]).astype('int')
+        args.overlap = np.array(
+            [np.round(args.side[i]*args.overlap[i])
+             for i in range(len(args.overlap))]).astype('int')
+
+    return args
+
+
 def parse_arguments(args: argparse.Namespace) -> argparse.Namespace:
     args.version = __version__
 
@@ -188,20 +207,7 @@ def parse_arguments(args: argparse.Namespace) -> argparse.Namespace:
     assert not (args.step is not None and args.overlap is not None), (
         "-S and -O are incompatible")
 
-    relative_steps = True
-    if args.step is not None:
-        args, relative_steps = update_args_from_step(args, relative_steps)
-
-    if args.overlap is not None:
-        args, relative_steps = update_args_from_overlap(args, relative_steps)
-
-    if (args.overlap is not None or args.step is not None) and relative_steps:
-        args.step = np.array(
-            [np.round(args.side[i]*args.step[i])
-             for i in range(len(args.step))]).astype('int')
-        args.overlap = np.array(
-            [np.round(args.side[i]*args.overlap[i])
-             for i in range(len(args.overlap))]).astype('int')
+    args = check_step_and_overlap(args)
 
     if not os.path.isdir(args.outdir):
         os.mkdir(args.outdir)
@@ -242,16 +248,8 @@ def get_pixel_loss(img: np.ndarray, side: List[int], step: List[float]
     return (*missed, loss, loss/np.prod(img.shape)*100)
 
 
-def tiff_split(img: np.ndarray, side: List[int], step: List[int],
-               inverted: bool = False) -> np.ndarray:
-    if step is None:
-        step = side
-
-    n = (img.shape[-1]//side[0]) * (img.shape[-2]//side[1])
-    logging.info(f"Output {n} images.")
-    if 0 == n:
-        return
-
+def init_xy(img: np.ndarray, step: List[int], side: List[int],
+            inverted: bool = False) -> Iterable[Tuple[int, int]]:
     ys = [y for y in range(0, img.shape[-2], step[1])
           if y+side[1] <= img.shape[-2]]
     xs = [x for x in range(0, img.shape[-1], step[0])
@@ -264,17 +262,35 @@ def tiff_split(img: np.ndarray, side: List[int], step: List[int],
         logging.info("Image split left-to-right, top-to-bottom.")
         xy_gen = ((x, y) for y in ys for x in xs)
 
-    assert len(img.shape) in [2, 3]
-    if 3 == len(img.shape):
-        def tsplit(i, x, y, s):
-            return i[:, y:(y+s[1]), x:(x+s[0])]
-    elif 2 == len(img.shape):
-        def tsplit(i, x, y, s):
-            return i[y:(y+s[1]), x:(x+s[0])]
+    return xy_gen
+
+
+def tsplit3d(img: np.ndarray, x: int, y: int, s: List[int]) -> np.ndarray:
+    return img[:, y:(y+s[1]), x:(x+s[0])]
+
+
+def tsplit2d(img: np.ndarray, x: int, y: int, s: List[int]) -> np.ndarray:
+    return img[y:(y+s[1]), x:(x+s[0])]
+
+
+tsplit_fun = {2: tsplit2d, 3: tsplit3d}
+
+
+def tiff_split(img: np.ndarray, side: List[int], step: List[int],
+               inverted: bool = False) -> np.ndarray:
+    n = (img.shape[-1]//side[0]) * (img.shape[-2]//side[1])
+    logging.info(f"Output {n} images.")
+    assert 0 != n
+
+    xy_gen = init_xy(img, step, side, inverted)
+
+    if not len(img.shape) in [2, 3]:
+        logging.error("cannot split images with more than 3 dimensions.")
+        raise NotImplementedError
 
     with tqdm(range(n)) as pbar:
         for (x_start, y_start) in xy_gen:
-            yield tsplit(img, x_start, y_start, side)
+            yield tsplit_fun[len(img.shape)](img, x_start, y_start, side)
             pbar.update(1)
     return
 
@@ -314,11 +330,33 @@ def save_settings(args: argparse.Namespace) -> None:
         config.write(CF)
 
 
-def run(args: argparse.Namespace) -> None:
+def confirm_arguments(args: argparse.Namespace) -> None:
     print_settings(args)
     if not args.do_all:
         ask("Confirm settings and proceed?")
     save_settings(args)
+
+
+def enlarge_image(args: argparse.Namespace, img: np.ndarray,
+                  umes: str) -> np.ndarray:
+    x_loss, y_loss, loss, perc_loss = get_pixel_loss(img, args.side, args.step)
+
+    if args.enlarge:
+        img = enlarge_XY_tiff(
+            img, np.array(args.side)-np.array((x_loss, y_loss)))
+        logging.info(f"Image enlarged to {img.shape}")
+    else:
+        logging.info(
+            f"{x_loss} {umes}s (X) and {y_loss} {umes}s (Y) are lost.")
+        logging.info(
+            f"In total, {loss} {umes}s lost ({perc_loss}%). "
+            + "Use -e to avoid loss.")
+
+    return img
+
+
+def run(args: argparse.Namespace) -> None:
+    confirm_arguments(args)
 
     logging.info("Reading input image...")
     img = imt.ImageBase.from_tiff(args.input).pixels
@@ -339,17 +377,7 @@ def run(args: argparse.Namespace) -> None:
         logging.error(f"cannot split a 1D image. File: {args.input}")
         sys.exit()
 
-    x_loss, y_loss, loss, perc_loss = get_pixel_loss(img, args.side, args.step)
-    if args.enlarge:
-        img = enlarge_XY_tiff(
-            img, np.array(args.side)-np.array((x_loss, y_loss)))
-        logging.info(f"Image enlarged to {img.shape}")
-    else:
-        logging.info(
-            f"{x_loss} {umes}s (X) and {y_loss} {umes}s (Y) are lost.")
-        logging.info(
-            f"In total, {loss} {umes}s lost ({perc_loss}%). "
-            + "Use -e to avoid loss.")
+    img = enlarge_image(args, img, umes)
 
     prefix = os.path.splitext(os.path.basename(args.input))[0]
     ext = os.path.splitext(os.path.basename(args.input))[1]

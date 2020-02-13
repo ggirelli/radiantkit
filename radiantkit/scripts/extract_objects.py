@@ -3,14 +3,13 @@
 @contact: gigi.ga90@gmail.com
 '''
 
-import argparse as argp
+import argparse
 import ggc  # type: ignore
 import logging as log
 import os
-from radiantkit.const import __version__, default_inreg
-from radiantkit.particle import Nucleus
-from radiantkit.report import report_extract_objects
-from radiantkit.series import SeriesList
+from radiantkit import const
+from radiantkit import particle, series
+from radiantkit import report, string
 import re
 import sys
 
@@ -20,11 +19,12 @@ log.basicConfig(
     datefmt='%m/%d/%Y %I:%M:%S')
 
 
-def init_parser(subparsers: argp._SubParsersAction) -> argp.ArgumentParser:
+def init_parser(subparsers: argparse._SubParsersAction
+                ) -> argparse.ArgumentParser:
     parser = subparsers.add_parser(
         __name__.split(".")[-1],
         description='''Extract data of objects from masks.''',
-        formatter_class=argp.RawDescriptionHelpFormatter,
+        formatter_class=argparse.RawDescriptionHelpFormatter,
         help="Extract data of objects from masks.")
 
     parser.add_argument(
@@ -36,7 +36,7 @@ def init_parser(subparsers: argp._SubParsersAction) -> argp.ArgumentParser:
 
     parser.add_argument(
         '--version', action='version',
-        version='%s %s' % (sys.argv[0], __version__,))
+        version='%s %s' % (sys.argv[0], const.__version__,))
 
     critical = parser.add_argument_group("critical arguments")
     critical.add_argument(
@@ -97,7 +97,7 @@ def init_parser(subparsers: argp._SubParsersAction) -> argp.ArgumentParser:
         '--inreg', type=str, metavar="REGEXP",
         help=f"""Regular expression to identify input TIFF images.
         Must contain 'channel_name' and 'series_id' fields.
-        Default: '{default_inreg}'""", default=default_inreg)
+        Default: '{const.default_inreg}'""", default=const.default_inreg)
     advanced.add_argument(
         '--threads', type=int, metavar="NUMBER", dest="threads", default=1,
         help="""Number of threads for parallelization. Default: 1""")
@@ -110,8 +110,8 @@ def init_parser(subparsers: argp._SubParsersAction) -> argp.ArgumentParser:
     return parser
 
 
-def parse_arguments(args: argp.Namespace) -> argp.Namespace:
-    args.version = __version__
+def parse_arguments(args: argparse.Namespace) -> argparse.Namespace:
+    args.version = const.__version__
 
     if args.output is None:
         args.output = os.path.join(args.input, 'objects')
@@ -123,12 +123,8 @@ def parse_arguments(args: argp.Namespace) -> argp.Namespace:
     assert '(?P<series_id>' in args.inreg
     args.inreg = re.compile(args.inreg)
 
-    if 0 != len(args.mask_prefix):
-        if '.' != args.mask_prefix[-1]:
-            args.mask_prefix = f"{args.mask_prefix}."
-    if 0 != len(args.mask_suffix):
-        if '.' != args.mask_suffix[0]:
-            args.mask_suffix = f".{args.mask_suffix}"
+    args.mask_prefix = string.add_leading_dot(args.mask_prefix)
+    args.mask_suffix = string.add_trailing_dot(args.mask_suffix)
 
     if not 0 != args.block_side % 2:
         log.warning("changed ground block side from "
@@ -137,10 +133,15 @@ def parse_arguments(args: argp.Namespace) -> argp.Namespace:
 
     args.threads = ggc.args.check_threads(args.threads)
 
+    if not args.export_tiffs and not args.export_features:
+        log.info("Nothing to export when using both "
+                 + "--no-tiff-export and no-feature-export flags.")
+        sys.exit()
+
     return args
 
 
-def print_settings(args: argp.Namespace, clear: bool = True) -> str:
+def print_settings(args: argparse.Namespace, clear: bool = True) -> str:
     s = f"""# Object extraction v{args.version}
 
     ---------- SETTING : VALUE ----------
@@ -170,7 +171,7 @@ Reference channel name : '{args.ref_channel}'
     return(s)
 
 
-def confirm_arguments(args: argp.Namespace) -> None:
+def confirm_arguments(args: argparse.Namespace) -> None:
     settings_string = print_settings(args)
     if not args.do_all:
         ggc.prompt.ask("Confirm settings and proceed?")
@@ -182,11 +183,43 @@ def confirm_arguments(args: argp.Namespace) -> None:
         ggc.args.export_settings(OH, settings_string)
 
 
-def run(args: argp.Namespace) -> None:
+def export_object_features(args: argparse.Namespace,
+                           series_list: series.SeriesList) -> None:
+    feat_path = os.path.join(args.output, "nuclear_features.tsv")
+    log.info(f"exporting nuclear features to '{feat_path}'")
+    fdata = series_list.export_particle_features(feat_path)
+
+    feat_path = os.path.join(args.output, "single_pixel_features.tsv")
+    log.info(f"exporting single_pixel features to '{feat_path}'")
+    single_pixel_box_data = series_list.get_particle_single_px_stats()
+    single_pixel_box_data.to_csv(feat_path, index=False, sep="\t")
+
+    if args.mk_report:
+        report_path = os.path.join(
+            args.output, "extract_objects.report.html")
+        log.info(f"writing report to\n{report_path}")
+        report.report_extract_objects(
+            args, report_path, args.online_report,
+            data=fdata, spx_data=single_pixel_box_data,
+            series_list=series_list)
+
+
+def export_tiffs(args: argparse.Namespace,
+                 series_list: series.SeriesList) -> None:
+    tiff_path = os.path.join(args.output, "tiff")
+    assert not os.path.isfile(tiff_path)
+    if not os.path.isdir(tiff_path):
+        os.mkdir(tiff_path)
+    log.info(f"exporting nuclei images to '{tiff_path}'")
+    series_list.export_particle_tiffs(
+        tiff_path, args.threads, args.compressed)
+
+
+def run(args: argparse.Namespace) -> None:
     confirm_arguments(args)
 
     log.info(f"parsing series folder")
-    series_list = SeriesList.from_directory(
+    series_list = series.SeriesList.from_directory(
         args.input, args.inreg, args.ref_channel,
         (args.mask_prefix, args.mask_suffix),
         args.aspect, args.labeled, args.block_side)
@@ -194,38 +227,11 @@ def run(args: argp.Namespace) -> None:
              + f"{len(series_list.channel_names)} channels each"
              + f": {series_list.channel_names}")
 
-    if not args.export_tiffs and not args.export_features:
-        log.info("Nothing to export when using both "
-                 + "--no-tiff-export and no-feature-export flags.")
-        sys.exit()
-
     log.info(f"extracting nuclei")
-    series_list.extract_particles(Nucleus, args.threads)
+    series_list.extract_particles(particle.Nucleus, args.threads)
 
     if args.export_features:
-        feat_path = os.path.join(args.output, "nuclear_features.tsv")
-        log.info(f"exporting nuclear features to '{feat_path}'")
-        fdata = series_list.export_particle_features(feat_path)
-
-        feat_path = os.path.join(args.output, "single_pixel_features.tsv")
-        log.info(f"exporting single_pixel features to '{feat_path}'")
-        single_pixel_box_data = series_list.get_particle_single_px_stats()
-        single_pixel_box_data.to_csv(feat_path, index=False, sep="\t")
-
-        if args.mk_report:
-            report_path = os.path.join(
-                args.output, "extract_objects.report.html")
-            log.info(f"writing report to\n{report_path}")
-            report_extract_objects(
-                args, report_path, args.online_report,
-                data=fdata, spx_data=single_pixel_box_data,
-                series_list=series_list)
+        export_object_features(args, series_list)
 
     if args.export_tiffs:
-        tiff_path = os.path.join(args.output, "tiff")
-        assert not os.path.isfile(tiff_path)
-        if not os.path.isdir(tiff_path):
-            os.mkdir(tiff_path)
-        log.info(f"exporting nuclei images to '{tiff_path}'")
-        series_list.export_particle_tiffs(
-            tiff_path, args.threads, args.compressed)
+        export_tiffs(args, series_list)

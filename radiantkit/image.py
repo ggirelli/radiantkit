@@ -90,15 +90,8 @@ class ImageBase(ImageSettings):
     def path(self):
         return self._path_to_local
 
-    @property
-    def axes(self) -> str:
-        return self._axes_order
-
-    @axes.setter
-    def axes(self, new_axes: str) -> None:
-        assert all([c in self._ALLOWED_AXES for c in new_axes])
-        assert all([1 == c.count(new_axes) for c in set(new_axes)])
-        if len(new_axes) < len(self.axes):
+    def __remove_axes(self, new_axes: str) -> None:
+        while any([a not in new_axes for a in self.axes]):
             for c in self.axes:
                 if c not in new_axes:
                     axes_id = self.axes.index(c)
@@ -107,8 +100,10 @@ class ImageBase(ImageSettings):
                         slice(1, self.pixels.shape[axes_id]), axes_id)
                     self._pixels = np.squeeze(self.pixels, axes_id)
                     self._aspect.pop(axes_id)
+                    break
 
-        while len(new_axes) > len(self.axes):
+    def __add_axes(self, new_axes: str) -> None:
+        while any([a not in self.axes for a in new_axes]):
             for c in new_axes:
                 if c not in self.axes:
                     self._axes_order = f"{c}{self.axes}"
@@ -116,7 +111,11 @@ class ImageBase(ImageSettings):
                     new_shape.extend(self.pixels.shape)
                     self.pixels.shape = new_shape
                     self._aspect = np.append(1, self._aspect)
+                    break
 
+    def __reorder_axes(self, new_axes: str) -> None:
+        assert len(self.axes) == len(new_axes)
+        assert all([a in self.axes for a in new_axes])
         if new_axes != self.axes:
             assert len(new_axes) == len(self.axes)
             assert all([c in new_axes for c in self.axes])
@@ -126,6 +125,18 @@ class ImageBase(ImageSettings):
             self._shape = self._pixels.shape
             self._aspect = self._aspect[new_axes_order]
             self._axes_order = new_axes
+
+    @property
+    def axes(self) -> str:
+        return self._axes_order
+
+    @axes.setter
+    def axes(self, new_axes: str) -> None:
+        assert all([c in self._ALLOWED_AXES for c in new_axes])
+        assert all([1 == c.count(new_axes) for c in set(new_axes)])
+        self.__remove_axes(new_axes)
+        self.__add_axes(new_axes)
+        self.__reorder_axes(new_axes)
 
     @property
     def loaded(self):
@@ -344,6 +355,11 @@ class ImageBinary(ImageBase):
     def erode(self, block_side: int = 3) -> None:
         self._pixels = erode(self.pixels, block_side)
 
+    def dilate_fill_erode(self, block_side: int = 3) -> None:
+        self.dilate(block_side)
+        self.fill_holes()
+        self.erode(block_side)
+
     def logical_and(self, B: 'ImageBinary') -> None:
         self._pixels = np.logical_and(self.pixels, B.pixels)
 
@@ -556,6 +572,7 @@ def threshold_adaptive(img: np.ndarray, block_size: int,
     else:
         logging.info("Local threshold not implemented for images with "
                      + f"{len(img.shape)} dimensions.")
+        raise NotImplementedError
     return mask
 
 
@@ -568,54 +585,63 @@ def fill_holes(mask: np.ndarray) -> np.ndarray:
     elif 2 != len(mask.shape):
         logging.warning("3D hole filling not performed on images with "
                         + f"{len(mask.shape)} dimensions.")
+        raise NotImplementedError
     return mask
 
 
 def closing2(mask: np.ndarray, block_side: int = 3) -> np.ndarray:
     assert 1 == mask.max()
-    if 2 == len(mask.shape):
-        mask = closing(mask, square(block_side))
-    elif 3 == len(mask.shape):
-        mask = closing(mask, cube(block_side))
-    else:
-        logging.info("Close operation not implemented for images with "
-                     + f"{len(mask.shape)} dimensions.")
+    if block_side > 1:
+        if 2 == len(mask.shape):
+            mask = closing(mask, square(block_side))
+        elif 3 == len(mask.shape):
+            mask = closing(mask, cube(block_side))
+        else:
+            logging.info("Close operation not implemented for images with "
+                         + f"{len(mask.shape)} dimensions.")
+            raise NotImplementedError
     return mask
 
 
 def opening2(mask: np.ndarray, block_side: int = 3) -> np.ndarray:
     assert 1 == mask.max()
-    if 2 == len(mask.shape):
-        mask = opening(mask, square(block_side))
-    elif 3 == len(mask.shape):
-        mask = opening(mask, cube(block_side))
-    else:
-        logging.info("Open operation not implemented for images with "
-                     + f"{len(mask.shape)} dimensions.")
+    if block_side > 1:
+        if 2 == len(mask.shape):
+            mask = opening(mask, square(block_side))
+        elif 3 == len(mask.shape):
+            mask = opening(mask, cube(block_side))
+        else:
+            logging.info("Open operation not implemented for images with "
+                         + f"{len(mask.shape)} dimensions.")
+            raise NotImplementedError
     return mask
 
 
 def dilate(mask: np.ndarray, block_side: int = 3) -> np.ndarray:
     assert 1 == mask.max()
-    if 2 == len(mask.shape):
-        mask = dilation(mask, square(block_side))
-    elif 3 == len(mask.shape):
-        mask = dilation(mask, cube(block_side))
-    else:
-        logging.info("Dilate operation not implemented for images with "
-                     + f"{len(mask.shape)} dimensions.")
+    if block_side > 1:
+        if 2 == len(mask.shape):
+            mask = dilation(mask, square(block_side))
+        elif 3 == len(mask.shape):
+            mask = dilation(mask, cube(block_side))
+        else:
+            logging.info("Dilate operation not implemented for images with "
+                         + f"{len(mask.shape)} dimensions.")
+            raise NotImplementedError
     return mask
 
 
 def erode(mask: np.ndarray, block_side: int = 3) -> np.ndarray:
     assert 1 == mask.max()
-    if 2 == len(mask.shape):
-        mask = erosion(mask, square(block_side))
-    elif 3 == len(mask.shape):
-        mask = erosion(mask, cube(block_side))
-    else:
-        logging.info("Erode operation not implemented for images with "
-                     + f"{len(mask.shape)} dimensions.")
+    if block_side > 1:
+        if 2 == len(mask.shape):
+            mask = erosion(mask, square(block_side))
+        elif 3 == len(mask.shape):
+            mask = erosion(mask, cube(block_side))
+        else:
+            logging.info("Erode operation not implemented for images with "
+                         + f"{len(mask.shape)} dimensions.")
+            raise NotImplementedError
     return mask
 
 
@@ -634,7 +660,7 @@ def clear_XY_borders(L: np.ndarray) -> np.ndarray:
     else:
         logging.warning("XY border clearing not implemented for images "
                         + f"with {len(L.shape)} dimensions.")
-        return L
+        raise NotImplementedError
 
 
 def clear_Z_borders(L: np.ndarray) -> np.ndarray:
@@ -650,12 +676,12 @@ def clear_Z_borders(L: np.ndarray) -> np.ndarray:
     else:
         logging.warning("Z border clearing not implemented for images "
                         + f"with {len(L.shape)} dimensions.")
-        return L
+        raise NotImplementedError
 
 
 def inherit_labels(mask: Union[ImageBinary, ImageLabeled],
                    mask2d: Union[ImageBinary, ImageLabeled]
-                   ) -> Optional[ImageLabeled]:
+                   ) -> ImageLabeled:
     assert 2 == len(mask2d.shape)
     if 2 == len(mask.shape):
         assert mask2d.shape == mask.shape
@@ -671,4 +697,4 @@ def inherit_labels(mask: Union[ImageBinary, ImageLabeled],
     else:
         logging.warning("mask combination not allowed for images "
                         + f"with {len(mask.shape)} dimensions.")
-        return None
+        raise NotImplementedError

@@ -11,12 +11,12 @@ from joblib import delayed, Parallel  # type: ignore
 import numpy as np  # type: ignore
 import os
 from radiantkit.const import __version__
-from radiantkit import const, path, string
+from radiantkit import const, path, stat, string
 from radiantkit import image, segmentation
 import re
 import sys
 from tqdm import tqdm  # type: ignore
-from typing import Tuple
+from typing import Optional
 
 logging.basicConfig(
     level=logging.INFO, format='%(asctime)s '
@@ -202,6 +202,19 @@ def confirm_arguments(args: argparse.Namespace) -> None:
         export_settings(OH, settings_string)
 
 
+def read_mask_2d(args: argparse.Namespace, imgpath: str
+                 ) -> Optional[image.ImageLabeled]:
+    mask2d = None
+    if args.mask_2d is not None:
+        if os.path.isdir(args.manual_2d_masks):
+            mask2d_path = os.path.join(
+                args.manual_2d_masks, os.path.basename(imgpath))
+            if os.path.isfile(mask2d_path):
+                mask2d = image.ImageLabeled.from_tiff(
+                    mask2d_path, axes="YX", doRelabel=False)
+    return mask2d
+
+
 def run_segmentation(args: argparse.Namespace, imgpath: str, imgdir: str,
                      loglevel: str = "INFO") -> None:
     logging.getLogger().setLevel(loglevel)
@@ -219,44 +232,25 @@ def run_segmentation(args: argparse.Namespace, imgpath: str, imgdir: str,
     binarizer.local_side = args.neighbour
     binarizer.do_clear_Z_borders = args.do_clear_Z
 
-    mask2d = None
-    if args.mask_2d is not None:
-        if os.path.isdir(args.manual_2d_masks):
-            mask2d_path = os.path.join(
-                args.manual_2d_masks, os.path.basename(imgpath))
-            if os.path.isfile(mask2d_path):
-                mask2d = image.ImageLabeled.from_tiff(
-                    mask2d_path, axes="YX", doRelabel=False)
-
-    M = binarizer.run(img, mask2d)
+    M2D = read_mask_2d(args, imgpath)
+    M = binarizer.run(img, M2D)
     assert isinstance(M, image.ImageBinary)
 
-    if 0 != args.dilate_fill_erode:
-        logging.info("dilating")
-        M.dilate(args.dilate_fill_erode)
-        logging.info("filling")
-        M.fill_holes()
-        logging.info("eroding")
-        M.erode(args.dilate_fill_erode)
+    logging.info(f"dilate-fill-erode with side {args.dilate_fill_erode}")
+    M.dilate_fill_erode(args.dilate_fill_erode)
     logging.info("labeling")
     L = M.label()
 
-    size_range: Tuple[float, float]
-    if 2 == len(L.axes):
-        size_range = (np.round(np.pi*np.square(args.radius[0]), 6)[0],
-                      np.round(np.pi*np.square(args.radius[0]), 6)[1])
-    else:
-        size_range = (np.round(4/3*np.pi*np.power(args.radius, 3), 6)[0],
-                      np.round(4/3*np.pi*np.power(args.radius, 3), 6)[1])
+    size_range = stat.radius_interval_to_size(args.radius, len(L.axes))
     logging.info(f"filtering total size: {size_range}")
     L.filter_total_size(size_range)
     z_size_range = (args.min_Z*img.axis_shape("Z"), np.inf)
     logging.info(f"filtering Z size: {z_size_range}")
     L.filter_size("Z", z_size_range)
 
-    if mask2d is not None:
+    if M2D is not None:
         logging.info("recovering labels from 2D mask")
-        L.inherit_labels(mask2d)
+        L.inherit_labels(M2D)
 
     if 0 == L.pixels.max():
         logging.warning(f"skipped image '{imgpath}' (only background)")

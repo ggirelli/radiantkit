@@ -5,6 +5,7 @@
 
 import argparse
 import logging
+import numpy as np  # type: ignore
 import os
 from radiantkit.const import __version__
 from radiantkit.conversion import CziFile2
@@ -14,6 +15,7 @@ from radiantkit.string import TIFFNameTemplateFields as TNTFields
 from radiantkit.string import TIFFNameTemplate as TNTemplate
 import sys
 from tqdm import tqdm  # type: ignore
+from typing import Iterable, List, Tuple
 
 logging.basicConfig(
     level=logging.INFO, format='%(asctime)s '
@@ -107,30 +109,28 @@ def parse_arguments(args: argparse.Namespace) -> argparse.Namespace:
     return args
 
 
-def run(args: argparse.Namespace) -> None:
-    CZI = CziFile2(args.input)
-    assert not CZI.isLive(), "time-course conversion images not implemented."
-    CZI.log_details()
-    if args.dry:
-        sys.exit()
+def check_channels(channels: List[str], CZI: CziFile2) -> List[str]:
+    if channels is None:
+        channels = list(CZI.get_channel_names())
+    else:
+        channels = CZI.select_channels(channels)
+        if 0 == len(channels):
+            logging.error("None of the specified channels was found.")
+            sys.exit()
+        logging.info(
+            f"Converting only the following channels: {channels}")
+    return channels
 
+
+def check_argument_compatibility(
+        args: argparse.Namespace, CZI: CziFile2) -> argparse.Namespace:
     if not args.template.can_export_fields(CZI.field_count(), args.fields):
         logging.critical("when exporting more than 1 field, the template "
                          + f"must include the {TNTFields.SERIES_ID} seed. "
                          + f"Got '{args.template.template}' instead.")
         sys.exit()
 
-    logging.info(f"Output directory: '{args.outdir}'")
-    if not os.path.isdir(args.outdir):
-        os.mkdir(args.outdir)
-
-    if args.channels is not None:
-        args.channels = CZI.select_channels(args.channels)
-        if 0 == len(args.channels):
-            logging.error("None of the specified channels was found.")
-            sys.exit()
-        logging.info(
-            f"Converting only the following channels: {args.channels}")
+    args.channels = check_channels(args.channels, CZI)
 
     if not args.template.can_export_channels(
             CZI.channel_count(), args.channels):
@@ -140,36 +140,29 @@ def run(args: argparse.Namespace) -> None:
                          + f"Got '{args.template.template}' instead.")
         sys.exit()
 
-    CZI.squeeze_axes("SCZYX")
+    if args.fields is None:
+        args.fields = range(CZI.field_count())
 
-    if 1 == CZI.field_count():
-        CZI.reorder_axes("CZYX")
-    else:
-        CZI.reorder_axes("SCZYX")
+    return args
 
-    if args.fields is not None:
-        args.fields = list(args.fields)
-        logging.info("Converting only the following fields: "
-                     + f"{[x for x in args.fields]}")
 
-    def field_generator(CZI: CziFile2, fields, channels):
-        if fields is None:
-            fields = range(CZI.field_count())
-        if channels is None:
-            channels = list(CZI.get_channel_names())
-        for field_id in fields:
-            if field_id-1 >= CZI.field_count():
-                logging.warning(
-                    f"Skipped field #{field_id} (from specified field range, "
-                    + "not available in czi file).")
+def field_generator(args: argparse.Namespace, CZI: CziFile2
+                    ) -> Iterable[Tuple[np.ndarray, str]]:
+    for field_id in args.fields:
+        if field_id-1 >= CZI.field_count():
+            logging.warning(f"Skipped field #{field_id} "
+                            + "(from specified field range, "
+                            + "not available in czi file).")
+            continue
+        for yieldedValue in CZI.get_channel_pixels(args, field_id-1):
+            channel_pixels, channel_id = yieldedValue
+            if not list(CZI.get_channel_names())[channel_id] in args.channels:
                 continue
-            for yieldedValue in CZI.get_channel_pixels(args, field_id-1):
-                channel_pixels, channel_id = yieldedValue
-                if not list(CZI.get_channel_names())[channel_id] in channels:
-                    continue
-                yield (channel_pixels, CZI.get_tiff_path(
-                    args.template, channel_id, field_id-1))
+            yield (channel_pixels, CZI.get_tiff_path(
+                args.template, channel_id, field_id-1))
 
+
+def convert_to_tiff(args: argparse.Namespace, CZI: CziFile2) -> None:
     export_total = float('inf')
     if args.fields is not None and args.channels is not None:
         export_total = len(args.fields)*len(args.channels)
@@ -178,7 +171,7 @@ def run(args: argparse.Namespace) -> None:
     elif args.channels is not None:
         export_total = len(args.channels)
     export_total = min(CZI.field_count()*CZI.channel_count(), export_total)
-    for (OI, opath) in tqdm(field_generator(CZI, args.fields, args.channels),
+    for (OI, opath) in tqdm(field_generator(args, CZI),
                             total=export_total):
         imt.save_tiff(
             os.path.join(args.outdir, opath), OI, imt.get_dtype(OI.max()),
@@ -186,3 +179,28 @@ def run(args: argparse.Namespace) -> None:
             resolution=(1e-6/CZI.get_axis_resolution("X"),
                         1e-6/CZI.get_axis_resolution("Y")),
             inMicrons=True, ResolutionZ=CZI.get_axis_resolution("Z")*1e6)
+
+
+def run(args: argparse.Namespace) -> None:
+    CZI = CziFile2(args.input)
+    assert not CZI.isLive(), "time-course conversion images not implemented."
+    CZI.log_details()
+    if args.dry:
+        sys.exit()
+
+    args = check_argument_compatibility(args, CZI)
+
+    logging.info(f"Output directory: '{args.outdir}'")
+    if not os.path.isdir(args.outdir):
+        os.mkdir(args.outdir)
+
+    CZI.squeeze_axes("SCZYX")
+    reordered_axes = "CZYX" if 1 == CZI.field_count() else "SCZYX"
+    CZI.reorder_axes(reordered_axes)
+
+    if args.fields is not None:
+        args.fields = list(args.fields)
+        logging.info("Converting only the following fields: "
+                     + f"{[x for x in args.fields]}")
+
+    convert_to_tiff(args, CZI)

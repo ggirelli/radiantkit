@@ -5,6 +5,7 @@
 
 import argparse
 import logging
+import numpy as np  # type: ignore
 import os
 import pims  # type: ignore
 from radiantkit.const import __version__
@@ -119,7 +120,7 @@ def parse_arguments(args: argparse.Namespace) -> argparse.Namespace:
     return args
 
 
-def export_channel(
+def export_single_channel(
         args: argparse.Namespace, field_of_view: pims.frame.Frame,
         opath: str, metadata: dict, resolutionZ: float = None) -> None:
     resolutionXY = (1/metadata['pixel_microns'], 1/metadata['pixel_microns'])
@@ -129,34 +130,65 @@ def export_channel(
         resolution=resolutionXY, inMicrons=True, ResolutionZ=resolutionZ)
 
 
-def export_field_3d(
+def get_field_from_2d_nd2(nd2I: ND2Reader2,
+                          field_id: int, channel_id: int) -> np.ndarray:
+    return nd2I[field_id][:, :, channel_id]
+
+
+def get_field_from_3d_nd2(nd2I: ND2Reader2,
+                          field_id: int, channel_id: int) -> np.ndarray:
+    return nd2I[field_id][:, :, :, channel_id]
+
+
+get_field_fun = {2: get_field_from_2d_nd2, 3: get_field_from_3d_nd2}
+
+
+def get_resolution_Z(nd2I: ND2Reader2, field_id: int, enforce: float
+                     ) -> Optional[float]:
+    if nd2I.is3D():
+        if enforce is not None:
+            return enforce
+        else:
+            resolutionZ = nd2I.get_resolutionZ(field_id)
+            assert 1 == len(resolutionZ), (
+                f"Z resolution is not constant: {resolutionZ}")
+            return list(resolutionZ)[0]
+    return None
+
+
+def export_multiple_channels(nd2I: ND2Reader2, field_id: int,
+                             args: argparse.Namespace,
+                             channels: Optional[List[str]] = None,
+                             resolutionZ: Optional[float] = None
+                             ) -> None:
+    channels = list(nd2I.get_channel_names()) if channels is None else channels
+    get_field = get_field_fun[3] if nd2I.is3D() else get_field_fun[2]
+
+    channels = nd2I.select_channels(channels)
+    for channel_id in range(nd2I[field_id].shape[3]):
+        channel_name = nd2I.metadata['channels'][channel_id].lower()
+        if channel_name not in channels:
+            continue
+        export_single_channel(
+            args, get_field(nd2I, field_id, channel_id),
+            nd2I.get_tiff_path(args.template, channel_id, field_id),
+            nd2I.metadata, resolutionZ)
+
+
+def export_field(
         args: argparse.Namespace, nd2I: ND2Reader2,
         field_id: int, channels: Optional[List[str]] = None) -> None:
-    if channels is None:
-        channels = list(nd2I.get_channel_names())
-    if args.deltaZ is not None:
-        resolutionZ = args.deltaZ
-    else:
-        resolutionZ = ND2Reader2.get_resolutionZ(args.input, field_id)
-        assert 1 == len(resolutionZ), (
-            f"Z resolution is not constant: {resolutionZ}")
-        resolutionZ = list(resolutionZ)[0]
+    resolutionZ = get_resolution_Z(nd2I, field_id, args.deltaZ)
 
     try:
         if not nd2I.hasMultiChannels():
-            export_channel(args, nd2I[field_id],
-                           nd2I.get_tiff_path(args.template, 0, field_id),
-                           nd2I.metadata, resolutionZ)
+            export_single_channel(
+                args, nd2I[field_id],
+                nd2I.get_tiff_path(args.template, 0, field_id),
+                nd2I.metadata, resolutionZ)
         else:
-            channels = nd2I.select_channels(channels)
-            for channel_id in range(nd2I[field_id].shape[3]):
-                channel_name = nd2I.metadata['channels'][channel_id].lower()
-                if channel_name not in channels:
-                    continue
-                export_channel(
-                    args, nd2I[field_id][:, :, :, channel_id],
-                    nd2I.get_tiff_path(args.template, channel_id, field_id),
-                    nd2I.metadata, resolutionZ)
+            export_multiple_channels(
+                nd2I, field_id, args, channels, resolutionZ)
     except ValueError as e:
         if "could not broadcast input array from shape" in e.args[0]:
             logging.error(f"corrupted file raised {type(e).__name__}. "
@@ -166,65 +198,28 @@ def export_field_3d(
         raise e
 
 
-def export_field_2d(args: argparse.Namespace, nd2I: ND2Reader2,
-                    field_id: int, channels: Optional[List[str]] = None
-                    ) -> None:
-    if channels is None:
-        channels = list(nd2I.get_channel_names())
-
-    try:
-        if not nd2I.hasMultiChannels():
-            export_channel(args, nd2I[field_id],
-                           nd2I.get_tiff_path(args.template, 0, field_id),
-                           nd2I.metadata)
-        else:
-            channels = nd2I.select_channels(channels)
-            for channel_id in range(nd2I[field_id].shape[3]):
-                channel_name = nd2I.metadata['channels'][channel_id].lower()
-                if channel_name not in channels:
-                    continue
-                export_channel(
-                    args, nd2I[field_id][:, :, channel_id],
-                    nd2I.get_tiff_path(args.template, channel_id, field_id),
-                    nd2I.metadata)
-    except ValueError as e:
-        if "could not broadcast input array from shape" in e.args[0]:
-            logging.error(f"corrupted file raised {type(e).__name__}. "
-                          + "At least one frame has mismatching shape.")
-            logging.critical(f"{e.args[0]}")
+def check_channels(channels: List[str], nd2I: ND2Reader2) -> List[str]:
+    if channels is not None:
+        channels = nd2I.select_channels(channels)
+        if 0 == len(channels):
+            logging.error("None of the specified channels was found.")
             sys.exit()
-        raise e
+        logging.info(
+            f"Converting only the following channels: {channels}")
+    return channels
 
 
-def run(args: argparse.Namespace) -> None:
-    if args.deltaZ is not None:
-        logging.info(f"Enforcing a deltaZ of {args.deltaZ:.3f} um.")
-
-    nd2I = ND2Reader2(args.input)
-    assert not nd2I.isLive(), "time-course conversion images not implemented."
-    nd2I.log_details()
-    if args.dry:
-        sys.exit()
-
+def check_argument_compatibility(
+        args: argparse.Namespace, nd2I: ND2Reader2) -> argparse.Namespace:
     if not args.template.can_export_fields(nd2I.field_count(), args.fields):
         logging.critical("when exporting more than 1 field, the template "
                          + f"must include the {TNTFields.SERIES_ID} seed. "
                          + f"Got '{args.template.template}' instead.")
         sys.exit()
 
-    logging.info(f"Output directory: '{args.outdir}'")
-    if not os.path.isdir(args.outdir):
-        os.mkdir(args.outdir)
+    args.channels = check_channels(args.channels, nd2I)
 
-    if args.channels is not None:
-        args.channels = nd2I.select_channels(args.channels)
-        if 0 == len(args.channels):
-            logging.error("None of the specified channels was found.")
-            sys.exit()
-        logging.info(
-            f"Converting only the following channels: {args.channels}")
-
-    if not args.template.can_export_channels(
+    if not args.template.can_export_single_channels(
             nd2I.channel_count(), args.channels):
         logging.critical("when exporting more than 1 channel, the template "
                          + f"must include either {TNTFields.CHANNEL_ID} or "
@@ -232,14 +227,18 @@ def run(args: argparse.Namespace) -> None:
                          + f"Got '{args.template.template}' instead.")
         sys.exit()
 
-    export_fn = export_field_3d if nd2I.is3D() else export_field_2d
+    if args.fields is not None:
+        if np.min(args.fields) > nd2I.field_count():
+            logging.warning("Skipped all available fields "
+                            + "(not included in specified field range.")
+
+    return args
+
+
+def convert_to_tiff(args: argparse.Namespace, nd2I: ND2Reader2) -> None:
     if 1 == nd2I.field_count():
-        if args.fields is not None:
-            if 1 not in list(args.fields):
-                logging.warning("Skipped only available field "
-                                + "(not included in specified field range.")
         nd2I.set_axes_for_bundling()
-        export_fn(args, nd2I, 0, args.channels)
+        export_field(args, nd2I, 0, args.channels)
     else:
         nd2I.iter_axes = 'v'
         nd2I.set_axes_for_bundling()
@@ -257,4 +256,23 @@ def run(args: argparse.Namespace) -> None:
                 logging.warning(f"Skipped field #{field_id}(from specified "
                                 + "field range, not available in nd2 file).")
             else:
-                export_fn(args, nd2I, field_id-1, args.channels)
+                export_field(args, nd2I, field_id-1, args.channels)
+
+
+def run(args: argparse.Namespace) -> None:
+    if args.deltaZ is not None:
+        logging.info(f"Enforcing a deltaZ of {args.deltaZ:.3f} um.")
+
+    nd2I = ND2Reader2(args.input)
+    assert not nd2I.isLive(), "time-course conversion images not implemented."
+    nd2I.log_details()
+    if args.dry:
+        sys.exit()
+
+    args = check_argument_compatibility(args, nd2I)
+
+    logging.info(f"Output directory: '{args.outdir}'")
+    if not os.path.isdir(args.outdir):
+        os.mkdir(args.outdir)
+
+    convert_to_tiff(args, nd2I)
