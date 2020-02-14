@@ -278,7 +278,7 @@ def run(args: argparse.Namespace) -> None:
         args.input, imglist, args.outprefix, args.outsuffix)
 
     logLevel = logging.getLogger().level
-    logLevel = 10 if args.debug_mode else 0
+    logLevel = 10 if args.debug_mode else 20
     logLevel = 50 if args.silent else logLevel
 
     logging.info(f"found {len(imglist)} image(s) to segment.")
