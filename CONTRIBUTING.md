@@ -16,7 +16,7 @@ Please, note that any contributions you make will be under the MIT Software Lice
 
 ## How to submit a contribution
 
-To process code change, we follow the [Github Flow](https://guides.github.com/introduction/flow/index.html). All code changes to our `master` branch happen through pull requests. We actively welcome your pull requests!
+To process code change, we follow the [Github Flow](https://guides.github.com/introduction/flow/index.html). All code changes to our `master` branch happen through pull requests from the `dev` branch. We actively welcome your pull requests to the `dev` branch!
 
 ## How to report a bug
 
