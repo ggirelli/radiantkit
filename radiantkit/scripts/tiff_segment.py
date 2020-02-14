@@ -274,7 +274,7 @@ def run(args: argparse.Namespace) -> None:
     confirm_arguments(args)
     imglist = path.find_re(args.input, args.inreg)
 
-    imglist, _ = path.select_by_prefix_and_suffix(
+    _, imglist = path.select_by_prefix_and_suffix(
         args.input, imglist, args.outprefix, args.outsuffix)
 
     logLevel = logging.getLogger().level
