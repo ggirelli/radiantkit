@@ -4,8 +4,12 @@
 '''
 
 from enum import Enum
+import numpy as np  # type: ignore
 from radiantkit.image import ImageBase, ImageBinary, Image
-from typing import Optional
+from radiantkit import stat
+from scipy.ndimage.morphology import distance_transform_edt  # type: ignore
+from scipy.ndimage import center_of_mass  # type: ignore
+from typing import Optional, Tuple
 
 
 class CenterType(Enum):
@@ -43,35 +47,61 @@ class RadialDistanceCalculator(object):
         if self._quantile is None:
             assert img is not None, (
                 "either set a quantile manually or provide an image")
-            return 10**(-len(img.axes))
+            return 1-10**(-len(img.axes))
         return self._quantile
 
     def __calc_contour_dist(self, B: ImageBinary) -> Image:
-        raise NotImplementedError
+        contour_dist = Image(distance_transform_edt(B.get_offset(1), B.aspect),
+                             axes=B.axes)
+        contour_dist.aspect = B.aspect
+        return contour_dist
 
     def __calc_center_of_mass(self, contour_dist: Image,
-                              C: Optional[Image] = None, *args, **kwargs
-                              ) -> Image:
-        assert C is not None, (
-            "'center of mass' center definition requires a grayscale image")
-        raise NotImplementedError
+                              C: Image) -> np.ndarray:
+        center_of_mass_coords = center_of_mass(
+            C.pixels[contour_dist.pixels != 0])
+        center_dist = stat.array_cells_distance_to_point(
+            contour_dist, center_of_mass_coords, aspect=C.aspect)
+        center_dist[0 == contour_dist] = np.inf
+        return center_dist
 
-    def __calc_centroid(self, contour_dist: Image, *args, **kwargs) -> Image:
-        raise NotImplementedError
+    def __calc_centroid(self, contour_dist: Image) -> np.ndarray:
+        centroid = np.array([c.mean() for c in np.nonzero(contour_dist)])
+        center_dist = stat.array_cells_distance_to_point(
+            contour_dist, centroid, aspect=contour_dist.aspect)
+        center_dist[0 == contour_dist] = np.inf
+        return center_dist
 
-    def __calc_max(self, contour_dist: Image, *args, **kwargs) -> Image:
-        raise NotImplementedError
+    def __calc_max(self, contour_dist: Image) -> np.ndarray:
+        center_dist = distance_transform_edt(
+            contour_dist.pixels == contour_dist.pixels.max(),
+            contour_dist.aspect)
+        center_dist[0 == contour_dist] = np.inf
+        return center_dist
 
-    def __calc_quantile(self, contour_dist: Image, *args, **kwargs) -> Image:
+    def __calc_quantile(self, contour_dist: Image) -> np.ndarray:
         q = self.quantile(contour_dist)
-        raise NotImplementedError
+        qvalue = np.quantile(contour_dist.pixels[contour_dist.pixels != 0], q)
+        center_dist = distance_transform_edt(
+            contour_dist.pixels <= qvalue, contour_dist.aspect)
+        center_dist[0 == contour_dist] = np.inf
+        return center_dist
 
-    def calc(self, B: ImageBinary, C: Optional[Image] = None) -> Image:
-        calc_fun = {
-            CenterType.CENTER_OF_MASS: self.__calc_center_of_mass,
-            CenterType.CENTROID: self.__calc_centroid,
-            CenterType.MAX: self.__calc_max,
-            CenterType.QUANTILE: self.__calc_quantile
-        }
+    def calc(self, B: ImageBinary, C: Optional[Image] = None
+             ) -> Optional[Tuple[np.ndarray, np.ndarray]]:
+
+        # FLATTEN AXES HERE <<<<<<<<<<-----------------------------------------!!!!!!!!!!!!!!!!!!!!!
+
         contour_dist = self.__calc_contour_dist(B)
-        return calc_fun[self._center_type](contour_dist, C)
+        if self._center_type is CenterType.CENTER_OF_MASS:
+            assert C is not None, ("'center of mass' center definition "
+                                   + "requires a grayscale image")
+            return (contour_dist, self.__calc_center_of_mass(contour_dist, C))
+        elif self._center_type is CenterType.CENTROID:
+            return (contour_dist, self.__calc_centroid(contour_dist))
+        elif self._center_type is CenterType.MAX:
+            return (contour_dist, self.__calc_max(contour_dist))
+        elif self._center_type is CenterType.QUANTILE:
+            return (contour_dist, self.__calc_quantile(contour_dist))
+        else:
+            return None
