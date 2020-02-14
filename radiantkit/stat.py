@@ -17,6 +17,10 @@ class FitType(Enum):
     FWHM = "full_width_half_maximum"
 
 
+class DistanceMode(Enum):
+    EDT = 'edt'
+
+
 Interval = Tuple[float, float]
 FitResult = Tuple[np.ndarray, FitType]
 
@@ -45,6 +49,8 @@ def gpartial_g_dg(w: int, sigma: float) -> Tuple[np.ndarray, np.ndarray]:
 
 
 def gpartial_2D(V: np.ndarray, d: int, sigma: float) -> np.ndarray:
+    '''Calculate the partial derivative of 2D V along dimension d using a
+    filter of size sigma. Based on code by Erik Wernersson, PhD.'''
     w = gpartial_w(sigma)
     g, dg = gpartial_g_dg(w, sigma)
     if 1 == d:
@@ -59,6 +65,8 @@ def gpartial_2D(V: np.ndarray, d: int, sigma: float) -> np.ndarray:
 
 
 def gpartial_3D(V: np.ndarray, d: int, sigma: float) -> np.ndarray:
+    '''Calculate the partial derivative of a 3D V along dimension d using a
+    filter of size sigma. Based on code by Erik Wernersson, PhD.'''
     w = gpartial_w(sigma)
     g, dg = gpartial_g_dg(w, sigma)
     if 1 == d:
@@ -215,3 +223,18 @@ def radius_interval_to_size(rInterval: Interval, n_axes: int = 3) -> Interval:
         return radius_interval_to_area(rInterval)
     else:
         return radius_interval_to_volume(rInterval)
+
+
+def array_cells_distance_to_point(a: np.ndarray, P: np.ndarray,
+                                  aspect: Optional[np.ndarray] = None,
+                                  mode: DistanceMode = DistanceMode.EDT):
+    assert len(a.shape) == len(P)
+    if aspect is not None:
+        assert len(a.shape) == len(aspect)
+    else:
+        aspect = np.ones(len(a.shape))
+    if mode is DistanceMode.EDT:
+        coords = np.array(np.where(np.ones(a.shape))).transpose()
+        return np.sqrt((((coords - P)*aspect)**2).sum(1)).reshape(a.shape)
+    else:
+        raise NotImplementedError
