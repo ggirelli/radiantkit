@@ -6,7 +6,8 @@
 import logging
 import numpy as np  # type: ignore
 import os
-from radiantkit import const, stat
+from radiantkit.const import ProjectionType
+from radiantkit import stat
 from scipy import ndimage as ndi  # type: ignore
 import skimage as ski  # type: ignore
 from skimage.morphology import square, cube  # type: ignore
@@ -14,7 +15,7 @@ from skimage.morphology import closing, opening
 from skimage.morphology import dilation, erosion
 from skimage.segmentation import clear_border  # type: ignore
 import tifffile  # type: ignore
-from typing import Any, Dict, List, Optional, Tuple, Union
+from typing import Any, Dict, List, Optional, Tuple, Type, Union
 import warnings
 
 
@@ -169,8 +170,24 @@ class ImageBase(ImageSettings):
             return None
         return self.shape[self._axes_order.index(axis)]
 
-    def z_project(self, projection_type: const.ProjectionType) -> np.ndarray:
+    def flatten(self, axes_to_keep: str,
+                projection_type: ProjectionType = ProjectionType.SUM
+                ) -> 'ImageBase':
+        axes_to_flatten = tuple([ai for ai in range(len(self.axes))
+                                 if self.axes[ai] not in axes_to_keep])
+        if projection_type is ProjectionType.SUM:
+            pixels = self.pixels.sum(axes_to_flatten, keepdims=True)
+        elif projection_type is ProjectionType.MAX:
+            pixels = self.pixels.max(axes_to_flatten, keepdims=True)
+        else:
+            raise NotImplementedError
+        return self.from_this(pixels)
+
+    def z_project(self, projection_type: ProjectionType) -> np.ndarray:
         return z_project(self.pixels, projection_type)
+
+    def tile_to(self, shape: Tuple[int]) -> 'ImageBase':
+        return self.from_this(tile_to(self.pixels, shape))
 
     def is_loadable(self) -> bool:
         return self.path is not None and os.path.isfile(self.path)
@@ -200,17 +217,19 @@ class ImageBase(ImageSettings):
                   inMicrons, ResolutionZ, forImageJ, **kwargs)
 
     def get_offset(self, offset: int) -> np.ndarray:
-        if 0 == offset:
-            return self.pixels
-        if offset < 0:
-            offset *= -1
-            return self.pixels[tuple([slice(offset, -offset)
-                               for a in range(len(self.shape))])]
+        return offset2(self.pixels, offset)
+
+    def copy(self) -> 'ImageBase':
+        return self.from_this(self.pixels, True)
+
+    def from_this(self, pixels: np.ndarray,
+                  keepPath: bool = False) -> 'ImageBase':
+        if keepPath:
+            I2 = type(self)(pixels, self._path_to_local, self.axes)
         else:
-            canvas = np.zeros(np.array(self.shape)+2*offset)
-            canvas[tuple([slice(offset, self.shape[a]+offset)
-                   for a in range(len(self.shape))])] = self.pixels
-            return canvas
+            I2 = type(self)(pixels, axes=self.axes)
+        I2.aspect = self.aspect
+        return I2
 
     def __repr__(self) -> str:
         s = f"{self.nd}D {self.__class__.__name__}: "
@@ -538,12 +557,26 @@ def save_tiff(path: str, img: np.ndarray, dtype: str, compressed: bool,
 
 
 def z_project(img: np.ndarray,
-              projection_type: const.ProjectionType) -> np.ndarray:
-    if projection_type == const.ProjectionType.SUM_PROJECTION:
+              projection_type: ProjectionType) -> np.ndarray:
+    if projection_type == ProjectionType.SUM:
         img = img.sum(0).astype(img.dtype)
-    elif projection_type == const.ProjectionType.MAX_PROJECTION:
+    elif projection_type == ProjectionType.MAX:
         img = img.max(0).astype(img.dtype)
     return img
+
+
+def offset2(img: np.ndarray, offset: int) -> int:
+    if 0 == offset:
+        return img
+    if offset < 0:
+        offset *= -1
+        return img[tuple([slice(offset, -offset)
+                   for a in range(len(img.shape))])]
+    else:
+        canvas = np.zeros(np.array(img.shape)+2*offset)
+        canvas[tuple([slice(offset, img.shape[a]+offset)
+               for a in range(len(img.shape))])] = img
+        return canvas
 
 
 def threshold_adaptive(img: np.ndarray, block_size: int,
@@ -698,3 +731,12 @@ def inherit_labels(mask: Union[ImageBinary, ImageLabeled],
         logging.warning("mask combination not allowed for images "
                         + f"with {len(mask.shape)} dimensions.")
         raise NotImplementedError
+
+
+def tile_to(img: np.ndarray, shape: Tuple[int]) -> np.ndarray:
+    assert len(shape) == len(img.shape)
+    new_shape = list(shape)
+    for ai in range(len(img.shape)):
+        if 1 != img.shape[ai]:
+            new_shape[ai] = 1
+    return np.tile(img, new_shape)

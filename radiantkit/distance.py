@@ -50,14 +50,14 @@ class RadialDistanceCalculator(object):
             return 1-10**(-len(img.axes))
         return self._quantile
 
-    def __calc_contour_dist(self, B: ImageBinary) -> Image:
+    def __calc_contour_dist(self, B: ImageBase) -> ImageBase:
         contour_dist = Image(distance_transform_edt(B.get_offset(1), B.aspect),
                              axes=B.axes)
         contour_dist.aspect = B.aspect
         return contour_dist
 
-    def __calc_center_of_mass(self, contour_dist: Image,
-                              C: Image) -> np.ndarray:
+    def __calc_center_of_mass(self, contour_dist: ImageBase,
+                              C: ImageBase) -> np.ndarray:
         center_of_mass_coords = center_of_mass(
             C.pixels[contour_dist.pixels != 0])
         center_dist = stat.array_cells_distance_to_point(
@@ -65,21 +65,21 @@ class RadialDistanceCalculator(object):
         center_dist[0 == contour_dist] = np.inf
         return center_dist
 
-    def __calc_centroid(self, contour_dist: Image) -> np.ndarray:
+    def __calc_centroid(self, contour_dist: ImageBase) -> np.ndarray:
         centroid = np.array([c.mean() for c in np.nonzero(contour_dist)])
         center_dist = stat.array_cells_distance_to_point(
             contour_dist, centroid, aspect=contour_dist.aspect)
         center_dist[0 == contour_dist] = np.inf
         return center_dist
 
-    def __calc_max(self, contour_dist: Image) -> np.ndarray:
+    def __calc_max(self, contour_dist: ImageBase) -> np.ndarray:
         center_dist = distance_transform_edt(
             contour_dist.pixels == contour_dist.pixels.max(),
             contour_dist.aspect)
         center_dist[0 == contour_dist] = np.inf
         return center_dist
 
-    def __calc_quantile(self, contour_dist: Image) -> np.ndarray:
+    def __calc_quantile(self, contour_dist: ImageBase) -> np.ndarray:
         q = self.quantile(contour_dist)
         qvalue = np.quantile(contour_dist.pixels[contour_dist.pixels != 0], q)
         center_dist = distance_transform_edt(
@@ -87,21 +87,35 @@ class RadialDistanceCalculator(object):
         center_dist[0 == contour_dist] = np.inf
         return center_dist
 
-    def calc(self, B: ImageBinary, C: Optional[Image] = None
+    def calc(self, B: ImageBinary, C: Optional[ImageBase] = None
              ) -> Optional[Tuple[np.ndarray, np.ndarray]]:
 
-        # FLATTEN AXES HERE <<<<<<<<<<-----------------------------------------!!!!!!!!!!!!!!!!!!!!!
+        if self._flatten_axes is not None:
+            B2 = B.flatten(self._flatten_axes)
+        else:
+            B2 = B.copy()
 
-        contour_dist = self.__calc_contour_dist(B)
+        contour_dist = self.__calc_contour_dist(B2)
         if self._center_type is CenterType.CENTER_OF_MASS:
             assert C is not None, ("'center of mass' center definition "
                                    + "requires a grayscale image")
-            return (contour_dist, self.__calc_center_of_mass(contour_dist, C))
-        elif self._center_type is CenterType.CENTROID:
-            return (contour_dist, self.__calc_centroid(contour_dist))
-        elif self._center_type is CenterType.MAX:
-            return (contour_dist, self.__calc_max(contour_dist))
-        elif self._center_type is CenterType.QUANTILE:
-            return (contour_dist, self.__calc_quantile(contour_dist))
+            if self._flatten_axes is not None:
+                C2 = C.flatten(self._flatten_axes)
+            else:
+                C2 = C.copy()
+            center_dist = self.__calc_center_of_mass(contour_dist, C2)
         else:
-            return None
+            if self._center_type is CenterType.CENTROID:
+                center_dist = self.__calc_centroid(contour_dist)
+            elif self._center_type is CenterType.MAX:
+                center_dist = self.__calc_max(contour_dist)
+            elif self._center_type is CenterType.QUANTILE:
+                center_dist = self.__calc_quantile(contour_dist)
+            else:
+                return None
+
+        if self._flatten_axes is not None:
+            contour_dist = contour_dist.tile_to(B.shape)
+            center_dist = center_dist.tile_to(B.shape)
+
+        return (contour_dist.pixels, center_dist.pixels)

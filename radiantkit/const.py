@@ -12,13 +12,13 @@ default_inreg = ("^([^\\.]*\\.)?(?P<channel_name>[^/]*)_(?P<series_id>[0-9]+)"
 
 
 class ProjectionType(Enum):
-    SUM_PROJECTION = 'SUM_PROJECTION'
-    MAX_PROJECTION = 'MAX_PROJECTION'
+    SUM = 'SUM_PROJECTION'
+    MAX = 'MAX_PROJECTION'
 
 
 class SegmentationType(Enum):
-    SUM_PROJECTION = ProjectionType.SUM_PROJECTION.value
-    MAX_PROJECTION = ProjectionType.MAX_PROJECTION.value
+    SUM_PROJECTION = ProjectionType.SUM.value
+    MAX_PROJECTION = ProjectionType.MAX.value
     THREED = '3D'
     @staticmethod
     def get_default():
