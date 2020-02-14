@@ -31,7 +31,7 @@ def init_parser(subparsers: argparse._SubParsersAction
     parser = subparsers.add_parser(
         __name__.split(".")[-1], description='''
 Calculate gradient magnitude over Z for every image in the input folder with a
-filename matching the --pattern. Use --range to change the in-focus
+filename matching the --inreg. Use --range to change the in-focus
 definition.
 ''', formatter_class=argparse.RawDescriptionHelpFormatter,
         help="Find out of focus fields of view.")
@@ -170,7 +170,7 @@ def run(args: argparse.Namespace) -> None:
         logger.error(f"image directory not found: '{args.input}'")
         sys.exit()
 
-    imlist = path.find_re(args.input, args.pattern)
+    imlist = path.find_re(args.input, args.inreg)
 
     if 1 == args.threads:
         t = imlist if args.silent else tqdm(
