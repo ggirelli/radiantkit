@@ -19,7 +19,7 @@ and characterize them (e.g., peaks, inflection points, contrast).
 
 RadIAnTkit requires Python 3.6 (or higher). In the [setup.py](https://github.com/ggirelli/radiantkit/blob/master/setup.py) file, you can find a list with all the Python package dependencies.
 
-(*optional*) The snakemake package is required to use the pipeline features. As this is an optional feature, the automatic installation process does not install this package. To set it up on your system, follow [this guide](https://snakemake.readthedocs.io/en/stable/getting_started/installation.html).
+(*optional*) The pipeline features require the snakemake package. As these are optional features, the automatic installation process does not install the package. To manually install it on your system, follow [this guide](https://snakemake.readthedocs.io/en/stable/getting_started/installation.html).
 
 ## Installation
 
