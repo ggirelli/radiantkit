@@ -404,7 +404,7 @@ class SeriesList(object):
 
         if ref is not None:
             series = SeriesList.__initialize_masks(
-                ref, dpath, series, channels, inreg,
+                ref, dpath, series, masks, inreg,
                 labeled, aspect, ground_block_side)
 
         clen = len(set([len(s) for s in series.values()]))

@@ -33,7 +33,8 @@ def select_by_prefix_and_suffix(dpath: str, ilist: FileList,
                                 ) -> Tuple[FileList, FileList]:
     olist = ilist.copy()
     if 0 != len(suffix):
-        olist = [f for f in olist if os.path.splitext(f)[0].endswith(suffix)]
+        olist = [f for f in olist
+                 if f"{os.path.splitext(f)[0]}.".endswith(suffix)]
     if 0 != len(prefix):
         olist = [f for f in olist if os.path.splitext(f)[0].startswith(prefix)]
     return (olist, [x for x in ilist if x not in olist])
