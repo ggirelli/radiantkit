@@ -25,7 +25,8 @@ We recommend using a python environment manager (our favorite one being conda) t
 
 ### Setup using conda
 
-First, install conda if it is not already available on your system. A full installation guide is available [here](https://docs.conda.io/projects/conda/en/latest/user-guide/install/#regular-installation), follow the instructions to install miniconda.
+First, install conda if it is not already available on your system.  
+A full installation guide is available [here](https://docs.conda.io/projects/conda/en/latest/user-guide/install/#regular-installation), follow the instructions to install miniconda.
 
 Then, the setup requires only three steps:
 
@@ -41,7 +42,8 @@ pip install radiantkit
 
 ## Usage
 
-All RadIAnTkit tools are accessible from the terminal using the radiant keyword. We are planning to add a pyQT5-based GUI.
+All RadIAnTkit tools are accessible from the terminal using the radiant keyword.  
+We are planning to add a pyQT5-based GUI.
 
 ```bash
 usage: radiant [-h] [--version] sub_command ...
@@ -49,7 +51,9 @@ usage: radiant [-h] [--version] sub_command ...
 
 ## Contributing
 
-We welcome any contributions to RadIAnTkit. Please, refer to our [contribution guidelines](https://github.com/ggirelli/radiantkit/blob/master/CONTRIBUTING.md) if this is your first time contributing! Also, check out our [code of conduct](https://github.com/ggirelli/radiantkit/blob/master/CODE_OF_CONDUCT.md).
+We welcome any contributions to RadIAnTkit.  
+Please, refer to our [contribution guidelines](https://github.com/ggirelli/radiantkit/blob/master/CONTRIBUTING.md) if this is your first time contributing!  
+Also, check out our [code of conduct](https://github.com/ggirelli/radiantkit/blob/master/CODE_OF_CONDUCT.md).
 
 ## License
 
