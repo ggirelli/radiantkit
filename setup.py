@@ -40,7 +40,7 @@ setup(
     install_requires=[
         'czifile==2019.7.2',
         'ggc==0.0.3',
-        'jinja2==2.10.3',
+        'jinja2==2.11.1',
         'joblib==0.14.1',
         'matplotlib==3.1.2',
         'nd2reader==3.2.3',
