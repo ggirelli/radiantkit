@@ -396,8 +396,8 @@ class ImageBinary(ImageBase):
 
 class Image(ImageBase):
     _rescale_factor: float = 1.
-    _background: float
-    _foreground: float
+    _background: Optional[float] = None
+    _foreground: Optional[float] = None
 
     def __init__(self, pixels: np.ndarray, path: Optional[str] = None,
                  axes: Optional[str] = None):

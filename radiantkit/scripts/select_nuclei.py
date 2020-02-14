@@ -186,11 +186,11 @@ def confirm_arguments(args: argp.Namespace) -> None:
 def extract_passing_nuclei_per_series(
         ndata: pd.DataFrame, inreg: Pattern) -> Dict[int, List[int]]:
     passed = ndata.loc[ndata['pass'], ['image', 'label']]
-    passed['series_id'] = []
-    for p in passed['image'].values:
-        image_details = path.get_image_details(p, inreg)
+    passed['series_id'] = np.nan
+    for ii in passed.index:
+        image_details = path.get_image_details(passed.loc[ii, 'image'], inreg)
         assert image_details is not None
-        passed['series_id'].append(image_details[0])
+        passed.loc[ii, 'series_id'] = image_details[0]
     passed.drop('image', 1, inplace=True)
     passed = dict([
         (sid, passed.loc[passed['series_id'] == sid, 'label'].values)
