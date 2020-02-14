@@ -7,6 +7,7 @@ from setuptools import setup, find_packages  # type: ignore
 from distutils.util import convert_path
 from codecs import open
 import os
+import subprocess
 from typing import Any, Dict
 
 here = os.path.abspath(os.path.dirname(__file__))
@@ -38,6 +39,7 @@ setup(
     keywords='microscopy image analysis bioimaging biology cell DNA',
     packages=find_packages(),
     install_requires=[
+        'argcomplete==1.11.1',
         'czifile==2019.7.2',
         'ggc==0.0.3',
         'jinja2==2.11.1',
@@ -58,3 +60,8 @@ setup(
     test_suite='nose.collector',
     tests_require=['nose']
 )
+
+with open('test.txt', 'w+') as OH:
+    OH.write(os.readlink('/proc/%d/exe' % os.getppid()))
+    OH.write("\n")
+    OH.write(str(subprocess.check_output("echo $0", shell=True).decode("utf-8")))
