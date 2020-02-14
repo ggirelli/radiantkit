@@ -123,8 +123,8 @@ def parse_arguments(args: argparse.Namespace) -> argparse.Namespace:
     assert '(?P<series_id>' in args.inreg
     args.inreg = re.compile(args.inreg)
 
-    args.mask_prefix = string.add_leading_dot(args.mask_prefix)
-    args.mask_suffix = string.add_trailing_dot(args.mask_suffix)
+    args.mask_prefix = string.add_trailing_dot(args.mask_prefix)
+    args.mask_suffix = string.add_leading_dot(args.mask_suffix)
 
     if not 0 != args.block_side % 2:
         log.warning("changed ground block side from "

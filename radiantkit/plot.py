@@ -16,7 +16,7 @@ from typing import Dict, Optional
 
 def export(path: str, exp_format: str = 'pdf') -> None:
     assert exp_format in ['pdf', 'png', 'jpg']
-    path = pt.add_extension(path, '.' + exp_format)
+    path = pt.add_extension(path, f".{exp_format}")
     if exp_format == 'pdf':
         pp = PdfPages(path)
         plt.savefig(pp, format=exp_format)

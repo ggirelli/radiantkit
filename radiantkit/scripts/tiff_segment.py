@@ -136,8 +136,8 @@ def parse_arguments(args: argparse.Namespace) -> argparse.Namespace:
         args.output = args.input
 
     args.inreg = re.compile(args.inreg)
-    args.outprefix = string.add_leading_dot(args.outprefix)
-    args.outsuffix = string.add_trailing_dot(args.outsuffix)
+    args.outprefix = string.add_trailing_dot(args.outprefix)
+    args.outsuffix = string.add_leading_dot(args.outsuffix)
 
     assert 1 == args.neighbour % 2
     assert args.min_Z >= 0 and args.min_Z <= 1
