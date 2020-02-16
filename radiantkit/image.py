@@ -186,7 +186,7 @@ class ImageBase(ImageSettings):
     def z_project(self, projection_type: ProjectionType) -> np.ndarray:
         return z_project(self.pixels, projection_type)
 
-    def tile_to(self, shape: Tuple[int]) -> 'ImageBase':
+    def tile_to(self, shape: Tuple[int, ...]) -> 'ImageBase':
         return self.from_this(tile_to(self.pixels, shape))
 
     def is_loadable(self) -> bool:
@@ -733,7 +733,7 @@ def inherit_labels(mask: Union[ImageBinary, ImageLabeled],
         raise ValueError
 
 
-def tile_to(img: np.ndarray, shape: Tuple[int]) -> np.ndarray:
+def tile_to(img: np.ndarray, shape: Tuple[int, ...]) -> np.ndarray:
     assert len(shape) == len(img.shape)
     new_shape = list(shape)
     for ai in range(len(img.shape)):
