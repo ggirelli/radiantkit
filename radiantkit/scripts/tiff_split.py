@@ -286,7 +286,7 @@ def tiff_split(img: np.ndarray, side: List[int], step: List[int],
 
     if not len(img.shape) in [2, 3]:
         logging.error("cannot split images with more than 3 dimensions.")
-        raise NotImplementedError
+        raise ValueError
 
     with tqdm(range(n)) as pbar:
         for (x_start, y_start) in xy_gen:

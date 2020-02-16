@@ -15,7 +15,7 @@ from skimage.morphology import closing, opening
 from skimage.morphology import dilation, erosion
 from skimage.segmentation import clear_border  # type: ignore
 import tifffile  # type: ignore
-from typing import Any, Dict, List, Optional, Tuple, Type, Union
+from typing import Any, Dict, List, Optional, Tuple, Union
 import warnings
 
 
@@ -180,7 +180,7 @@ class ImageBase(ImageSettings):
         elif projection_type is ProjectionType.MAX:
             pixels = self.pixels.max(axes_to_flatten, keepdims=True)
         else:
-            raise NotImplementedError
+            raise ValueError
         return self.from_this(pixels)
 
     def z_project(self, projection_type: ProjectionType) -> np.ndarray:
@@ -605,7 +605,7 @@ def threshold_adaptive(img: np.ndarray, block_size: int,
     else:
         logging.info("Local threshold not implemented for images with "
                      + f"{len(img.shape)} dimensions.")
-        raise NotImplementedError
+        raise ValueError
     return mask
 
 
@@ -618,7 +618,7 @@ def fill_holes(mask: np.ndarray) -> np.ndarray:
     elif 2 != len(mask.shape):
         logging.warning("3D hole filling not performed on images with "
                         + f"{len(mask.shape)} dimensions.")
-        raise NotImplementedError
+        raise ValueError
     return mask
 
 
@@ -632,7 +632,7 @@ def closing2(mask: np.ndarray, block_side: int = 3) -> np.ndarray:
         else:
             logging.info("Close operation not implemented for images with "
                          + f"{len(mask.shape)} dimensions.")
-            raise NotImplementedError
+            raise ValueError
     return mask
 
 
@@ -646,7 +646,7 @@ def opening2(mask: np.ndarray, block_side: int = 3) -> np.ndarray:
         else:
             logging.info("Open operation not implemented for images with "
                          + f"{len(mask.shape)} dimensions.")
-            raise NotImplementedError
+            raise ValueError
     return mask
 
 
@@ -660,7 +660,7 @@ def dilate(mask: np.ndarray, block_side: int = 3) -> np.ndarray:
         else:
             logging.info("Dilate operation not implemented for images with "
                          + f"{len(mask.shape)} dimensions.")
-            raise NotImplementedError
+            raise ValueError
     return mask
 
 
@@ -674,7 +674,7 @@ def erode(mask: np.ndarray, block_side: int = 3) -> np.ndarray:
         else:
             logging.info("Erode operation not implemented for images with "
                          + f"{len(mask.shape)} dimensions.")
-            raise NotImplementedError
+            raise ValueError
     return mask
 
 
@@ -693,7 +693,7 @@ def clear_XY_borders(L: np.ndarray) -> np.ndarray:
     else:
         logging.warning("XY border clearing not implemented for images "
                         + f"with {len(L.shape)} dimensions.")
-        raise NotImplementedError
+        raise ValueError
 
 
 def clear_Z_borders(L: np.ndarray) -> np.ndarray:
@@ -709,7 +709,7 @@ def clear_Z_borders(L: np.ndarray) -> np.ndarray:
     else:
         logging.warning("Z border clearing not implemented for images "
                         + f"with {len(L.shape)} dimensions.")
-        raise NotImplementedError
+        raise ValueError
 
 
 def inherit_labels(mask: Union[ImageBinary, ImageLabeled],
@@ -730,7 +730,7 @@ def inherit_labels(mask: Union[ImageBinary, ImageLabeled],
     else:
         logging.warning("mask combination not allowed for images "
                         + f"with {len(mask.shape)} dimensions.")
-        raise NotImplementedError
+        raise ValueError
 
 
 def tile_to(img: np.ndarray, shape: Tuple[int]) -> np.ndarray:

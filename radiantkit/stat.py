@@ -187,7 +187,7 @@ def range_from_fit(data: np.ndarray, fitted_params: np.ndarray,
         return gaussian_range_from_fit(data, fitted_params, fit_type, k_sigma)
     if FitType.FWHM == fit_type:
         return fitted_params
-    raise NotImplementedError
+    raise ValueError
 
 
 def quantile_from_counts(values: np.ndarray, counts: np.ndarray,
@@ -237,4 +237,4 @@ def array_cells_distance_to_point(a: np.ndarray, P: np.ndarray,
         coords = np.array(np.where(np.ones(a.shape))).transpose()
         return np.sqrt((((coords - P)*aspect)**2).sum(1)).reshape(a.shape)
     else:
-        raise NotImplementedError
+        raise ValueError
