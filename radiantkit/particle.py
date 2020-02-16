@@ -176,6 +176,8 @@ class Nucleus(Particle):
             lamina_dist=self._lamina_dist[self._mask.pixels],
             center_dist=self._center_dist[self._mask.pixels]
         ))
+        df['lamina_dist_norm'] = df['lamina_dist'] / (
+            df['lamina_dist'] + df['center_dist'])
         df['nucleus_label'] = self.label
         return df
 
