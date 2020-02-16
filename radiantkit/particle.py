@@ -9,6 +9,7 @@ import logging
 import numpy as np  # type: ignore
 import os
 import pandas as pd  # type: ignore
+from radiantkit.distance import RadialDistanceCalculator
 from radiantkit.image import Image, ImageBinary, ImageLabeled
 from radiantkit.selection import BoundingElement
 from radiantkit.stat import cell_cycle_fit, range_from_fit
@@ -148,9 +149,21 @@ class Particle(ParticleBase):
 
 
 class Nucleus(Particle):
+    _center_dist: Optional[np.ndarray] = None
+    _lamina_dist: Optional[np.ndarray] = None
+
     def __init__(self, B: ImageBinary,
                  region_of_interest: BoundingElement):
         super(Nucleus, self).__init__(B, region_of_interest)
+
+    def has_distances(self) -> bool:
+        return self._center_dist is not None and self._lamina_dist is not None
+
+    def init_distances(self, rdc: RadialDistanceCalculator) -> None:
+        raise NotImplementedError
+
+    def get_intensity_at_distance(self, img: Image) -> pd.DataFrame:
+        raise NotImplementedError
 
 
 class NucleiList(object):
