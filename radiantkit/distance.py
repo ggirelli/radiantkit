@@ -87,22 +87,24 @@ class RadialDistanceCalculator(object):
         center_dist[0 == contour_dist] = np.inf
         return center_dist
 
-    def calc(self, B: ImageBinary, C: Optional[ImageBase] = None
-             ) -> Optional[Tuple[np.ndarray, np.ndarray]]:
-
+    def __flatten(self, img: ImageBase) -> ImageBase:
         if self._flatten_axes is not None:
-            B2 = B.flatten(self._flatten_axes)
+            return img.flatten(self._flatten_axes)
         else:
-            B2 = B.copy()
+            return img.copy()
 
-        contour_dist = self.__calc_contour_dist(B2)
+    def __unflatten(self, img: ImageBase,
+                    shape: Tuple[int, ...]) -> ImageBase:
+        if self._flatten_axes is not None:
+            return img.tile_to(shape)
+        else:
+            return img.copy()
+
+    def __calc_center_dist(self, contour_dist, C) -> Optional[ImageBase]:
         if self._center_type is CenterType.CENTER_OF_MASS:
             assert C is not None, ("'center of mass' center definition "
                                    + "requires a grayscale image")
-            if self._flatten_axes is not None:
-                C2 = C.flatten(self._flatten_axes)
-            else:
-                C2 = C.copy()
+            C2 = self.__flatten(C)
             center_dist = self.__calc_center_of_mass(contour_dist, C2)
         else:
             if self._center_type is CenterType.CENTROID:
@@ -113,9 +115,18 @@ class RadialDistanceCalculator(object):
                 center_dist = self.__calc_quantile(contour_dist)
             else:
                 return None
+        return center_dist
 
-        if self._flatten_axes is not None:
-            contour_dist = contour_dist.tile_to(B.shape)
-            center_dist = center_dist.tile_to(B.shape)
+    def calc(self, B: ImageBinary, C: Optional[ImageBase] = None
+             ) -> Optional[Tuple[np.ndarray, np.ndarray]]:
+        B2 = self.__flatten(B)
+
+        contour_dist = self.__calc_contour_dist(B2)
+        center_dist = self.__calc_center_dist(contour_dist, C)
+        if center_dist is None:
+            return None
+
+        contour_dist = self.__unflatten(contour_dist, B.shape)
+        center_dist = self.__unflatten(center_dist, B.shape)
 
         return (contour_dist.pixels, center_dist.pixels)
