@@ -10,10 +10,11 @@ import logging
 import numpy as np  # type: ignore
 import os
 import pandas as pd  # type: ignore
+from radiantkit.distance import CenterType, RadialDistanceCalculator
 from radiantkit.image import ImageBinary, ImageLabeled, Image
 from radiantkit.path import find_re, get_image_details
 from radiantkit.path import select_by_prefix_and_suffix
-from radiantkit.particle import Particle, ParticleFinder
+from radiantkit.particle import Nucleus, Particle, ParticleFinder
 from radiantkit.stat import quantile_from_counts
 import sys
 from tqdm import tqdm  # type: ignore
@@ -223,14 +224,14 @@ class ChannelList(object):
 
 
 class Series(ChannelList):
-    _particles: List[Particle]
+    _particles: List[Nucleus]
 
     def __init__(self, ID: int, ground_block_side: Optional[int] = None,
                  aspect: Optional[np.ndarray] = None):
         super(Series, self).__init__(ID, ground_block_side)
 
     @property
-    def particles(self) -> List[Particle]:
+    def particles(self) -> List[Nucleus]:
         if self._particles is None:
             logging.warning("particle attribute accessible "
                             + "after running extract_particles.")
@@ -294,19 +295,53 @@ class Series(ChannelList):
     def export_particles(self, path: str, compressed: bool) -> None:
         assert os.path.isdir(path)
 
-        for nucleus in self.particles:
-            nucleus.mask.to_tiff(
-                os.path.join(
-                    path,
-                    f"mask_series{self.ID:03d}_nucleus{nucleus.label:03d}"),
-                compressed)
-
         for channel_name in self.names:
             for nucleus in self.particles:
+                basename = f"series{self.ID:03d}_nucleus{nucleus.label:03d}"
+
+                nucleus.mask.to_tiff(os.path.join(path,
+                                     f"mask_{basename}.tif"), compressed)
+
+                if nucleus.has_distances():
+                    center_dist, lamina_dist = nucleus.distances
+
+                    Image(center_dist).to_tiff(
+                        os.path.join(path, f"centerDist_{basename}.tif"),
+                        compressed)
+                    Image(lamina_dist).to_tiff(
+                        os.path.join(path, f"laminaDist_{basename}.tif"),
+                        compressed)
+
                 Image(nucleus.region_of_interest.apply(
                     self[channel_name][1])).to_tiff(
-                    os.path.join(path, f"{channel_name}_series{self.ID:03d}_"
-                                 + f"nucleus{nucleus.label:03d}"), compressed)
+                    os.path.join(path, f"{channel_name}_{basename}.tif"),
+                    compressed)
+            self.unload(channel_name)
+
+    def init_particles_distances(
+            self, rdc: RadialDistanceCalculator) -> None:
+        C = None
+        if self.reference is not None and (
+                rdc.center_type is CenterType.CENTER_OF_MASS):
+            C = self[self.reference][1]
+        for particle in self._particles:
+            if not particle.has_distances():
+                particle.init_distances(rdc, C)
+        if C is not None:
+            C.unload()
+
+    def get_particles_intensity_at_distance(
+            self, channel_name: str) -> pd.DataFrame:
+        assert all([p.has_distances for p in self._particles])
+        df = pd.concat([p.get_intensity_at_distance(self[channel_name][1])
+                        for p in self._particles])
+        self.unload(channel_name)
+        df['series_label'] = self.ID
+        return df
+
+    def get_radial_profile(self, rdc: RadialDistanceCalculator,
+                           channel_name: str) -> pd.DataFrame:
+        raise NotImplementedError
 
     @staticmethod
     def static_export_particles(series: 'Series', path: str,
@@ -460,7 +495,7 @@ class SeriesList(object):
             dfu[f'{channel}_imean'] = f'"{channel}" intensity mean (a.u.)'
         return dfu
 
-    def get_particles(self, threads: int = 1) -> Iterator[Particle]:
+    def get_particles(self) -> Iterator[Particle]:
         for s in self:
             if s.particles is None:
                 continue
@@ -517,6 +552,10 @@ class SeriesList(object):
             joblib.Parallel(n_jobs=threads, verbose=11)(
                 joblib.delayed(Series.static_export_particles)(
                     series, path, compressed) for series in self)
+
+    def get_radial_profiles(
+            self, rdc: RadialDistanceCalculator) -> pd.DataFrame:
+        raise NotImplementedError
 
     def __len__(self) -> int:
         return len(self.series)

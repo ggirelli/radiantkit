@@ -38,6 +38,10 @@ class RadialDistanceCalculator(object):
             if CenterType.QUANTILE == self._center_type:
                 self.__set_quantile(q)
 
+    @property
+    def center_type(self):
+        return self._center_type
+
     def __set_quantile(self, q: Optional[float]) -> None:
         if q is not None:
             assert q > 0 and q <= 1
