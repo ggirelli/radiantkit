@@ -19,7 +19,7 @@ from tqdm import tqdm  # type: ignore
 from typing import Any, Dict, List, Optional, Tuple, Type
 
 
-class ParticleSettings(object):
+class ParticleBase(object):
     _mask: ImageBinary
     _region_of_interest: BoundingElement
     label: Optional[int] = None
@@ -29,7 +29,7 @@ class ParticleSettings(object):
 
     def __init__(self, B: ImageBinary,
                  region_of_interest: BoundingElement):
-        super(ParticleSettings, self).__init__()
+        super(ParticleBase, self).__init__()
         assert B.shape == region_of_interest.shape
         self._mask = B
         self._region_of_interest = region_of_interest
@@ -97,13 +97,13 @@ class ParticleSettings(object):
         return self.mask.pixels.max(axes_ids).sum()
 
 
-class ParticleBase(ParticleSettings):
+class Particle(ParticleBase):
     _intensity: Dict[str, Dict[str, float]]
     source: str
 
     def __init__(self, B: ImageBinary,
                  region_of_interest: BoundingElement):
-        super(ParticleBase, self).__init__(B, region_of_interest)
+        super(Particle, self).__init__(B, region_of_interest)
         self._intensity = {}
 
     @property
@@ -147,7 +147,7 @@ class ParticleBase(ParticleSettings):
         return odata
 
 
-class Nucleus(ParticleBase):
+class Nucleus(Particle):
     def __init__(self, B: ImageBinary,
                  region_of_interest: BoundingElement):
         super(Nucleus, self).__init__(B, region_of_interest)
@@ -253,14 +253,14 @@ class ParticleFinder(object):
 
     @staticmethod
     def get_particles_from_binary_image(
-            B: ImageBinary, particleClass: Type[ParticleBase] = ParticleBase
+            B: ImageBinary, particleClass: Type[Particle] = Particle
             ) -> List[Any]:
         return ParticleFinder.get_particles_from_labeled_image(
             B.label(), particleClass)
 
     @staticmethod
     def get_particles_from_labeled_image(
-            L: ImageLabeled, particleClass: Type[ParticleBase] = ParticleBase
+            L: ImageLabeled, particleClass: Type[Particle] = Particle
             ) -> List[Any]:
         assert L.pixels.min() != L.pixels.max(), (
             'monochromatic image detected.')

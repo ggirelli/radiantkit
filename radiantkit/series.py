@@ -13,7 +13,7 @@ import pandas as pd  # type: ignore
 from radiantkit.image import ImageBinary, ImageLabeled, Image
 from radiantkit.path import find_re, get_image_details
 from radiantkit.path import select_by_prefix_and_suffix
-from radiantkit.particle import ParticleBase, ParticleFinder
+from radiantkit.particle import Particle, ParticleFinder
 from radiantkit.stat import quantile_from_counts
 import sys
 from tqdm import tqdm  # type: ignore
@@ -223,14 +223,14 @@ class ChannelList(object):
 
 
 class Series(ChannelList):
-    _particles: List[ParticleBase]
+    _particles: List[Particle]
 
     def __init__(self, ID: int, ground_block_side: Optional[int] = None,
                  aspect: Optional[np.ndarray] = None):
         super(Series, self).__init__(ID, ground_block_side)
 
     @property
-    def particles(self) -> List[ParticleBase]:
+    def particles(self) -> List[Particle]:
         if self._particles is None:
             logging.warning("particle attribute accessible "
                             + "after running extract_particles.")
@@ -261,7 +261,7 @@ class Series(ChannelList):
             self.unload(name)
 
     def init_particles(self,
-                       particleClass: Type[ParticleBase] = ParticleBase,
+                       particleClass: Type[Particle] = Particle,
                        channel_list: Optional[List[str]] = None
                        ) -> None:
         if self.mask is None:
@@ -282,7 +282,7 @@ class Series(ChannelList):
 
     @staticmethod
     def extract_particles(series: 'Series',
-                          particleClass: Type[ParticleBase] = ParticleBase,
+                          particleClass: Type[Particle] = Particle,
                           channel_list: Optional[List[str]] = None
                           ) -> 'Series':
         series.init_particles(particleClass, channel_list)
@@ -413,7 +413,7 @@ class SeriesList(object):
 
         return SeriesList(os.path.basename(dpath), list(series.values()))
 
-    def extract_particles(self, particleClass: Type[ParticleBase],
+    def extract_particles(self, particleClass: Type[Particle],
                           channel_list: Optional[List[str]] = None,
                           threads: int = 1) -> None:
         threads = ggc.args.check_threads(threads)
@@ -460,7 +460,7 @@ class SeriesList(object):
             dfu[f'{channel}_imean'] = f'"{channel}" intensity mean (a.u.)'
         return dfu
 
-    def get_particles(self, threads: int = 1) -> Iterator[ParticleBase]:
+    def get_particles(self, threads: int = 1) -> Iterator[Particle]:
         for s in self:
             if s.particles is None:
                 continue
