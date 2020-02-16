@@ -10,7 +10,7 @@ import numpy as np  # type: ignore
 import os
 import pandas as pd  # type: ignore
 from radiantkit.distance import RadialDistanceCalculator
-from radiantkit.image import Image, ImageBinary, ImageLabeled
+from radiantkit.image import Image, ImageBase, ImageBinary, ImageLabeled
 from radiantkit.selection import BoundingElement
 from radiantkit.stat import cell_cycle_fit, range_from_fit
 from skimage.measure import marching_cubes_lewiner  # type: ignore
@@ -156,14 +156,26 @@ class Nucleus(Particle):
                  region_of_interest: BoundingElement):
         super(Nucleus, self).__init__(B, region_of_interest)
 
-    def has_distances(self) -> bool:
-        return self._center_dist is not None and self._lamina_dist is not None
+    @property
+    def distances(self) -> Tuple[Optional[np.ndarray], Optional[np.ndarray]]:
+        return (self._center_dist, self._lamina_dist)
 
-    def init_distances(self, rdc: RadialDistanceCalculator) -> None:
-        raise NotImplementedError
+    def has_distances(self) -> bool:
+        return self._lamina_dist is not None and self._center_dist is not None
+
+    def init_distances(self, rdc: RadialDistanceCalculator,
+                       C: Optional[ImageBase] = None) -> None:
+        distances = rdc.calc(self.mask, C)
+        assert distances is not None
+        self._center_dist, self._lamina_dist = distances
 
     def get_intensity_at_distance(self, img: Image) -> pd.DataFrame:
-        raise NotImplementedError
+        assert self._lamina_dist is not None and self._center_dist is not None
+        return pd.DataFrame.from_dict(dict(
+            ival=self._region_of_interest.apply(img)[self._mask.pixels],
+            lamina_dist=self._lamina_dist[self._mask.pixels],
+            center_dist=self._center_dist[self._mask.pixels]
+        ))
 
 
 class NucleiList(object):
