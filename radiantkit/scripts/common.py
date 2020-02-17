@@ -52,4 +52,5 @@ def pickle_series_list(args: argparse.Namespace,
                        series_list: series.SeriesList) -> None:
     if args.export_architecture:
         logging.info("Pickling architecture")
+        series_list.unload()
         series_list.to_pickle(args.input, args.pickle_name)
