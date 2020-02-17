@@ -231,7 +231,7 @@ def run(args: argparse.Namespace) -> None:
              + f": {series_list.channel_names}")
 
     log.info(f"extracting nuclei")
-    series_list.extract_particles(particle.Nucleus, args.threads)
+    series_list.extract_particles(particle.Nucleus, threads=args.threads)
 
     if args.export_features:
         export_object_features(args, series_list)
