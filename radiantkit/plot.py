@@ -176,7 +176,7 @@ def plot_nuclear_features(
             spx_root = spx_channel[spx_channel['root'] == root]
             fig.add_trace(
                 go.Box(
-                    name=root, notched=True,
+                    name=root, notched=False,
                     y=[[spx_root['vmin'].values[0],
                         spx_root['vmax'].values[0]]],
                     marker_color=pal[np.argmax(root_list == root)]),
