@@ -9,7 +9,7 @@ import logging
 import numpy as np  # type: ignore
 import os
 from radiantkit.const import __version__
-import radiantkit.image as imt
+from radiantkit import image as imt, io
 from typing import List
 import sys
 from tqdm import tqdm  # type: ignore
