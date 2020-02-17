@@ -58,7 +58,7 @@ interactive data visualization.
         'input', type=str,
         help='Path to folder containing deconvolved tiff images and masks.')
     parser.add_argument(
-        'dna_channel', type=str,
+        'ref_channel', type=str,
         help='Name of channel with DNA staining intensity.')
 
     parser.add_argument(
@@ -165,7 +165,7 @@ def print_settings(args: argparse.Namespace, clear: bool = True) -> str:
     ---------- SETTING : VALUE ----------
 
        Input directory : '{args.input}'
-      DNA channel name : '{args.dna_channel}'
+      DNA channel name : '{args.ref_channel}'
                K sigma : {args.k_sigma}
 
            Mask prefix : '{args.mask_prefix}'
@@ -281,14 +281,14 @@ def run(args: argparse.Namespace) -> None:
     args, series_list = common.init_series_list(args)
 
     log.info(f"extracting nuclei")
-    series_list.extract_particles(Nucleus, [args.dna_channel], args.threads)
+    series_list.extract_particles(Nucleus, [args.ref_channel], args.threads)
 
     nuclei = NucleiList(list(itertools.chain(
         *[s.particles for s in series_list])))
     log.info(f"extracted {len(nuclei)} nuclei.")
 
     log.info("selecting G1 nuclei.")
-    nuclei_data, details = nuclei.select_G1(args.k_sigma, args.dna_channel)
+    nuclei_data, details = nuclei.select_G1(args.k_sigma, args.ref_channel)
     passed = extract_passing_nuclei_per_series(nuclei_data, args.inreg)
 
     series_list = remove_labels_from_series_list_masks(
