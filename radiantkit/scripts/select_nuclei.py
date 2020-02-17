@@ -205,10 +205,10 @@ def init_series_list(args) -> SeriesList:
     pickle_path = os.path.join(args.input, args.pickle_name)
 
     if os.path.exists(pickle_path):
-        if not args.enforce_unpickling:
+        if not args.import_architecture:
             log.info(f"Found '{args.pickle_name}' file in input folder."
                      + "Use --import-architecture flag to unpickle it.")
-        if args.enforce_unpickling:
+        if args.import_architecture:
             with open(pickle_path, "rb") as PI:
                 series_list = pickle.load(PI)
 
