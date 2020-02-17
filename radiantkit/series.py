@@ -216,7 +216,7 @@ class ChannelList(object):
     def __contains__(self, name: str) -> bool:
         return name in self._channels
 
-    def __str__(self) -> str:
+    def __repr__(self) -> str:
         s = f"Series #{self._ID} with {len(self)} channels."
         for name, channel in self:
             s += f"\n  {name} => '{channel.path}'"
@@ -277,7 +277,7 @@ class Series(ChannelList):
                        particleClass: Type[Particle] = Particle,
                        channel_list: Optional[List[str]] = None,
                        reInit: bool = False) -> None:
-        if 0 != len(self.particles) and not reInit:
+        if 0 != len(self._particles) and not reInit:
             return
 
         if self.mask is None:

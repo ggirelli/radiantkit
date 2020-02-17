@@ -253,6 +253,7 @@ def remove_labels_from_series_list_masks(
         else:
             import pickle
             for s in series_list:
+                print(s)
                 with open("test.pkl", "wb") as PO:
                     pickle.dump(s, PO)
                 with open("test.pkl", "wb") as PO:
