@@ -251,7 +251,8 @@ def remove_labels_from_series_list_masks(
                 remove_labels_from_series_mask(
                     s, passed[s.ID], args.labeled, args.compressed)
         else:
-            print((s, passed[s.ID], args.labeled, args.compressed))
+            print((series_list[0], passed[series_list[0].ID],
+                  args.labeled, args.compressed))
             joblib.Parallel(n_jobs=args.threads, verbose=11)(
                 joblib.delayed(remove_labels_from_series_mask)(
                     s, passed[s.ID], args.labeled, args.compressed)
