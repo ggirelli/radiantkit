@@ -159,7 +159,7 @@ def plot_nuclear_features(
         colname = data.columns[ci+n_id_cols]
         collab = labels[colname] if colname in labels else colname
 
-        for root in np.unique(data['root'].values):
+        for root in np.unique(data['root'].values.tolist()):
             fig.add_trace(go.Box(
                 name=root,
                 y=data[data['root'] == root][colname].values,
@@ -172,7 +172,7 @@ def plot_nuclear_features(
         channel = channel_list[ci-n_features]
         spx_channel = spx_data[spx_data['channel'] == channel]
 
-        for root in spx_channel['root'].values:
+        for root in spx_channel['root'].values.tolist():
             spx_root = spx_channel[spx_channel['root'] == root]
             fig.add_trace(
                 go.Box(
