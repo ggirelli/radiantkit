@@ -87,11 +87,21 @@ interactive data visualization.
         help="""Make a smaller HTML report by linking remote JS libraries.""",
         dest="online_report", const=True, default=False)
 
-    advanced = parser.add_argument_group("advanced arguments")
-    advanced.add_argument(
+    pickler = parser.add_argument_group("pickle arguments")
+    pickler.add_argument(
+        '--pickle-name', type=str, metavar="STRING",
+        help=f"""Filename for input/output pickle file.
+        Default: '{const.default_pickle}'""", default=2.5)
+    pickler.add_argument(
         '--export-architecture', action='store_const',
         dest='export_architecture', const=True, default=False,
         help='Export pickled series architecture.')
+    pickler.add_argument(
+        '--import-architecture', action='store_const',
+        dest='export_architecture', const=True, default=False,
+        help='Unpickle architecture if pickle file is found.')
+
+    advanced = parser.add_argument_group("advanced arguments")
     advanced.add_argument(
         '--block-side', type=int, metavar="NUMBER",
         help="""Structural element side for dilation-based background/foreground
@@ -192,10 +202,13 @@ def confirm_arguments(args: argparse.Namespace) -> None:
 
 def init_series_list(args) -> SeriesList:
     series_list = None
-    pickle_path = os.path.join(args.input, const.default_pickle)
+    pickle_path = os.path.join(args.input, args.pickle_name)
 
     if os.path.exists(pickle_path):
-        if io.ask(f"Unpickle from '{pickle_path}'?", False):
+        if not args.enforce_unpickling:
+            log.info(f"Found '{args.pickle_name}' file in input folder."
+                     + "Use --import-architecture flag to unpickle it.")
+        if args.enforce_unpickling:
             with open(pickle_path, "rb") as PI:
                 series_list = pickle.load(PI)
 
