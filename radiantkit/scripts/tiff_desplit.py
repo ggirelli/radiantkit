@@ -19,7 +19,7 @@ def init_parser(subparsers: argparse._SubParsersAction
     parser = subparsers.add_parser(
         __name__.split('.')[-1], description=f'''Long description''',
         formatter_class=argparse.RawDescriptionHelpFormatter,
-        help="Short description")
+        help="Stitch together images split with tiff_split. *NOT IMPLEMENTED*")
 
     parser.add_argument(
         'input', type=str,
