@@ -138,11 +138,6 @@ def parse_arguments(args: argparse.Namespace) -> argparse.Namespace:
 
     args.threads = ggc.args.check_threads(args.threads)
 
-    if not args.export_tiffs and not args.export_features:
-        log.info("Nothing to export when using both "
-                 + "--no-tiff-export and no-feature-export flags.")
-        sys.exit()
-
     return args
 
 
