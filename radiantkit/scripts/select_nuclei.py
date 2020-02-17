@@ -11,10 +11,10 @@ import logging as log
 import numpy as np  # type: ignore
 import os
 import pandas as pd  # type: ignore
-import pickle
 from radiantkit import const
 from radiantkit.image import ImageBinary, ImageLabeled
 from radiantkit.particle import NucleiList, Nucleus
+from radiantkit.scripts import common
 from radiantkit.series import Series, SeriesList
 from radiantkit import io, path, report, string
 import re
@@ -177,8 +177,10 @@ def print_settings(args: argparse.Namespace, clear: bool = True) -> str:
          Remove labels : {args.remove_labels}
             Compressed : {args.compressed}
 
+           Pickle name : {args.pickle_name}
          Export pickle : {args.export_architecture}
          Import pickle : {args.import_architecture}
+
                Threads : {args.threads}
                 Regexp : {args.inreg.pattern}
     """
@@ -199,27 +201,6 @@ def confirm_arguments(args: argparse.Namespace) -> None:
     with open(os.path.join(
             args.input, "select_nuclei.config.txt"), "w+") as OH:
         ggc.args.export_settings(OH, settings_string)
-
-
-def init_series_list(args) -> SeriesList:
-    series_list = None
-    pickle_path = os.path.join(args.input, args.pickle_name)
-
-    if os.path.exists(pickle_path):
-        if not args.import_architecture:
-            log.info(f"Found '{args.pickle_name}' file in input folder."
-                     + "Use --import-architecture flag to unpickle it.")
-        if args.import_architecture:
-            with open(pickle_path, "rb") as PI:
-                series_list = pickle.load(PI)
-
-    if series_list is None:
-        series_list = SeriesList.from_directory(
-            args.input, args.inreg, args.dna_channel,
-            (args.mask_prefix, args.mask_suffix),
-            None, args.labeled, args.block_side)
-
-    return series_list
 
 
 def extract_passing_nuclei_per_series(
@@ -290,11 +271,7 @@ def mk_report(args: argparse.Namespace, nuclei_data: pd.DataFrame,
 
 def run(args: argparse.Namespace) -> None:
     confirm_arguments(args)
-    series_list = init_series_list(args)
-
-    log.info(f"parsed {len(series_list)} series with "
-             + f"{len(series_list.channel_names)} channels each"
-             + f": {series_list.channel_names}")
+    series_list = common.init_series_list(args)
 
     log.info(f"extracting nuclei")
     series_list.extract_particles(Nucleus, [args.dna_channel], args.threads)
@@ -324,6 +301,4 @@ def run(args: argparse.Namespace) -> None:
 
     mk_report(args, nuclei_data, details, series_list)
 
-    if args.export_architecture:
-        log.info("Pickling architecture")
-        series_list.to_pickle(args.input)
+    common.pickle_series_list(args, series_list)
