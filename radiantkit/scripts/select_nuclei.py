@@ -241,6 +241,7 @@ def remove_labels_from_series_mask(
         M = ImageBinary(L)
         M.to_tiff(series.mask.path, compressed)
 
+    series.unload()
     return series
 
 
