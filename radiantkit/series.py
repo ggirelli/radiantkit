@@ -220,8 +220,10 @@ class ChannelList(object):
         s = f"Series #{self._ID} with {len(self)} channels."
         for name, channel in self:
             s += f"\n  {name} => '{channel.path}'"
+            s += f" [loaded:{channel.loaded}]"
         if self.mask is not None:
             s += f"\n  mask({self.reference}) => '{self.mask.path}'"
+            s += f" [loaded:{self.mask.loaded}]"
         return s
 
 
