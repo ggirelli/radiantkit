@@ -39,7 +39,7 @@ def report_select_nuclei(
     figure = ra.plot.plot_nuclear_selection(
         kwargs['data'], args.dna_channel,
         details['size']['range'], details['isum']['range'],
-        details['size']['fit'], details['isum']['fit'],)
+        details['size']['fit'], details['isum']['fit'])
 
     report.render(
         opath, title="RadIAnT-Kit - Nuclei selection",
@@ -57,6 +57,7 @@ def report_extract_objects(
     figure = ra.plot.plot_nuclear_features(
         kwargs['data'], kwargs['spx_data'],
         kwargs['series_list'].particle_feature_labels())
+    print(figure)
 
     report.render(
         opath, title="RadIAnT-Kit - Object extraction",
