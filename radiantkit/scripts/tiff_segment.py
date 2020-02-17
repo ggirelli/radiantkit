@@ -5,14 +5,13 @@
 
 import logging
 import argparse
-from ggc.prompt import ask  # type: ignore
 from ggc.args import check_threads, export_settings  # type: ignore
 from joblib import delayed, Parallel  # type: ignore
 import numpy as np  # type: ignore
 import os
 from radiantkit.const import __version__
 from radiantkit import const, path, stat, string
-from radiantkit import image, segmentation
+from radiantkit import image, io, segmentation
 import re
 import sys
 from tqdm import tqdm  # type: ignore
@@ -191,7 +190,7 @@ def print_settings(args: argparse.Namespace, clear: bool = True) -> str:
 def confirm_arguments(args: argparse.Namespace) -> None:
     settings_string = print_settings(args)
     if not args.do_all:
-        ask("Confirm settings and proceed?")
+        io.ask("Confirm settings and proceed?")
 
     assert os.path.isdir(args.input), f"image folder not found: {args.input}"
     if not os.path.isdir(args.output):

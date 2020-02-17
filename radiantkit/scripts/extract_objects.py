@@ -8,9 +8,8 @@ import ggc  # type: ignore
 import logging as log
 import os
 from radiantkit import const
-from radiantkit.distance import RadialDistanceCalculator
 from radiantkit import particle, series
-from radiantkit import report, string
+from radiantkit import io, report, string
 import re
 import sys
 
@@ -175,7 +174,7 @@ Reference channel name : '{args.ref_channel}'
 def confirm_arguments(args: argparse.Namespace) -> None:
     settings_string = print_settings(args)
     if not args.do_all:
-        ggc.prompt.ask("Confirm settings and proceed?")
+        io.ask("Confirm settings and proceed?")
 
     assert os.path.isdir(args.input), f"image folder not found: {args.input}"
 
