@@ -252,14 +252,15 @@ def remove_labels_from_series_list_masks(
                     s, passed[s.ID], args.labeled, args.compressed)
         else:
             import pickle
-            with open("test.pkl", "wb") as PO:
-                pickle.dump(series_list[0], PO)
-            with open("test.pkl", "wb") as PO:
-                pickle.dump(passed[series_list[0].ID], PO)
-            with open("test.pkl", "wb") as PO:
-                pickle.dump(args.labeled, PO)
-            with open("test.pkl", "wb") as PO:
-                pickle.dump(args.compressed, PO)
+            for s in series_list:
+                with open("test.pkl", "wb") as PO:
+                    pickle.dump(s, PO)
+                with open("test.pkl", "wb") as PO:
+                    pickle.dump(passed[s.ID], PO)
+                with open("test.pkl", "wb") as PO:
+                    pickle.dump(args.labeled, PO)
+                with open("test.pkl", "wb") as PO:
+                    pickle.dump(args.compressed, PO)
             joblib.Parallel(n_jobs=args.threads, verbose=11)(
                 joblib.delayed(remove_labels_from_series_mask)(
                     s, passed[s.ID], args.labeled, args.compressed)
