@@ -182,10 +182,10 @@ def plot_nuclear_features(
                     marker_color=pal[np.argmax(root_list == root)]),
                 row=ci//n_plot_grid_col+1, col=ci % n_plot_grid_col+1)
             fig.update_traces(
-                q1=spx_root['q1'], q3=spx_root['q3'],
-                median=spx_root['median'],
-                lowerfence=spx_root['whisk_low'],
-                upperfence=spx_root['whisk_high'],
+                q1=spx_root['q1'].values, q3=spx_root['q3'].values,
+                median=spx_root['median'].values,
+                lowerfence=spx_root['whisk_low'].values,
+                upperfence=spx_root['whisk_high'].values,
                 row=ci//n_plot_grid_col+1, col=ci % n_plot_grid_col+1)
 
         layout[f"yaxis{ci+1}"] = dict(
