@@ -4,7 +4,6 @@
 '''
 
 import argparse
-import copy as cp
 import ggc  # type: ignore
 import joblib  # type: ignore
 import itertools
@@ -221,11 +220,13 @@ def extract_passing_nuclei_per_series(
 
 def remove_labels_from_series_mask(
         series: Series, labels: List[int],
-        labeled: bool, compressed: bool) -> None:
+        labeled: bool, compressed: bool) -> Series:
     if series.mask is None:
-        return None
+        return series
+
     series.mask.load_from_local()
     os.rename(series.mask.path, f"{series.mask.path}.old")
+
     if labeled:
         L = series.mask.pixels
         L[np.logical_not(np.isin(L, labels))] = 0
@@ -240,6 +241,8 @@ def remove_labels_from_series_mask(
         M = ImageBinary(L)
         M.to_tiff(series.mask.path, compressed)
 
+    return series
+
 
 def remove_labels_from_series_list_masks(
         args: argparse.Namespace, series_list: SeriesList,
@@ -249,12 +252,13 @@ def remove_labels_from_series_list_masks(
         log.info("removing discarded nuclei labels from masks")
         if 1 == args.threads:
             for s in tqdm(series_list):
-                remove_labels_from_series_mask(
+                s = remove_labels_from_series_mask(
                     s, passed[s.ID], args.labeled, args.compressed)
         else:
-            joblib.Parallel(n_jobs=args.threads, verbose=11)(
+            series_list.series = joblib.Parallel(
+                n_jobs=args.threads, verbose=11)(
                 joblib.delayed(remove_labels_from_series_mask)(
-                    cp.copy(s), passed[s.ID], args.labeled, args.compressed)
+                    s, passed[s.ID], args.labeled, args.compressed)
                 for s in series_list)
         n_removed = len(nuclei)-len(list(itertools.chain(*passed.values())))
         log.info(f"removed {n_removed} nuclei labels")
