@@ -278,7 +278,7 @@ def mk_report(args: argparse.Namespace, nuclei_data: pd.DataFrame,
 
 def run(args: argparse.Namespace) -> None:
     confirm_arguments(args)
-    series_list = common.init_series_list(args)
+    args, series_list = common.init_series_list(args)
 
     log.info(f"extracting nuclei")
     series_list.extract_particles(Nucleus, [args.dna_channel], args.threads)

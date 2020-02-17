@@ -8,6 +8,7 @@ import logging
 import os
 import pickle
 from radiantkit import series
+from typing import Tuple
 
 
 def set_default_args_for_series_init(
@@ -21,7 +22,18 @@ def set_default_args_for_series_init(
     return args
 
 
-def init_series_list(args: argparse.Namespace) -> series.SeriesList:
+def check_parallelization_and_pickling(
+        args: argparse.Namespace, pickled: bool) -> argparse.Namespace:
+    if pickled:
+        args.threads = 1
+        logging.warning(
+            "deactivated parallelization when loading pickled architecture.")
+    return args
+
+
+def init_series_list(args: argparse.Namespace
+                     ) -> Tuple[argparse.Namespace, series.SeriesList]:
+    pickled = False
     series_list = None
     pickle_path = os.path.join(args.input, args.pickle_name)
     args = set_default_args_for_series_init(args)
@@ -33,6 +45,7 @@ def init_series_list(args: argparse.Namespace) -> series.SeriesList:
         if args.import_architecture:
             with open(pickle_path, "rb") as PI:
                 series_list = pickle.load(PI)
+                pickled = True
 
     if series_list is None:
         logging.info(f"parsing series folder")
@@ -45,7 +58,9 @@ def init_series_list(args: argparse.Namespace) -> series.SeriesList:
                  + f"{len(series_list.channel_names)} channels each"
                  + f": {series_list.channel_names}")
 
-    return series_list
+    args = check_parallelization_and_pickling(args, pickled)
+
+    return args, series_list
 
 
 def pickle_series_list(args: argparse.Namespace,
