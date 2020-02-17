@@ -194,6 +194,9 @@ def export_object_features(args: argparse.Namespace,
     single_pixel_box_data = series_list.get_particle_single_px_stats()
     single_pixel_box_data.to_csv(feat_path, index=False, sep="\t")
 
+    log.info(f"testing radial profiles")
+    series_list.get_radial_profiles(args.output)
+
     if args.mk_report:
         report_path = os.path.join(
             args.output, "extract_objects.report.html")
