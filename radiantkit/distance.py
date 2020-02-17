@@ -55,9 +55,8 @@ class RadialDistanceCalculator(object):
         return self._quantile
 
     def __calc_contour_dist(self, B: ImageBase) -> ImageBase:
-        contour_dist = Image(distance_transform_edt(B.get_offset(1), B.aspect),
-                             axes=B.axes)
-        contour_dist.aspect = B.aspect
+        contour_dist = B.from_this(distance_transform_edt(
+            B.offset(1).pixels, B.aspect)).offset(-1)
         return contour_dist
 
     def __calc_center_of_mass(self, contour_dist: ImageBase,

@@ -216,8 +216,8 @@ class ImageBase(ImageSettings):
         save_tiff(path, self.pixels, self.dtype, compressed, bundle_axes,
                   inMicrons, ResolutionZ, forImageJ, **kwargs)
 
-    def get_offset(self, offset: int) -> np.ndarray:
-        return offset2(self.pixels, offset)
+    def offset(self, offset: int) -> np.ndarray:
+        return self.from_this(offset2(self.pixels, offset))
 
     def copy(self) -> 'ImageBase':
         return self.from_this(self.pixels, True)
