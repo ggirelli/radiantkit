@@ -319,29 +319,27 @@ class Series(ChannelList):
             self.unload(channel_name)
 
     def init_particles_distances(
-            self, rdc: RadialDistanceCalculator) -> None:
+            self, rdc: RadialDistanceCalculator, reInit: bool = False) -> None:
         C = None
         if self.reference is not None and (
                 rdc.center_type is CenterType.CENTER_OF_MASS):
             C = self[self.reference][1]
         for particle in self._particles:
-            if not particle.has_distances():
+            if not particle.has_distances() or reInit:
                 particle.init_distances(rdc, C)
         if C is not None:
             C.unload()
 
     def get_particles_intensity_at_distance(
             self, channel_name: str) -> pd.DataFrame:
+        assert channel_name in self.names
         assert all([p.has_distances for p in self._particles])
         df = pd.concat([p.get_intensity_at_distance(self[channel_name][1])
                         for p in self._particles])
         self.unload(channel_name)
+        df['channel'] = channel_name
         df['series_label'] = self.ID
         return df
-
-    def get_radial_profile(self, rdc: RadialDistanceCalculator,
-                           channel_name: str) -> pd.DataFrame:
-        raise NotImplementedError
 
     @staticmethod
     def static_export_particles(series: 'Series', path: str,
@@ -554,7 +552,21 @@ class SeriesList(object):
                     series, path, compressed) for series in self)
 
     def get_radial_profiles(
-            self, rdc: RadialDistanceCalculator) -> pd.DataFrame:
+            self, dpath: str, bundle_axes: Optional[str] = None,
+            center_type: CenterType = CenterType.QUANTILE,
+            q: Optional[float] = None, reInit: bool = False) -> pd.DataFrame:
+        rdc = RadialDistanceCalculator(bundle_axes, center_type, q)
+        for channel_name in self.channel_names:
+            channel_idata_dflist = []
+            for s in self.series:
+                s.init_particles_distances(rdc, reInit)
+                channel_idata_dflist.append(
+                    s.get_particles_intensity_at_distance(channel_name))
+            channel_intensity_data = pd.concat(channel_idata_dflist)
+            channel_intensity_data.to_csv(
+                os.path.join(
+                    dpath, f"{channel_name}.intensity_at_distance.tsv"),
+                sep="\t", index=False)
         raise NotImplementedError
 
     def __len__(self) -> int:
