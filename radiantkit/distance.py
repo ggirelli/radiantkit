@@ -4,8 +4,9 @@
 '''
 
 from enum import Enum
+import logging
 import numpy as np  # type: ignore
-from radiantkit.image import ImageBase, ImageBinary, Image
+from radiantkit.image import ImageBase, ImageBinary
 from radiantkit import stat
 from scipy.ndimage.morphology import distance_transform_edt  # type: ignore
 from scipy.ndimage import center_of_mass  # type: ignore
@@ -85,6 +86,8 @@ class RadialDistanceCalculator(object):
     def __calc_quantile(self, contour_dist: ImageBase) -> ImageBase:
         q = self.quantile(contour_dist)
         qvalue = np.quantile(contour_dist.pixels[contour_dist.pixels != 0], q)
+        logging.info(qvalue)
+        logging.info(((contour_dist.pixels < qvalue).sum(), np.prod(contour_dist.shape)))
         center_dist = distance_transform_edt(
             contour_dist.pixels < qvalue, contour_dist.aspect)
         center_dist[0 == contour_dist] = np.inf
@@ -128,6 +131,11 @@ class RadialDistanceCalculator(object):
         center_dist = self.__calc_center_dist(contour_dist, C)
         if center_dist is None:
             return None
+        logging.info(('contour_dist', contour_dist.pixels.min(),
+                      contour_dist.pixels.max(), contour_dist.pixels.sum()))
+
+        logging.info(('center_dist', center_dist.pixels.min(),
+                      center_dist.pixels.max(), center_dist.pixels.sum()))
 
         contour_dist = self.__unflatten(contour_dist, B.shape)
         center_dist = self.__unflatten(center_dist, B.shape)
