@@ -178,8 +178,8 @@ def print_settings(args: argparse.Namespace, clear: bool = True) -> str:
             Compressed : {args.compressed}
 
            Pickle name : {args.pickle_name}
-         Export pickle : {args.export_architecture}
          Import pickle : {args.import_architecture}
+         Export pickle : {args.export_architecture}
 
                Threads : {args.threads}
                 Regexp : {args.inreg.pattern}
@@ -253,7 +253,7 @@ def remove_labels_from_series_list_masks(
         else:
             import pickle
             for s in series_list:
-                print(s)
+                print((s, passed[s.ID], args.labeled, args.compressed))
                 with open("test.pkl", "wb") as PO:
                     pickle.dump(s, PO)
                 with open("test.pkl", "wb") as PO:
