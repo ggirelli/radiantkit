@@ -243,6 +243,7 @@ def remove_labels_from_series_mask(
 def remove_labels_from_series_list_masks(
         args: argparse.Namespace, series_list: SeriesList,
         passed: Dict[int, List[int]], nuclei: NucleiList) -> SeriesList:
+    series_list.unload()
     if args.remove_labels:
         log.info("removing discarded nuclei labeles from masks")
         if 1 == args.threads:
@@ -250,6 +251,7 @@ def remove_labels_from_series_list_masks(
                 remove_labels_from_series_mask(
                     s, passed[s.ID], args.labeled, args.compressed)
         else:
+            print((s, passed[s.ID], args.labeled, args.compressed))
             joblib.Parallel(n_jobs=args.threads, verbose=11)(
                 joblib.delayed(remove_labels_from_series_mask)(
                     s, passed[s.ID], args.labeled, args.compressed)

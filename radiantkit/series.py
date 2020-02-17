@@ -598,6 +598,10 @@ class SeriesList(object):
         with open(pickle_path, "wb") as PO:
             pickle.dump(self, PO)
 
+    def unload(self, name: Optional[str] = None) -> None:
+        for series in self.series:
+            series.unload(name)
+
     def __len__(self) -> int:
         return len(self.series)
 
