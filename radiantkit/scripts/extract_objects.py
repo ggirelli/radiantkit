@@ -8,6 +8,7 @@ import ggc  # type: ignore
 import logging as log
 import os
 from radiantkit import const
+from radiantkit.distance import RadialDistanceCalculator
 from radiantkit import particle, series
 from radiantkit import report, string
 import re
@@ -194,8 +195,9 @@ def export_object_features(args: argparse.Namespace,
     single_pixel_box_data = series_list.get_particle_single_px_stats()
     single_pixel_box_data.to_csv(feat_path, index=False, sep="\t")
 
-    log.info(f"testing radial profiles")
-    series_list.get_radial_profiles(args.output)
+    # log.info(f"testing radial profiles")
+    # rdc = RadialDistanceCalculator()
+    # series_list.get_radial_profiles(args.output, rdc)
 
     if args.mk_report:
         report_path = os.path.join(
