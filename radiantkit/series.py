@@ -11,6 +11,7 @@ import numpy as np  # type: ignore
 from numpy.polynomial.polynomial import Polynomial  # type: ignore
 import os
 import pandas as pd  # type: ignore
+import pickle
 from radiantkit.distance import CenterType, RadialDistanceCalculator
 from radiantkit.image import ImageBinary, ImageLabeled, Image
 from radiantkit.path import find_re, get_image_details
@@ -582,6 +583,12 @@ class SeriesList(object):
                     nbins, deg))
 
         return profiles
+
+    def to_pickle(self, dpath: str, pickle_name: str = "radiant.pkl") -> None:
+        assert os.path.isdir(dpath)
+        pickle_path = os.path.join(dpath, pickle_name)
+        with open(pickle_path, "wb") as PO:
+            pickle.dump(self, PO)
 
     def __len__(self) -> int:
         return len(self.series)
