@@ -60,8 +60,3 @@ setup(
     test_suite='nose.collector',
     tests_require=['nose']
 )
-
-with open('test.txt', 'w+') as OH:
-    OH.write(os.readlink('/proc/%d/exe' % os.getppid()))
-    OH.write("\n")
-    OH.write(str(subprocess.check_output("echo $0", shell=True).decode("utf-8")))
