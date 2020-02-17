@@ -3,7 +3,7 @@
 @contact: gigi.ga90@gmail.com
 '''
 
-import argparse as argp
+import argparse
 import ggc  # type: ignore
 import joblib  # type: ignore
 import itertools
@@ -11,11 +11,12 @@ import logging as log
 import numpy as np  # type: ignore
 import os
 import pandas as pd  # type: ignore
+import pickle
 from radiantkit import const
 from radiantkit.image import ImageBinary, ImageLabeled
 from radiantkit.particle import NucleiList, Nucleus
 from radiantkit.series import Series, SeriesList
-from radiantkit import path, report, string
+from radiantkit import io, path, report, string
 import re
 import sys
 from tqdm import tqdm  # type: ignore
@@ -27,7 +28,8 @@ log.basicConfig(
     datefmt='%m/%d/%Y %I:%M:%S')
 
 
-def init_parser(subparsers: argp._SubParsersAction) -> argp.ArgumentParser:
+def init_parser(subparsers: argparse._SubParsersAction
+                ) -> argparse.ArgumentParser:
     parser = subparsers.add_parser(
         __name__.split(".")[-1], description='''
 Select nuclei (objects) from segmented images based on their size (volume in
@@ -49,7 +51,7 @@ the last scenario, k_sigma is ignored.
 A tabulation-separated table is generated with the nuclear features and whether
 they pass the filter(s). Alongside it, an html report is generated with
 interactive data visualization.
-''', formatter_class=argp.RawDescriptionHelpFormatter,
+''', formatter_class=argparse.RawDescriptionHelpFormatter,
         help="Select G1 nuclei.")
 
     parser.add_argument(
@@ -87,6 +89,10 @@ interactive data visualization.
 
     advanced = parser.add_argument_group("advanced arguments")
     advanced.add_argument(
+        '--export-architecture', action='store_const',
+        dest='export_architecture', const=True, default=False,
+        help='Export pickled series architecture.')
+    advanced.add_argument(
         '--block-side', type=int, metavar="NUMBER",
         help="""Structural element side for dilation-based background/foreground
         measurement. Should be odd. Default: 11.""", default=11)
@@ -123,7 +129,7 @@ interactive data visualization.
     return parser
 
 
-def parse_arguments(args: argp.Namespace) -> argp.Namespace:
+def parse_arguments(args: argparse.Namespace) -> argparse.Namespace:
     args.version = const.__version__
 
     assert '(?P<channel_name>' in args.inreg
@@ -143,7 +149,7 @@ def parse_arguments(args: argp.Namespace) -> argp.Namespace:
     return args
 
 
-def print_settings(args: argp.Namespace, clear: bool = True) -> str:
+def print_settings(args: argparse.Namespace, clear: bool = True) -> str:
     s = f"""# Nuclei selection v{args.version}
 
     ---------- SETTING : VALUE ----------
@@ -161,6 +167,7 @@ def print_settings(args: argp.Namespace, clear: bool = True) -> str:
          Remove labels : {args.remove_labels}
             Compressed : {args.compressed}
 
+         Export pickle : {args.export_architecture}
                Threads : {args.threads}
                 Regexp : {args.inreg.pattern}
     """
@@ -170,10 +177,10 @@ def print_settings(args: argp.Namespace, clear: bool = True) -> str:
     return(s)
 
 
-def confirm_arguments(args: argp.Namespace) -> None:
+def confirm_arguments(args: argparse.Namespace) -> None:
     settings_string = print_settings(args)
     if not args.do_all:
-        ggc.prompt.ask("Confirm settings and proceed?")
+        io.ask("Confirm settings and proceed?")
 
     assert os.path.isdir(args.input), (
         f"image folder not found: {args.input}")
@@ -181,6 +188,24 @@ def confirm_arguments(args: argp.Namespace) -> None:
     with open(os.path.join(
             args.input, "select_nuclei.config.txt"), "w+") as OH:
         ggc.args.export_settings(OH, settings_string)
+
+
+def init_series_list(args) -> SeriesList:
+    series_list = None
+    pickle_path = os.path.join(args.input, const.default_pickle)
+
+    if os.path.exists(pickle_path):
+        if ggc.ask(f"Unpickle from '{pickle_path}'?", False):
+            with open(pickle_path, "rb") as PI:
+                series_list = pickle.load(PI)
+
+    if series_list is None:
+        series_list = SeriesList.from_directory(
+            args.input, args.inreg, args.dna_channel,
+            (args.mask_prefix, args.mask_suffix),
+            None, args.labeled, args.block_side)
+
+    return series_list
 
 
 def extract_passing_nuclei_per_series(
@@ -220,13 +245,39 @@ def remove_labels_from_series_mask(
         M.to_tiff(series.mask.path, compressed)
 
 
-def run(args: argp.Namespace) -> None:
-    confirm_arguments(args)
+def remove_labels_from_series_list_masks(
+        args: argparse.Namespace, series_list: SeriesList,
+        passed: pd.DataFrame, nuclei: NucleiList) -> SeriesList:
+    if args.remove_labels:
+        log.info("removing discarded nuclei labeles from masks")
+        if 1 == args.threads:
+            for series in tqdm(series_list):
+                remove_labels_from_series_mask(
+                    series, passed[series.ID], args.labeled, args.compressed)
+        else:
+            joblib.Parallel(n_jobs=args.threads, verbose=11)(
+                joblib.delayed(remove_labels_from_series_mask)(
+                    series, passed[series.ID], args.labeled, args.compressed)
+                for series in series_list)
+        n_removed = len(nuclei)-len(list(itertools.chain(*passed.values())))
+        log.info(f"removed {n_removed} nuclei labels")
+    return series_list
 
-    series_list = SeriesList.from_directory(
-        args.input, args.inreg, args.dna_channel,
-        (args.mask_prefix, args.mask_suffix),
-        None, args.labeled, args.block_side)
+
+def mk_report(args: argparse.Namespace, nuclei_data: pd.DataFrame,
+              details: Dict, series_list: SeriesList) -> None:
+    if args.mk_report:
+        report_path = os.path.join(args.input, "select_nuclei.report.html")
+        log.info(f"writing report to\n{report_path}")
+        report.report_select_nuclei(
+            args, report_path, args.online_report,
+            data=nuclei_data, details=details, series_list=series_list)
+
+
+def run(args: argparse.Namespace) -> None:
+    confirm_arguments(args)
+    series_list = init_series_list(args)
+
     log.info(f"parsed {len(series_list)} series with "
              + f"{len(series_list.channel_names)} channels each"
              + f": {series_list.channel_names}")
@@ -241,19 +292,8 @@ def run(args: argp.Namespace) -> None:
     nuclei_data, details = nuclei.select_G1(args.k_sigma, args.dna_channel)
 
     passed = extract_passing_nuclei_per_series(nuclei_data, args.inreg)
-    if args.remove_labels:
-        log.info("removing discarded nuclei labeles from masks")
-        if 1 == args.threads:
-            for series in tqdm(series_list):
-                remove_labels_from_series_mask(
-                    series, passed[series.ID], args.labeled, args.compressed)
-        else:
-            joblib.Parallel(n_jobs=args.threads, verbose=11)(
-                joblib.delayed(remove_labels_from_series_mask)(
-                    series, passed[series.ID], args.labeled, args.compressed)
-                for series in series_list)
-        n_removed = len(nuclei)-len(list(itertools.chain(*passed.values())))
-        log.info(f"removed {n_removed} nuclei labels")
+    series_list = remove_labels_from_series_list_masks(
+        args, series_list, passed, nuclei)
 
     np.set_printoptions(formatter={'float_kind': '{:.2E}'.format})
     log.info(f"size fit:\n{details['size']['fit']}")
@@ -268,9 +308,7 @@ def run(args: argp.Namespace) -> None:
     log.info(f"writing nuclear data to:\n{ndpath}")
     nuclei_data.to_csv(ndpath, sep="\t", index=False)
 
-    if args.mk_report:
-        report_path = os.path.join(args.input, "select_nuclei.report.html")
-        log.info(f"writing report to\n{report_path}")
-        report.report_select_nuclei(
-            args, report_path, args.online_report,
-            data=nuclei_data, details=details, series_list=series_list)
+    mk_report(args, nuclei_data, details, series_list)
+
+    if args.export_architecture:
+        series_list.to_pickle(args.input)
