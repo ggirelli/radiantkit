@@ -73,7 +73,7 @@ class ParticleBase(object):
     def surface(self) -> float:
         if self._surface is None:
             verts, faces, ns, vs = marching_cubes_lewiner(
-                self._mask.get_offset(1), 0.0, self._mask.aspect)
+                self._mask.offset(1).pixels, 0.0, self._mask.aspect)
             self._surface = mesh_surface_area(verts, faces)
         return self._surface
 
