@@ -50,7 +50,7 @@ def init_series_list(args: argparse.Namespace
     if series_list is None:
         logging.info(f"parsing series folder")
         series_list = series.SeriesList.from_directory(
-            args.input, args.inreg, args.dna_channel,
+            args.input, args.inreg, args.ref_channel,
             (args.mask_prefix, args.mask_suffix),
             args.aspect, args.labeled, args.block_side)
 
