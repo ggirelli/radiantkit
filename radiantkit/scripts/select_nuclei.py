@@ -246,14 +246,14 @@ def remove_labels_from_series_list_masks(
     if args.remove_labels:
         log.info("removing discarded nuclei labeles from masks")
         if 1 == args.threads:
-            for series in tqdm(series_list):
+            for s in tqdm(series_list):
                 remove_labels_from_series_mask(
-                    series, passed[series.ID], args.labeled, args.compressed)
+                    s, passed[s.ID], args.labeled, args.compressed)
         else:
             joblib.Parallel(n_jobs=args.threads, verbose=11)(
                 joblib.delayed(remove_labels_from_series_mask)(
-                    series, passed[series.ID], args.labeled, args.compressed)
-                for series in series_list)
+                    s, passed[s.ID].values, args.labeled, args.compressed)
+                for s in series_list)
         n_removed = len(nuclei)-len(list(itertools.chain(*passed.values())))
         log.info(f"removed {n_removed} nuclei labels")
     return series_list
@@ -280,9 +280,10 @@ def run(args: argparse.Namespace) -> None:
         *[s.particles for s in series_list])))
     log.info(f"extracted {len(nuclei)} nuclei.")
 
+    log.info("selecting G1 nuclei.")
     nuclei_data, details = nuclei.select_G1(args.k_sigma, args.dna_channel)
-
     passed = extract_passing_nuclei_per_series(nuclei_data, args.inreg)
+
     series_list = remove_labels_from_series_list_masks(
         args, series_list, passed, nuclei)
 
