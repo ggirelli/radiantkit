@@ -318,6 +318,11 @@ class Series(ChannelList):
                     compressed)
             self.unload(channel_name)
 
+    @staticmethod
+    def static_export_particles(series: 'Series', path: str,
+                                compressed: bool) -> None:
+        series.export_particles(path, compressed)
+
     def init_particles_distances(
             self, rdc: RadialDistanceCalculator, reInit: bool = False) -> None:
         C = None
@@ -340,11 +345,6 @@ class Series(ChannelList):
         df['channel'] = channel_name
         df['series_label'] = self.ID
         return df
-
-    @staticmethod
-    def static_export_particles(series: 'Series', path: str,
-                                compressed: bool) -> None:
-        series.export_particles(path, compressed)
 
     def __str__(self):
         s = super(Series, self).__str__()
