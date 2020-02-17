@@ -19,14 +19,20 @@ def init_parser(subparsers: argparse._SubParsersAction
     parser = subparsers.add_parser(
         __name__.split('.')[-1], description=f'''Long description''',
         formatter_class=argparse.RawDescriptionHelpFormatter,
-        help="Generate average radial profiles for a cell population. *NOT IMPLEMENTED*")
+        help="Setup vanilla snakemake workflows. *NOT IMPLEMENTED*")
 
     parser.add_argument(
         'input', type=str,
-        help='Path to folder containing deconvolved tiff images and masks.')
+        help='''Path to the czi file to convert.''')
+
     parser.add_argument(
-        'ref_channel', type=str,
-        help='Name of channel with DNA staining intensity.')
+        '-o', '--outdir', metavar="outdir", type=str, default=None,
+        help="""Path to output TIFF folder, created if missing. Default to a
+        folder with the input file basename.""")
+
+    parser.add_argument(
+        '-C', '--compressed', action='store_const', dest='doCompress',
+        const=True, default=False, help='Force compressed TIFF as output.')
 
     parser.add_argument('--version', action='version',
                         version=f'{sys.argv[0]} {__version__}')

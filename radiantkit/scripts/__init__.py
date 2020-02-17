@@ -10,8 +10,9 @@ from radiantkit.scripts import select_nuclei
 from radiantkit.scripts import measure_objects, export_objects
 from radiantkit.scripts import radial_population, radial_object
 from radiantkit.scripts import radial_trajectory, radial_points
-from radiantkit.scripts import tiff_split
+from radiantkit.scripts import tiff_desplit, tiff_split
 from radiantkit.scripts import tiff_findoof, tiff_segment, tiffcu
+from radiantkit.scripts import make_pipeline
 
 __all__ = ["common",
            "config",
@@ -20,5 +21,6 @@ __all__ = ["common",
            "measure_objects", "export_objects",
            "radial_population", "radial_object",
            "radial_trajectory", "radial_points",
-           "tiff_split",
-           "tiff_findoof", "tiff_segment", "tiffcu"]
+           "tiff_desplit", "tiff_split",
+           "tiff_findoof", "tiff_segment", "tiffcu",
+           "make_pipeline"]

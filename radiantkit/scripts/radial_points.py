@@ -19,7 +19,7 @@ def init_parser(subparsers: argparse._SubParsersAction
     parser = subparsers.add_parser(
         __name__.split('.')[-1], description=f'''Long description''',
         formatter_class=argparse.RawDescriptionHelpFormatter,
-        help="Measure the radial position of a set of points.")
+        help="Measure the radial position of a set of points. *NOT IMPLEMENTED*")
 
     parser.add_argument(
         'input', type=str,

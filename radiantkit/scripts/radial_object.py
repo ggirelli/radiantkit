@@ -19,7 +19,7 @@ def init_parser(subparsers: argparse._SubParsersAction
     parser = subparsers.add_parser(
         __name__.split('.')[-1], description=f'''Long description''',
         formatter_class=argparse.RawDescriptionHelpFormatter,
-        help="Generate single-cell radial profiles.")
+        help="Generate single-cell radial profiles. *NOT IMPLEMENTED*")
 
     parser.add_argument(
         'input', type=str,
