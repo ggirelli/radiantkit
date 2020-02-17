@@ -5,7 +5,6 @@
 
 import argparse
 import configparser as cp
-from ggc.prompt import ask  # type: ignore
 import logging
 import numpy as np  # type: ignore
 import os
@@ -333,7 +332,7 @@ def save_settings(args: argparse.Namespace) -> None:
 def confirm_arguments(args: argparse.Namespace) -> None:
     print_settings(args)
     if not args.do_all:
-        ask("Confirm settings and proceed?")
+        io.ask("Confirm settings and proceed?")
     save_settings(args)
 
 
