@@ -91,7 +91,7 @@ interactive data visualization.
     pickler.add_argument(
         '--pickle-name', type=str, metavar="STRING",
         help=f"""Filename for input/output pickle file.
-        Default: '{const.default_pickle}'""", default=2.5)
+        Default: '{const.default_pickle}'""", default=const.default_pickle)
     pickler.add_argument(
         '--export-architecture', action='store_const',
         dest='export_architecture', const=True, default=False,
