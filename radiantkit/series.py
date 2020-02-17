@@ -303,7 +303,7 @@ class Series(ChannelList):
                                      f"mask_{basename}.tif"), compressed)
 
                 if nucleus.has_distances():
-                    center_dist, lamina_dist = nucleus.distances
+                    lamina_dist, center_dist = nucleus.distances
 
                     Image(center_dist).to_tiff(
                         os.path.join(path, f"centerDist_{basename}.tif"),
