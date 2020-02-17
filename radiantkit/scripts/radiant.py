@@ -45,6 +45,11 @@ tools for radial analysis of microscopy image.
     scripts.export_objects.init_parser(subparsers)
     scripts.measure_objects.init_parser(subparsers)
 
+    scripts.radial_population.init_parser(subparsers)
+    scripts.radial_object.init_parser(subparsers)
+    scripts.radial_trajectory.init_parser(subparsers)
+    scripts.radial_points.init_parser(subparsers)
+
     scripts.tiff_findoof.init_parser(subparsers)
     scripts.tiff_segment.init_parser(subparsers)
     scripts.tiff_split.init_parser(subparsers)
