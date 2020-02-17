@@ -554,7 +554,7 @@ class SeriesList(object):
     def get_radial_profiles(
             self, dpath: str, bundle_axes: Optional[str] = None,
             center_type: CenterType = CenterType.QUANTILE,
-            q: Optional[float] = None, reInit: bool = False) -> pd.DataFrame:
+            q: Optional[float] = None, reInit: bool = False) -> None:#pd.DataFrame:
         rdc = RadialDistanceCalculator(bundle_axes, center_type, q)
         for channel_name in self.channel_names:
             channel_idata_dflist = []
@@ -567,7 +567,7 @@ class SeriesList(object):
                 os.path.join(
                     dpath, f"{channel_name}.intensity_at_distance.tsv"),
                 sep="\t", index=False)
-        raise NotImplementedError
+        #raise NotImplementedError
 
     def __len__(self) -> int:
         return len(self.series)
