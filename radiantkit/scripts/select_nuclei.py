@@ -4,6 +4,7 @@
 '''
 
 import argparse
+import copy as cp
 import ggc  # type: ignore
 import joblib  # type: ignore
 import itertools
@@ -245,26 +246,15 @@ def remove_labels_from_series_list_masks(
         passed: Dict[int, List[int]], nuclei: NucleiList) -> SeriesList:
     series_list.unload()
     if args.remove_labels:
-        log.info("removing discarded nuclei labeles from masks")
+        log.info("removing discarded nuclei labels from masks")
         if 1 == args.threads:
             for s in tqdm(series_list):
                 remove_labels_from_series_mask(
                     s, passed[s.ID], args.labeled, args.compressed)
         else:
-            import pickle
-            for s in series_list:
-                print((s, passed[s.ID], args.labeled, args.compressed))
-                with open("test.pkl", "wb") as PO:
-                    pickle.dump(s, PO)
-                with open("test.pkl", "wb") as PO:
-                    pickle.dump(passed[s.ID], PO)
-                with open("test.pkl", "wb") as PO:
-                    pickle.dump(args.labeled, PO)
-                with open("test.pkl", "wb") as PO:
-                    pickle.dump(args.compressed, PO)
             joblib.Parallel(n_jobs=args.threads, verbose=11)(
                 joblib.delayed(remove_labels_from_series_mask)(
-                    s, passed[s.ID], args.labeled, args.compressed)
+                    cp.copy(s), passed[s.ID], args.labeled, args.compressed)
                 for s in series_list)
         n_removed = len(nuclei)-len(list(itertools.chain(*passed.values())))
         log.info(f"removed {n_removed} nuclei labels")
