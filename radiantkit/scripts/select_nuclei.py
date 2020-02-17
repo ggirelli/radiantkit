@@ -195,7 +195,7 @@ def init_series_list(args) -> SeriesList:
     pickle_path = os.path.join(args.input, const.default_pickle)
 
     if os.path.exists(pickle_path):
-        if ggc.ask(f"Unpickle from '{pickle_path}'?", False):
+        if io.ask(f"Unpickle from '{pickle_path}'?", False):
             with open(pickle_path, "rb") as PI:
                 series_list = pickle.load(PI)
 
@@ -311,4 +311,5 @@ def run(args: argparse.Namespace) -> None:
     mk_report(args, nuclei_data, details, series_list)
 
     if args.export_architecture:
+        log.info("Pickling architecture")
         series_list.to_pickle(args.input)
