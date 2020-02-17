@@ -8,6 +8,7 @@ import itertools
 import joblib  # type: ignore
 import logging
 import numpy as np  # type: ignore
+from numpy.polynomial.polynomial import Polynomial  # type: ignore
 import os
 import pandas as pd  # type: ignore
 from radiantkit.distance import CenterType, RadialDistanceCalculator
@@ -15,7 +16,7 @@ from radiantkit.image import ImageBinary, ImageLabeled, Image
 from radiantkit.path import find_re, get_image_details
 from radiantkit.path import select_by_prefix_and_suffix
 from radiantkit.particle import Nucleus, Particle, ParticleFinder
-from radiantkit.stat import quantile_from_counts
+from radiantkit import stat
 import sys
 from tqdm import tqdm  # type: ignore
 from typing import Dict, List, Tuple
@@ -517,12 +518,12 @@ class SeriesList(object):
             odata.sort_index(inplace=True)
             odata['cumsum'] = np.cumsum(odata['count'])
 
-            q1 = quantile_from_counts(odata['value'].values,
-                                      odata['cumsum'].values, .25, True)
-            median = quantile_from_counts(odata['value'].values,
-                                          odata['cumsum'].values, .5, True)
-            q3 = quantile_from_counts(odata['value'].values,
-                                      odata['cumsum'].values, .75, True)
+            q1 = stat.quantile_from_counts(
+                odata['value'].values, odata['cumsum'].values, .25, True)
+            median = stat.quantile_from_counts(
+                odata['value'].values, odata['cumsum'].values, .5, True)
+            q3 = stat.quantile_from_counts(
+                odata['value'].values, odata['cumsum'].values, .75, True)
             iqr = q3-q1
             whisk_low = max(q1-iqr, odata['value'].min())
             whisk_high = min(q3+iqr, odata['value'].max())
@@ -552,22 +553,35 @@ class SeriesList(object):
                     series, path, compressed) for series in self)
 
     def get_radial_profiles(
-            self, dpath: str, bundle_axes: Optional[str] = None,
-            center_type: CenterType = CenterType.QUANTILE,
-            q: Optional[float] = None, reInit: bool = False) -> None:#pd.DataFrame:
-        rdc = RadialDistanceCalculator(bundle_axes, center_type, q)
+            self, dpath: str, rdc: RadialDistanceCalculator,
+            nbins: int = 200, deg: int = 5,
+            reInit: bool = False
+            ) -> Dict[str, Dict[str, Polynomial]]:
+        profiles = {}
         for channel_name in self.channel_names:
             channel_idata_dflist = []
+
             for s in self.series:
                 s.init_particles_distances(rdc, reInit)
                 channel_idata_dflist.append(
                     s.get_particles_intensity_at_distance(channel_name))
             channel_intensity_data = pd.concat(channel_idata_dflist)
-            channel_intensity_data.to_csv(
-                os.path.join(
-                    dpath, f"{channel_name}.intensity_at_distance.tsv"),
-                sep="\t", index=False)
-        #raise NotImplementedError
+
+            profiles[channel_name] = dict(
+                lamina_dist=stat.radial_fit(
+                    channel_intensity_data['lamina_dist'],
+                    channel_intensity_data['ivalue'],
+                    nbins, deg),
+                center_idst=stat.radial_fit(
+                    channel_intensity_data['center_dist'],
+                    channel_intensity_data['ivalue'],
+                    nbins, deg),
+                lamina_dist_norm=stat.radial_fit(
+                    channel_intensity_data['lamina_dist_nmorm'],
+                    channel_intensity_data['ivalue'],
+                    nbins, deg))
+
+        return profiles
 
     def __len__(self) -> int:
         return len(self.series)

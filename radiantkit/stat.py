@@ -6,8 +6,9 @@
 from enum import Enum
 from matplotlib import pyplot as plt  # type: ignore
 import numpy as np  # type: ignore
+from numpy.polynomial.polynomial import Polynomial  # type: ignore
 import scipy as sp  # type: ignore
-from typing import Optional, Tuple
+from typing import Dict, Optional, Tuple
 import warnings
 
 
@@ -238,3 +239,25 @@ def array_cells_distance_to_point(a: np.ndarray, P: np.ndarray,
         return np.sqrt((((coords - P)*aspect)**2).sum(1)).reshape(a.shape)
     else:
         raise ValueError
+
+
+def radial_fit(x: np.ndarray, y: np.ndarray,
+               nbins: int = 200, deg: int = 5
+               ) -> Dict[str, Polynomial]:
+    bins = np.linspace(x.min(), x.max(), nbins)
+    bin_IDs = np.digitize(x, bins)
+
+    x_IDs = list(set(bin_IDs))
+    x_mids = bins[x_IDs] + np.diff(bins)[0]/2
+    yy_stubs = []
+    for bi in x_IDs:
+        yy_stubs.append(np.hstack(
+            np.quantile(y[bi == bin_IDs], (.25, .5, .75)),
+            np.mean(y[bi == bin_IDs])))
+    yy = np.vstack(yy_stubs)
+
+    return dict(
+        q1=Polynomial.fit(x_mids, yy[:, 0], deg),
+        median=Polynomial.fit(x_mids, yy[:, 1], deg),
+        mean=Polynomial.fit(x_mids, yy[:, 3], deg),
+        q3=Polynomial.fit(x_mids, yy[:, 2], deg))
