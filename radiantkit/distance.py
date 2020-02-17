@@ -61,34 +61,42 @@ class RadialDistanceCalculator(object):
         return contour_dist
 
     def __calc_center_of_mass(self, contour_dist: ImageBase,
-                              C: ImageBase) -> np.ndarray:
+                              C: ImageBase) -> ImageBase:
         center_of_mass_coords = center_of_mass(
             C.pixels[contour_dist.pixels != 0])
         center_dist = stat.array_cells_distance_to_point(
             contour_dist, center_of_mass_coords, aspect=C.aspect)
         center_dist[0 == contour_dist] = np.inf
+        center_dist = Image(center_dist)
+        center_dist.aspect = contour_dist.aspect
         return center_dist
 
-    def __calc_centroid(self, contour_dist: ImageBase) -> np.ndarray:
+    def __calc_centroid(self, contour_dist: ImageBase) -> ImageBase:
         centroid = np.array([c.mean() for c in np.nonzero(contour_dist)])
         center_dist = stat.array_cells_distance_to_point(
             contour_dist, centroid, aspect=contour_dist.aspect)
         center_dist[0 == contour_dist] = np.inf
+        center_dist = Image(center_dist)
+        center_dist.aspect = contour_dist.aspect
         return center_dist
 
-    def __calc_max(self, contour_dist: ImageBase) -> np.ndarray:
+    def __calc_max(self, contour_dist: ImageBase) -> ImageBase:
         center_dist = distance_transform_edt(
             contour_dist.pixels == contour_dist.pixels.max(),
             contour_dist.aspect)
         center_dist[0 == contour_dist] = np.inf
+        center_dist = Image(center_dist)
+        center_dist.aspect = contour_dist.aspect
         return center_dist
 
-    def __calc_quantile(self, contour_dist: ImageBase) -> np.ndarray:
+    def __calc_quantile(self, contour_dist: ImageBase) -> ImageBase:
         q = self.quantile(contour_dist)
         qvalue = np.quantile(contour_dist.pixels[contour_dist.pixels != 0], q)
         center_dist = distance_transform_edt(
             contour_dist.pixels <= qvalue, contour_dist.aspect)
         center_dist[0 == contour_dist] = np.inf
+        center_dist = Image(center_dist)
+        center_dist.aspect = contour_dist.aspect
         return center_dist
 
     def __flatten(self, img: ImageBase) -> ImageBase:
