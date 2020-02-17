@@ -8,21 +8,23 @@ import logging
 import os
 import pickle
 from radiantkit import series
-from typing import List
 
 
-def set_default_args(args: argparse.Namespace,
-                     label_list: List[str]) -> argparse.Namespace:
-    for label in label_list:
-        if label not in args:
-            args[label] = None
+def set_default_args_for_series_init(
+        args: argparse.Namespace) -> argparse.Namespace:
+    if "aspect" not in args:
+        args.aspect = None
+    if "labeled" not in args:
+        args.labeled = None
+    if "block_side" not in args:
+        args.block_side = None
     return args
 
 
 def init_series_list(args: argparse.Namespace) -> series.SeriesList:
     series_list = None
     pickle_path = os.path.join(args.input, args.pickle_name)
-    args = set_default_args(args, ['aspect', 'labeled', 'block_side'])
+    args = set_default_args_for_series_init(args)
 
     if os.path.exists(pickle_path):
         if not args.import_architecture:
