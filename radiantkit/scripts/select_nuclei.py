@@ -213,7 +213,7 @@ def extract_passing_nuclei_per_series(
         passed.loc[ii, 'series_id'] = image_details[0]
     passed.drop('image', 1, inplace=True)
     passed = dict([
-        (sid, passed.loc[passed['series_id'] == sid, 'label'].values)
+        (sid, passed.loc[passed['series_id'] == sid, 'label'].values.tolist())
         for sid in set(passed['series_id'].values)])
     return passed
 
@@ -242,7 +242,7 @@ def remove_labels_from_series_mask(
 
 def remove_labels_from_series_list_masks(
         args: argparse.Namespace, series_list: SeriesList,
-        passed: pd.DataFrame, nuclei: NucleiList) -> SeriesList:
+        passed: Dict[int, List[int]], nuclei: NucleiList) -> SeriesList:
     if args.remove_labels:
         log.info("removing discarded nuclei labeles from masks")
         if 1 == args.threads:
@@ -252,7 +252,7 @@ def remove_labels_from_series_list_masks(
         else:
             joblib.Parallel(n_jobs=args.threads, verbose=11)(
                 joblib.delayed(remove_labels_from_series_mask)(
-                    s, passed[s.ID].values, args.labeled, args.compressed)
+                    s, passed[s.ID], args.labeled, args.compressed)
                 for s in series_list)
         n_removed = len(nuclei)-len(list(itertools.chain(*passed.values())))
         log.info(f"removed {n_removed} nuclei labels")
