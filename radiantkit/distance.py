@@ -87,7 +87,8 @@ class RadialDistanceCalculator(object):
         q = self.quantile(contour_dist)
         qvalue = np.quantile(contour_dist.pixels[contour_dist.pixels != 0], q)
         logging.info(qvalue)
-        logging.info(((contour_dist.pixels < qvalue).sum(), np.prod(contour_dist.shape)))
+        logging.info(((contour_dist.pixels < qvalue).sum(),
+                      np.prod(contour_dist.shape)))
         center_dist = distance_transform_edt(
             contour_dist.pixels < qvalue, contour_dist.aspect)
         center_dist[0 == contour_dist] = np.inf
@@ -136,7 +137,8 @@ class RadialDistanceCalculator(object):
 
         logging.info(('center_dist', center_dist.pixels.min(),
                       center_dist.pixels.max(), center_dist.pixels.sum()))
-
+        import sys
+        sys.exit()
         contour_dist = self.__unflatten(contour_dist, B.shape)
         center_dist = self.__unflatten(center_dist, B.shape)
 
