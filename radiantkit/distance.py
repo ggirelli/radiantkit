@@ -6,7 +6,7 @@
 from enum import Enum
 import logging
 import numpy as np  # type: ignore
-from radiantkit.image import ImageBase, ImageBinary
+from radiantkit.image import Image, ImageBase, ImageBinary
 from radiantkit import stat
 from scipy.ndimage.morphology import distance_transform_edt  # type: ignore
 from scipy.ndimage import center_of_mass  # type: ignore
@@ -56,8 +56,9 @@ class RadialDistanceCalculator(object):
         return self._quantile
 
     def __calc_contour_dist(self, B: ImageBase) -> ImageBase:
-        contour_dist = B.from_this(distance_transform_edt(
+        contour_dist = Image(distance_transform_edt(
             B.offset(1).pixels, B.aspect)).offset(-1)
+        contour_dist.aspect = B.aspect
         return contour_dist
 
     def __calc_center_of_mass(self, contour_dist: ImageBase,
