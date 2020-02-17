@@ -19,7 +19,8 @@ def init_parser(subparsers: argparse._SubParsersAction
     parser = subparsers.add_parser(
         __name__.split('.')[-1], description=f'''Long description''',
         formatter_class=argparse.RawDescriptionHelpFormatter,
-        help="Generate average radial profiles for a cell population. *NOT IMPLEMENTED*")
+        help="Generate average radial profiles for a cell population."
+        + " *NOT IMPLEMENTED*")
 
     parser.add_argument(
         'input', type=str,

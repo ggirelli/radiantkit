@@ -7,7 +7,6 @@ from setuptools import setup, find_packages  # type: ignore
 from distutils.util import convert_path
 from codecs import open
 import os
-import subprocess
 from typing import Any, Dict
 
 here = os.path.abspath(os.path.dirname(__file__))
