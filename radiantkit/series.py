@@ -231,10 +231,11 @@ class Series(ChannelList):
     def __init__(self, ID: int, ground_block_side: Optional[int] = None,
                  aspect: Optional[np.ndarray] = None):
         super(Series, self).__init__(ID, ground_block_side)
+        self._particles = []
 
     @property
     def particles(self) -> List[Nucleus]:
-        if self._particles is None:
+        if 0 == len(self._particles):
             logging.warning("particle attribute accessible "
                             + "after running extract_particles.")
         return self._particles
@@ -263,20 +264,27 @@ class Series(ChannelList):
                         self[name][1], name)
             self.unload(name)
 
-    def init_particles(self,
-                       particleClass: Type[Particle] = Particle,
-                       channel_list: Optional[List[str]] = None
-                       ) -> None:
-        if self.mask is None:
-            logging.warning("mask is missing, no particles extracted.")
-            return
-
+    def __run_particle_finder(
+            self, particleClass: Type[Particle] = Particle) -> None:
         if isinstance(self.mask, ImageLabeled):
             self._particles = ParticleFinder.get_particles_from_labeled_image(
                 self.mask, particleClass)
         elif isinstance(self.mask, ImageBinary):
             self._particles = ParticleFinder.get_particles_from_binary_image(
                 self.mask, particleClass)
+
+    def init_particles(self,
+                       particleClass: Type[Particle] = Particle,
+                       channel_list: Optional[List[str]] = None,
+                       reInit: bool = False) -> None:
+        if 0 != len(self.particles) and not reInit:
+            return
+
+        if self.mask is None:
+            logging.warning("mask is missing, no particles extracted.")
+            return
+
+        self.__run_particle_finder(particleClass)
         self.mask.unload()
 
         for pbody in self._particles:
