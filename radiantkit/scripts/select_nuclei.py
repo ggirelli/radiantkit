@@ -255,7 +255,7 @@ def remove_labels_from_series_list_masks(
             with open("test.pkl", "wb") as PO:
                 pickle.dump(series_list[0], PO)
             with open("test.pkl", "wb") as PO:
-                pickle.dump(passed[s.ID], PO)
+                pickle.dump(passed[series_list[0].ID], PO)
             with open("test.pkl", "wb") as PO:
                 pickle.dump(args.labeled, PO)
             with open("test.pkl", "wb") as PO:
