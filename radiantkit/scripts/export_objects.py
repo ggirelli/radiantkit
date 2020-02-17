@@ -130,8 +130,8 @@ Reference channel name : '{args.ref_channel}'
             Compressed : {args.compressed}
 
            Pickle name : {args.pickle_name}
-         Export pickle : {args.export_architecture}
          Import pickle : {args.import_architecture}
+         Export pickle : {args.export_architecture}
 
                Threads : {args.threads}
                 Regexp : {args.inreg.pattern}
