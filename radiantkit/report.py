@@ -57,7 +57,6 @@ def report_extract_objects(
     figure = ra.plot.plot_nuclear_features(
         kwargs['data'], kwargs['spx_data'],
         kwargs['series_list'].particle_feature_labels())
-    print(figure)
 
     report.render(
         opath, title="RadIAnT-Kit - Object extraction",

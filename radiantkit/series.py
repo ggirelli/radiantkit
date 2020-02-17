@@ -472,7 +472,7 @@ class SeriesList(object):
                     total_size=[nucleus.total_size],
                     volume=[nucleus.volume],
                     surface=[nucleus.surface],
-                    shape=[nucleus.shape])
+                    shape=[nucleus.shape()])
 
                 for name in nucleus.channel_names:
                     ndata[f"{name}_isum"] = [nucleus.get_intensity_sum(name)]
