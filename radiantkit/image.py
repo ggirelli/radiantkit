@@ -6,7 +6,7 @@
 import logging
 import numpy as np  # type: ignore
 import os
-from radiantkit.const import ProjectionType
+from radiantkit.const import default_axes, ProjectionType
 from radiantkit import stat
 from scipy import ndimage as ndi  # type: ignore
 import skimage as ski  # type: ignore
@@ -20,8 +20,8 @@ import warnings
 
 
 class ImageSettings(object):
-    _ALLOWED_AXES: str = "VCTZYX"
-    _axes_order: str = "VCTZYX"
+    _ALLOWED_AXES: str = default_axes
+    _axes_order: str = default_axes
     _aspect: np.ndarray = np.ones(6)
 
     def __init__(self):
