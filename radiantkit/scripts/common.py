@@ -27,7 +27,7 @@ def check_parallelization_and_pickling(
     if pickled:
         args.threads = 1
         logging.warning(
-            "deactivated parallelization when loading pickled architecture.")
+            "deactivated parallelization when loading pickled instance.")
     return args
 
 
@@ -39,10 +39,10 @@ def init_series_list(args: argparse.Namespace
     args = set_default_args_for_series_init(args)
 
     if os.path.exists(pickle_path):
-        if not args.import_architecture:
-            logging.info(f"Found '{args.pickle_name}' file in input folder."
-                         + " Use --import-architecture flag to unpickle it.")
-        if args.import_architecture:
+        if not args.import_instance:
+            logging.info(f"Found '{args.pickle_name}' file in input folder.")
+            logging.info(" Use --import-instance flag to unpickle it.")
+        if args.import_instance:
             with open(pickle_path, "rb") as PI:
                 series_list = pickle.load(PI)
                 pickled = True
@@ -65,7 +65,7 @@ def init_series_list(args: argparse.Namespace
 
 def pickle_series_list(args: argparse.Namespace,
                        series_list: series.SeriesList) -> None:
-    if args.export_architecture:
-        logging.info("Pickling architecture")
+    if args.export_instance:
+        logging.info("Pickling instance")
         series_list.unload()
         series_list.to_pickle(args.input, args.pickle_name)
