@@ -8,7 +8,6 @@ import itertools
 import joblib  # type: ignore
 import logging
 import numpy as np  # type: ignore
-from numpy.polynomial.polynomial import Polynomial  # type: ignore
 import os
 import pandas as pd  # type: ignore
 import pickle
@@ -22,6 +21,11 @@ import sys
 from tqdm import tqdm  # type: ignore
 from typing import Dict, List, Tuple
 from typing import Iterator, Optional, Pattern, Type, Union
+
+ChannelName = str
+DistanceType = str
+RadialProfileData = Dict[ChannelName, Dict[DistanceType,
+                         Tuple[stat.PolyFitResult, pd.DataFrame]]]
 
 
 class ChannelList(object):
@@ -505,7 +509,7 @@ class SeriesList(object):
             dfu[f'{channel}_imean'] = f'"{channel}" intensity mean (a.u.)'
         return dfu
 
-    def get_particles(self) -> Iterator[Particle]:
+    def particles(self) -> Iterator[Particle]:
         for s in self:
             if s.particles is None:
                 continue
@@ -564,20 +568,22 @@ class SeriesList(object):
                     series, path, compressed) for series in self)
 
     def get_radial_profiles(
-            self, dpath: str, rdc: RadialDistanceCalculator,
+            self, rdc: RadialDistanceCalculator,
             nbins: int = 200, deg: int = 5,
             reInit: bool = False
-            ) -> Dict[str, Dict[str, Polynomial]]:
-        profiles = {}
-        for channel_name in self.channel_names:
+            ) -> RadialProfileData:
+        profiles: RadialProfileData = {}
+        for channel_name in tqdm(self.channel_names, desc="channel"):
             channel_idata_dflist = []
 
+            logging.info(f"extracting vx values for channel '{channel_name}'")
             for s in self.series:
                 s.init_particles_distances(rdc, reInit)
                 channel_idata_dflist.append(
                     s.get_particles_intensity_at_distance(channel_name))
             channel_intensity_data = pd.concat(channel_idata_dflist)
 
+            logging.info("fitting polynomial curve")
             profiles[channel_name] = dict(
                 lamina_dist=stat.radial_fit(
                     channel_intensity_data['lamina_dist'],
@@ -588,7 +594,7 @@ class SeriesList(object):
                     channel_intensity_data['ivalue'],
                     nbins, deg),
                 lamina_dist_norm=stat.radial_fit(
-                    channel_intensity_data['lamina_dist_nmorm'],
+                    channel_intensity_data['lamina_dist_norm'],
                     channel_intensity_data['ivalue'],
                     nbins, deg))
 

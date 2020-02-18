@@ -7,6 +7,7 @@ from enum import Enum
 from matplotlib import pyplot as plt  # type: ignore
 import numpy as np  # type: ignore
 from numpy.polynomial.polynomial import Polynomial  # type: ignore
+import pandas as pd
 import scipy as sp  # type: ignore
 from typing import Dict, Optional, Tuple
 import warnings
@@ -24,6 +25,7 @@ class DistanceMode(Enum):
 
 Interval = Tuple[float, float]
 FitResult = Tuple[np.ndarray, FitType]
+PolyFitResult = Dict[str, Polynomial]
 
 
 def gpartial_w(sigma: float) -> int:
@@ -243,21 +245,27 @@ def array_cells_distance_to_point(a: np.ndarray, P: np.ndarray,
 
 def radial_fit(x: np.ndarray, y: np.ndarray,
                nbins: int = 200, deg: int = 5
-               ) -> Dict[str, Polynomial]:
+               ) -> Tuple[PolyFitResult, pd.DataFrame]:
     bins = np.linspace(x.min(), x.max(), nbins)
-    bin_IDs = np.digitize(x, bins)
+    bin_IDs = np.digitize(x, bins)-1
 
     x_IDs = list(set(bin_IDs))
     x_mids = bins[x_IDs] + np.diff(bins)[0]/2
     yy_stubs = []
     for bi in x_IDs:
-        yy_stubs.append(np.hstack(
+        yy_stubs.append(np.hstack([
             np.quantile(y[bi == bin_IDs], (.25, .5, .75)),
-            np.mean(y[bi == bin_IDs])))
+            np.mean(y[bi == bin_IDs])]))
     yy = np.vstack(yy_stubs)
 
-    return dict(
+    return (dict(
         q1=Polynomial.fit(x_mids, yy[:, 0], deg),
         median=Polynomial.fit(x_mids, yy[:, 1], deg),
         mean=Polynomial.fit(x_mids, yy[:, 3], deg),
-        q3=Polynomial.fit(x_mids, yy[:, 2], deg))
+        q3=Polynomial.fit(x_mids, yy[:, 2], deg),
+        ), pd.DataFrame.from_dict(dict(
+            xx=x_mids,
+            q1_raw=yy[:, 0],
+            median_raw=yy[:, 1],
+            mean_raw=yy[:, 3],
+            q3_raw=yy[:, 2])))
