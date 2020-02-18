@@ -7,8 +7,20 @@ import argparse
 import logging
 import os
 import pickle
+from radiantkit import const
 from radiantkit import series
 from typing import Tuple
+
+
+def check_axes(axes: str) -> None:
+    if axes is not None:
+        assert all([a in const.default_axes for a in axes])
+
+
+def check_output_folder_path(opath: str) -> None:
+    assert not os.path.isfile(opath)
+    if not os.path.isdir(opath):
+        os.mkdir(opath)
 
 
 def set_default_args_for_series_init(

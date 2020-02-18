@@ -5,9 +5,7 @@
 			<nav>
 				<div class="nav nav-tabs" id="nav-tab" role="tablist">
 					<a class="nav-item nav-link active" id="nav-Settings-tab" data-toggle="tab" href="#nav-Settings" role="tab" aria-controls="nav-Settings" aria-selected="true">Settings</a>
-					{% for distance_type in dlabs: %}
-					<a class="nav-item nav-link" id="nav-{{distance_type}}-tab" data-toggle="tab" href="#nav-{{distance_type}}" role="tab" aria-controls="nav-{{distance_type}}" aria-selected="false">{{distance_type}}</a>
-					{% endfor %}
+					<a class="nav-item nav-link" id="nav-Results-tab" data-toggle="tab" href="#nav-Results" role="tab" aria-controls="nav-Results" aria-selected="true">Profiles</a>
 				</div>
 			</nav>
 			<div class="tab-content p-3" id="nav-tab-mainContent">
@@ -91,29 +89,72 @@
 						</tbody>
 					</table>
 				</div>
-				{% for distance_type in dlabs: %}
-				<div class="tab-pane fade" id="nav-{{distance_type}}" role="tabpanel" aria-labelledby="nav-{{distance_type}}-tab">
-					<nav>
-						<div class="nav nav-tabs" id="nav-tab" role="tablist">
-							{% for channel_name in profiles: %}
-							<a class="nav-item nav-link{% if channel_name == args.ref_channel %} active{% endif %}" id="nav-{{distance_type}}-{{channel_name}}-tab" data-toggle="tab" href="#nav-{{distance_type}}-{{channel_name}}" role="tab" aria-controls="nav-{{distance_type}}-{{channel_name}}" aria-selected="false">{{channel_name}}</a>
-							{% endfor %}
+				<div class="tab-pane fade" id="nav-Results" role="tabpanel" aria-labelledby="nav-Results-tab">
+
+					<form id="plot-selection-form">
+						<div class="form-group row">
+							<label for="distance_type" class="col-sm-2 col-form-label">Distance type:</label>
+							<div class="col-sm-10">
+								<select class="form-control" name="distance_type" id="distance_type">
+									{% for distance_type in dtypes: %}
+									<option value="{{distance_type}}">{{dlabs[distance_type]}}</option>
+									{% endfor %}
+								</select>
+							</div>
 						</div>
-					</nav>
-					<div class="tab-content p-3" id="nav-tab-{{distance_type}}">
-						{% for channel_name in profiles: %}
-						<div class="tab-pane fade show{% if channel_name == args.ref_channel %} active{% endif %}" id="nav-{{distance_type}}-{{channel_name}}" role="tabpanel" aria-labelledby="nav-{{distance_type}}-{{channel_name}}-tab">
-							<div id="profile-{{distance_type}}-{{channel_name}}" class="mx-auto" style="width: 1000px;"></div>
-							<script>
-								CONTAINER = document.getElementById('profile-{{distance_type}}-{{channel_name}}');
-								PLOT_JSON_{{distance_type}}_{{channel_name}} = {{ profiles[channel_name][distance_type].to_json() | safe }};
-								Plotly.newPlot( CONTAINER, PLOT_JSON_{{distance_type}}_{{channel_name}}.data, PLOT_JSON_{{distance_type}}_{{channel_name}}.layout, {"responsive":true, "displayModeBar":true})
-							</script>
+						<div class="form-group row">
+							<label for="channel" class="col-sm-2 col-form-label">Channel:</label>
+							<div class="col-sm-10">
+								<select class="form-control" name="channel" id="channel">
+									{% for channel_name in figures %}
+									<option value="{{channel_name}}">{{channel_name}}</option>
+									{% endfor %}
+								</select>
+							</div>		
 						</div>
+					</form>
+
+					<div id="plots">
+						{% for distance_type in dtypes: %}
+						{% for channel_name in figures %}
+						<div class="canvas" id="profile-{{distance_type}}-{{channel_name}}" class="mx-auto" style="width: 1000px; display: none;"></div>
+						<script>
+							CONTAINER = document.getElementById('profile-{{distance_type}}-{{channel_name}}');
+							PLOT_JSON_{{distance_type}}_{{channel_name}} = {{ figures[channel_name][distance_type].to_json() | safe }};
+							Plotly.newPlot( CONTAINER, PLOT_JSON_{{distance_type}}_{{channel_name}}.data, PLOT_JSON_{{distance_type}}_{{channel_name}}.layout, {"responsive":true, "displayModeBar":true})
+						</script>
+						{% endfor %}
 						{% endfor %}
 					</div>
+
+
+					<script>
+						function hide_all_plots() {
+							$("#plots .canvas").css({'display':'none'});
+						}
+
+						function show_plot(hook) {
+							console.log(hook);
+							$(hook).css({'display':'block'});
+						}
+
+						function get_selected_plot_hook() {
+							distance_type = $("#plot-selection-form").find("#distance_type").val();
+							channel = $("#plot-selection-form").find("#channel").val();
+							return "#profile-" + distance_type + "-" + channel;
+						}
+
+						function init_plot() {
+							hide_all_plots();
+							show_plot(get_selected_plot_hook());
+						}
+
+						$(function() {
+							init_plot();
+							$("#plot-selection-form").change(function(e) { init_plot() });
+						})
+					</script>
 				</div>
-				{% endfor %}
 			</div>
 		</div>
 	</div>

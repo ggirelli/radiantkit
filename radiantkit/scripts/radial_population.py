@@ -7,8 +7,9 @@ import argparse
 import ggc  # type: ignore
 import logging
 import os
+import pandas as pd  # type: ignore
 from radiantkit import const
-from radiantkit import distance, io, report, string
+from radiantkit import distance, io, report, stat, string
 from radiantkit import particle, series
 from radiantkit.scripts import common
 import re
@@ -139,9 +140,7 @@ def parse_arguments(args: argparse.Namespace) -> argparse.Namespace:
 
     if args.output is None:
         args.output = os.path.join(args.input, 'objects')
-    assert not os.path.isfile(args.output)
-    if not os.path.isdir(args.output):
-        os.mkdir(args.output)
+    common.check_output_folder_path(args.output)
 
     assert '(?P<channel_name>' in args.inreg
     assert '(?P<series_id>' in args.inreg
@@ -150,8 +149,7 @@ def parse_arguments(args: argparse.Namespace) -> argparse.Namespace:
     args.mask_prefix = string.add_trailing_dot(args.mask_prefix)
     args.mask_suffix = string.add_leading_dot(args.mask_suffix)
 
-    if args.axes is not None:
-        assert all([a in const.default_axes for a in args.axes])
+    common.check_axes(args.axes)
     if args.center_type is distance.CenterType.QUANTILE:
         if args.quantile is not None:
             assert args.quantile > 0 and args.quantile <= 1
@@ -219,11 +217,46 @@ def confirm_arguments(args: argparse.Namespace) -> None:
 def mk_report(args: argparse.Namespace, profiles: series.RadialProfileData,
               series_list: series.SeriesList) -> None:
     if args.mk_report:
-        report_path = os.path.join(args.input, "radial_population.report.html")
+        report_path = os.path.join(
+            args.output, "radial_population.report.html")
         logging.info(f"writing report to\n{report_path}")
         report.report_radial_population(
             args, report_path, args.online_report,
             profiles=profiles, series_list=series_list)
+
+
+def export_profiles(
+        args: argparse.Namespace, profiles: series.RadialProfileData) -> None:
+    raw_data_separate = []
+    pfit_data_separate = []
+    for cname in profiles:
+        for dtype in profiles[cname]:
+            raw_data_tmp = profiles[cname][dtype][1]
+            raw_data_tmp['channel'] = cname
+            raw_data_tmp['distance_type'] = dtype
+            raw_data_separate.append(raw_data_tmp)
+
+            for sname in profiles[cname][dtype][0]:
+                pfit = profiles[cname][dtype][0][sname]
+                pfit_der1 = pfit.deriv()
+                pfit_der2 = pfit_der1.deriv()
+                pfit_data_tmp = pd.DataFrame.from_dict(dict(
+                    channel=[cname], distance_type=[dtype],
+                    stat=[sname], coef=[pfit.coef],
+                    roots=[stat.get_polynomial_real_roots(pfit)],
+                    coef_der1=[pfit_der1.coef],
+                    roots_der1=[stat.get_polynomial_real_roots(pfit_der1)],
+                    coef_der2=[pfit_der2.coef],
+                    roots_der2=[stat.get_polynomial_real_roots(pfit_der2)]))
+                pfit_data_separate.append(pfit_data_tmp)
+
+    logging.info("exporting profile data")
+    pd.concat(raw_data_separate).to_csv(
+        os.path.join(args.output, "radial_population.profile.raw_data.tsv"),
+        sep="\t", index=False)
+    pd.concat(pfit_data_separate).to_csv(
+        os.path.join(args.output, "radial_population.profile.poly_fit.tsv"),
+        sep="\t", index=False)
 
 
 def run(args: argparse.Namespace) -> None:
@@ -240,3 +273,4 @@ def run(args: argparse.Namespace) -> None:
     profiles = series_list.get_radial_profiles(rdc, args.bins, args.degree)
 
     mk_report(args, profiles, series_list)
+    export_profiles(args, profiles)

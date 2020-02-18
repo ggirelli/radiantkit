@@ -7,7 +7,7 @@ from enum import Enum
 from matplotlib import pyplot as plt  # type: ignore
 import numpy as np  # type: ignore
 from numpy.polynomial.polynomial import Polynomial  # type: ignore
-import pandas as pd
+import pandas as pd  # type: ignore
 import scipy as sp  # type: ignore
 from typing import Dict, Optional, Tuple
 import warnings
@@ -269,3 +269,8 @@ def radial_fit(x: np.ndarray, y: np.ndarray,
             median_raw=yy[:, 1],
             mean_raw=yy[:, 3],
             q3_raw=yy[:, 2])))
+
+
+def get_polynomial_real_roots(poly: Polynomial) -> np.ndarray:
+    roots = poly.roots()
+    return roots[np.logical_not(np.iscomplex(roots))]
