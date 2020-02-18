@@ -13,10 +13,13 @@ from typing import Optional, Tuple
 
 
 class CenterType(Enum):
-    CENTER_OF_MASS = "center of mass"
+    CENTER_OF_MASS = "center_of_mass"
     CENTROID = "centroid"
     MAX = "max"
     QUANTILE = "quantile"
+    @staticmethod
+    def get_default():
+        return CenterType.QUANTILE
 
 
 class RadialDistanceCalculator(object):
