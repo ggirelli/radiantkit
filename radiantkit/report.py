@@ -33,7 +33,7 @@ class Report(object):
 def report_select_nuclei(
         args: argparse.Namespace, opath: str,
         online: bool = False, **kwargs) -> None:
-    report = Report('select_nuclei_report.tpl.html')
+    report = Report('report_select_nuclei.tpl.html')
     details = kwargs['details']
 
     figure = ra.plot.plot_nuclear_selection(
@@ -42,25 +42,36 @@ def report_select_nuclei(
         details['size']['fit'], details['isum']['fit'])
 
     report.render(
-        opath, title="RadIAnT-Kit - Nuclei selection",
+        opath, title="RadIAnT-Kit - Select nuclei",
         online=online, args=args, details=details,
         data=kwargs['data'], series_list=kwargs['series_list'],
         plot_json=figure.to_json(),
         now=str(datetime.now()))
 
 
-def report_extract_objects(
+def report_measure_objects(
         args: argparse.Namespace, opath: str,
         online: bool = False, **kwargs) -> None:
-    report = Report('extract_objects_report.tpl.html')
+    report = Report('report_measure_objects.tpl.html')
 
     figure = ra.plot.plot_nuclear_features(
         kwargs['data'], kwargs['spx_data'],
         kwargs['series_list'].particle_feature_labels())
 
     report.render(
-        opath, title="RadIAnT-Kit - Object extraction",
+        opath, title="RadIAnT-Kit - Measure objects",
         online=online, args=args,
         data=kwargs['data'], series_list=kwargs['series_list'],
         plot_json=figure.to_json(),
+        now=str(datetime.now()))
+
+
+def report_radial_population(
+        args: argparse.Namespace, opath: str,
+        online: bool = False, **kwargs) -> None:
+    report = Report('report_radial_population.tpl.html')
+
+    report.render(
+        opath, title="RadIAnT-Kit - Population radiality",
+        online=online, args=args, series_list=kwargs['series_list'],
         now=str(datetime.now()))

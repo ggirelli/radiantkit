@@ -1,0 +1,102 @@
+{% include "include/dom_start.tpl.html" %}<div class="container">
+	<h1 class="my-5">{{title}}</h1>
+	<div class="row">
+		<div class="col">
+			<nav>
+				<div class="nav nav-tabs" id="nav-tab" role="tablist">
+					<a class="nav-item nav-link active" id="nav-Settings-tab" data-toggle="tab" href="#nav-Settings" role="tab" aria-controls="nav-Settings" aria-selected="true">Settings</a>
+					<a class="nav-item nav-link" id="nav-results-tab" data-toggle="tab" href="#nav-results" role="tab" aria-controls="nav-results" aria-selected="false">Results</a>
+					<a class="nav-item nav-link" id="nav-data-tab" data-toggle="tab" href="#nav-data" role="tab" aria-controls="nav-data" aria-selected="false">Data</a>
+				</div>
+			</nav>
+			<div class="tab-content p-3" id="nav-tabContent">
+				<div class="tab-pane fade show active" id="nav-Settings" role="tabpanel" aria-labelledby="nav-Settings-tab">
+					<table class="table table-hover table-bordered">
+						<thead class="thead-dark">
+							<tr>
+								<th scope="col">Argument</th>
+								<th scope="col">Value</th>
+							</tr>
+						</thead>
+						<tbody>
+							<tr>
+								<th scope="row">Input</th>
+								<td>{{ args.input }}</td>
+							</tr>
+							<tr>
+								<th scope="row">Output</th>
+								<td>{{ args.output }}</td>
+							</tr>
+							<tr>
+								<th scope="row">Reference channel</th>
+								<td>{{ args.ref_channel }}</td>
+							</tr>
+							<tr>
+								<th scope="row">Aspect (ZYX)</th>
+								<td>{{ args.aspect }}</td>
+							</tr>
+							<tr>
+								<th scope="row">Axes</th>
+								<td>{{ args.axes }}</td>
+							</tr>
+							<tr>
+								<th scope="row">Center type</th>
+								<td>{{ args.center_type }}</td>
+							</tr>
+							<tr>
+								<th scope="row">Quantile</th>
+								<td>{{ args.quantile }}</td>
+							</tr>
+							<tr>
+								<th scope="row">Prefix</th>
+								<td><code>{{ args.mask_prefix }}</code></td>
+							</tr>
+							<tr>
+								<th scope="row">Suffix</th>
+								<td><code>{{ args.mask_suffix }}</code></td>
+							</tr>
+							<tr>
+								<th scope="row">Bins</th>
+								<td>{{ args.bins }}</td>
+							</tr>
+							<tr>
+								<th scope="row">Degree</th>
+								<td>{{ args.degree }}</td>
+							</tr>
+							<tr>
+								<th scope="row">Ground block side</th>
+								<td>{{ args.block_side }}</td>
+							</tr>
+							<tr>
+								<th scope="row">Labeled</th>
+								<td>{{ args.labeled|string }}</td>
+							</tr>
+							<tr>
+								<th scope="row">Rescale</th>
+								<td>{{ args.do_rescaling|string }}</td>
+							</tr>
+							<tr>
+								<th scope="row">Compressed</th>
+								<td>{{ args.compressed|string }}</td>
+							</tr>
+							<tr>
+								<th scope="row">Reg.exp.</th>
+								<td><code>{{ args.inreg.pattern }}</code></td>
+							</tr>
+							<tr>
+								<th scope="row">Threads</th>
+								<td>{{ args.threads }}</td>
+							</tr>
+						</tbody>
+					</table>
+				</div>
+				<div class="tab-pane fade" id="nav-results" role="tabpanel" aria-labelledby="nav-results-tab">
+					Lorem ipsum dolor sit amet, consectetur adipisicing elit. Deleniti quia voluptatibus, quod dicta reprehenderit commodi doloremque repellendus voluptas soluta nihil, et dolores, voluptatem modi aut dignissimos enim iusto mollitia exercitationem.
+				</div>
+			</div>
+		</div>
+	</div>
+	<div class="row p-2">
+		<p><small>Report generated on {{ now }} with <code>radiant extract_objects v{{args.version}}</code>.</small></p>
+	</div>
+</div>{% include "include/dom_end.tpl.html" %}
