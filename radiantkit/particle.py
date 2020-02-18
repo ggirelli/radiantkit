@@ -172,7 +172,7 @@ class Nucleus(Particle):
     def get_intensity_at_distance(self, img: Image) -> pd.DataFrame:
         assert self._lamina_dist is not None and self._center_dist is not None
         df = pd.DataFrame.from_dict(dict(
-            ival=self._region_of_interest.apply(img)[self._mask.pixels],
+            ivalue=self._region_of_interest.apply(img)[self._mask.pixels],
             lamina_dist=self._lamina_dist[self._mask.pixels],
             center_dist=self._center_dist[self._mask.pixels]
         ))
