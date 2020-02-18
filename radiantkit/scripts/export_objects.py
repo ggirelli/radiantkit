@@ -24,7 +24,11 @@ def init_parser(subparsers: argparse._SubParsersAction
                 ) -> argparse.ArgumentParser:
     parser = subparsers.add_parser(
         __name__.split(".")[-1],
-        description='''Export objects from masks as TIFF images.''',
+        description='''Export objects from masks as TIFF images.
+        Each tiff name contains the series ID and nucleus label.
+        A tiff is exported for each of the following: mask, grayscale image for
+        each channel, distance from lamina, and distance from center.
+        Distance maps are exported only if previously calculated.''',
         formatter_class=argparse.RawDescriptionHelpFormatter,
         help="Export objects from masks as TIFF images.")
 

@@ -24,9 +24,13 @@ def init_parser(subparsers: argparse._SubParsersAction
                 ) -> argparse.ArgumentParser:
     parser = subparsers.add_parser(
         __name__.split(".")[-1],
-        description='''Extract data of objects from masks.''',
+        description='''Measure objects from masks. Exports a
+        tabulation-separated table containing the following features: size in
+        voxels, volume in m, surface in m2, shape descriptor(s), sum and mean
+        of voxel intensity values per channel. Also, for each channel, also
+        provides quartiles of single voxel intensity values.''',
         formatter_class=argparse.RawDescriptionHelpFormatter,
-        help="Extract data of objects from masks.")
+        help="Measure objects from masks.")
 
     parser.add_argument(
         'input', type=str,

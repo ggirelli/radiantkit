@@ -221,7 +221,7 @@ def mk_report(args: argparse.Namespace, profiles: series.RadialProfileData,
     if args.mk_report:
         report_path = os.path.join(args.input, "radial_population.report.html")
         logging.info(f"writing report to\n{report_path}")
-        report.report_select_nuclei(
+        report.report_radial_population(
             args, report_path, args.online_report,
             profiles=profiles, series_list=series_list)
 
