@@ -6,23 +6,24 @@
 from matplotlib.backends.backend_pdf import PdfPages  # type: ignore
 import matplotlib.pyplot as plt  # type: ignore
 import numpy as np  # type: ignore
+from numpy.polynomial.polynomial import Polynomial  # type: ignore
 import pandas as pd  # type: ignore
 import plotly.graph_objects as go  # type: ignore
 from plotly.subplots import make_subplots  # type: ignore
-from radiantkit import path as pt, stat
+from radiantkit import distance, path, stat
 from scipy.stats import gaussian_kde  # type: ignore
 from typing import Dict, Optional
 
 
-def export(path: str, exp_format: str = 'pdf') -> None:
+def export(opath: str, exp_format: str = 'pdf') -> None:
     assert exp_format in ['pdf', 'png', 'jpg']
-    path = pt.add_extension(path, f".{exp_format}")
+    opath = path.add_extension(opath, f".{exp_format}")
     if exp_format == 'pdf':
-        pp = PdfPages(path)
+        pp = PdfPages(opath)
         plt.savefig(pp, format=exp_format)
         pp.close()
     else:
-        plt.savefig(path, format=exp_format)
+        plt.savefig(opath, format=exp_format)
 
 
 def plot_nuclear_selection(
@@ -197,6 +198,53 @@ def plot_nuclear_features(
     fig.update_layout(**layout)
     fig.update_layout(height=400*n_rows, width=1000, autosize=False)
     fig.update_layout(showlegend=False)
+    return fig
+
+
+def plot_profile(dtype: str, profile: Polynomial, raw_data: pd.DataFrame
+                 ) -> go.Figure:
+    q1_raw = go.Scatter(
+        name="q1_raw", xaxis="x", yaxis="y",
+        x=raw_data['x'].values, y=raw_data['q1_raw'].values,
+        mode='markers', marker=dict(size=4, opacity=.5, color="#989898"))
+    mean_raw = go.Scatter(
+        name="mean_raw", xaxis="x", yaxis="y",
+        x=raw_data['x'].values, y=raw_data['mean_raw'].values,
+        mode='markers', marker=dict(size=4, opacity=.5, color="#989898"))
+    median_raw = go.Scatter(
+        name="median_raw", xaxis="x", yaxis="y",
+        x=raw_data['x'].values, y=raw_data['median_raw'].values,
+        mode='markers', marker=dict(size=4, opacity=.5, color="#989898"))
+    q3_raw = go.Scatter(
+        name="q3_raw", xaxis="x", yaxis="y",
+        x=raw_data['x'].values, y=raw_data['q3_raw'].values,
+        mode='markers', marker=dict(size=4, opacity=.5, color="#989898"))
+
+    npoints = 1000
+    x, y = profile['q1'].linspace(npoints)
+    q1 = go.Scatter(
+        name="q1", x=x, y=y, xaxis="x", yaxis="y", mode='lines')
+    x, y = profile['mean'].linspace(npoints)
+    mean = go.Scatter(
+        name="mean", x=x, y=y, xaxis="x", yaxis="y", mode='lines')
+    x, y = profile['median'].linspace(npoints)
+    median = go.Scatter(
+        name="median", x=x, y=y, xaxis="x", yaxis="y", mode='lines')
+    x, y = profile['q3'].linspace(npoints)
+    q3 = go.Scatter(
+        name="q3", x=x, y=y, xaxis="x", yaxis="y", mode='lines')
+
+    layout = go.Layout(
+        xaxis=dict(title=distance.__distance_labels__[dtype]),
+        yaxis=dict(title="Intensity (a.u.)"),
+        autosize=False, width=1000, height=1000
+    )
+
+    fig = go.Figure(
+        data=[q1_raw, q1, mean_raw, mean, median_raw, median, q3_raw, q3],
+        layout=layout)
+
+    fig.update_layout(template="plotly_white")
     return fig
 
 # END =========================================================================

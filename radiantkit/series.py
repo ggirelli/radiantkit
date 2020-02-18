@@ -589,7 +589,7 @@ class SeriesList(object):
                     channel_intensity_data['lamina_dist'],
                     channel_intensity_data['ivalue'],
                     nbins, deg),
-                center_idst=stat.radial_fit(
+                center_dist=stat.radial_fit(
                     channel_intensity_data['center_dist'],
                     channel_intensity_data['ivalue'],
                     nbins, deg),

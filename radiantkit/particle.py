@@ -167,7 +167,7 @@ class Nucleus(Particle):
                        C: Optional[ImageBase] = None) -> None:
         distances = rdc.calc(self.mask, C)
         assert distances is not None
-        self._center_dist, self._lamina_dist = distances
+        self._lamina_dist, self._center_dist = distances
 
     def get_intensity_at_distance(self, img: Image) -> pd.DataFrame:
         assert self._lamina_dist is not None and self._center_dist is not None

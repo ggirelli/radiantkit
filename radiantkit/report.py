@@ -7,7 +7,9 @@ import argparse
 from datetime import datetime
 import jinja2 as jj2
 import os
-import radiantkit as ra
+import plotly.graph_objects as go  # type: ignore
+from radiantkit import distance, plot
+from typing import Dict
 
 
 class Report(object):
@@ -36,7 +38,7 @@ def report_select_nuclei(
     report = Report('report_select_nuclei.tpl.html')
     details = kwargs['details']
 
-    figure = ra.plot.plot_nuclear_selection(
+    figure = plot.plot_nuclear_selection(
         kwargs['data'], args.dna_channel,
         details['size']['range'], details['isum']['range'],
         details['size']['fit'], details['isum']['fit'])
@@ -54,7 +56,7 @@ def report_measure_objects(
         online: bool = False, **kwargs) -> None:
     report = Report('report_measure_objects.tpl.html')
 
-    figure = ra.plot.plot_nuclear_features(
+    figure = plot.plot_nuclear_features(
         kwargs['data'], kwargs['spx_data'],
         kwargs['series_list'].particle_feature_labels())
 
@@ -71,7 +73,19 @@ def report_radial_population(
         online: bool = False, **kwargs) -> None:
     report = Report('report_radial_population.tpl.html')
 
+    distance_type_set = set()
+    figures: Dict[str, Dict[str, go.Figure]] = {}
+    for channel_name in kwargs['profiles']:
+        figures[channel_name] = {}
+        for distance_type in kwargs['profiles'][channel_name]:
+            distance_type_set.add(distance_type)
+            profile = kwargs['profiles'][channel_name][distance_type]
+            dlab = distance.__distance_labels__[distance_type]
+            figures[channel_name][dlab] = plot.plot_profile(
+                distance_type, *profile)
+
     report.render(
         opath, title="RadIAnT-Kit - Population radiality",
         online=online, args=args, series_list=kwargs['series_list'],
+        profiles=figures, dtypes=distance_type_set,
         now=str(datetime.now()))

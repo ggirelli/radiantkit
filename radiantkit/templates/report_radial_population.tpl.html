@@ -5,11 +5,12 @@
 			<nav>
 				<div class="nav nav-tabs" id="nav-tab" role="tablist">
 					<a class="nav-item nav-link active" id="nav-Settings-tab" data-toggle="tab" href="#nav-Settings" role="tab" aria-controls="nav-Settings" aria-selected="true">Settings</a>
-					<a class="nav-item nav-link" id="nav-results-tab" data-toggle="tab" href="#nav-results" role="tab" aria-controls="nav-results" aria-selected="false">Results</a>
-					<a class="nav-item nav-link" id="nav-data-tab" data-toggle="tab" href="#nav-data" role="tab" aria-controls="nav-data" aria-selected="false">Data</a>
+					{% for distance_type in dtypes: %}
+					<a class="nav-item nav-link" id="nav-{{distance_type}}-tab" data-toggle="tab" href="#nav-{{distance_type}}" role="tab" aria-controls="nav-{{distance_type}}" aria-selected="false">{{distance_type}}</a>
+					{% endfor %}
 				</div>
 			</nav>
-			<div class="tab-content p-3" id="nav-tabContent">
+			<div class="tab-content p-3" id="nav-tab-mainContent">
 				<div class="tab-pane fade show active" id="nav-Settings" role="tabpanel" aria-labelledby="nav-Settings-tab">
 					<table class="table table-hover table-bordered">
 						<thead class="thead-dark">
@@ -90,9 +91,29 @@
 						</tbody>
 					</table>
 				</div>
-				<div class="tab-pane fade" id="nav-results" role="tabpanel" aria-labelledby="nav-results-tab">
-					Lorem ipsum dolor sit amet, consectetur adipisicing elit. Deleniti quia voluptatibus, quod dicta reprehenderit commodi doloremque repellendus voluptas soluta nihil, et dolores, voluptatem modi aut dignissimos enim iusto mollitia exercitationem.
+				{% for distance_type in dtypes: %}
+				<div class="tab-pane fade" id="nav-{{distance_type}}" role="tabpanel" aria-labelledby="nav-{{distance_type}}-tab">
+					<nav>
+						<div class="nav nav-tabs" id="nav-tab" role="tablist">
+							{% for channel_name in profiles: %}
+							<a class="nav-item nav-link{% if channel_name == args.ref_channel %} active{% endif %}" id="nav-{{distance_type}}-{{channel_name}}-tab" data-toggle="tab" href="#nav-{{distance_type}}-{{channel_name}}" role="tab" aria-controls="nav-{{distance_type}}-{{channel_name}}" aria-selected="false">{{channel_name}}</a>
+							{% endfor %}
+						</div>
+					</nav>
+					<div class="tab-content p-3" id="nav-tab-{{distance_type}}">
+						{% for channel_name in profiles: %}
+						<div class="tab-pane fade show{% if channel_name == args.ref_channel %} active{% endif %}" id="nav-{{distance-type}}-{{channel_name}}" role="tabpanel" aria-labelledby="nav-{{distance-type}}-{{channel_name}}-tab">
+							<div id="profile-{{distance_type}}-{{channel_name}}" class="mx-auto" style="width: 1000px;"></div>
+							<script>
+								CONTAINER = document.getElementById('profile-{{distance_type}}-{{channel_name}}');
+								PLOT_JSON_{{distance_type}}_{{channel_name}} = {{ profiles[channel_name][distance_type].to_json() | safe }};
+								Plotly.newPlot( CONTAINER, PLOT_JSON_{{distance_type}}_{{channel_name}}.data, PLOT_JSON_{{distance_type}}_{{channel_name}}.layout, {"responsive":true, "displayModeBar":true})
+							</script>
+						</div>
+						{% endfor %}
+					</div>
 				</div>
+				{% endfor %}
 			</div>
 		</div>
 	</div>

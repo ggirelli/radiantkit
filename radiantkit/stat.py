@@ -264,7 +264,7 @@ def radial_fit(x: np.ndarray, y: np.ndarray,
         mean=Polynomial.fit(x_mids, yy[:, 3], deg),
         q3=Polynomial.fit(x_mids, yy[:, 2], deg),
         ), pd.DataFrame.from_dict(dict(
-            xx=x_mids,
+            x=x_mids,
             q1_raw=yy[:, 0],
             median_raw=yy[:, 1],
             mean_raw=yy[:, 3],

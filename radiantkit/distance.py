@@ -9,7 +9,13 @@ from radiantkit.image import Image, ImageBase, ImageBinary
 from radiantkit import stat
 from scipy.ndimage.morphology import distance_transform_edt  # type: ignore
 from scipy.ndimage import center_of_mass  # type: ignore
-from typing import Optional, Tuple
+from typing import Dict, Optional, Tuple
+
+__distance_labels__: Dict[str, str] = dict(
+    lamina_dist="Distance from lamina (nm)",
+    center_dist="Distance from center (nm)",
+    lamina_dist_norm="Normalized distance from lamina (a.u.)"
+)
 
 
 class CenterType(Enum):
