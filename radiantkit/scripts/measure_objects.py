@@ -5,7 +5,7 @@
 
 import argparse
 import ggc  # type: ignore
-import logging as log
+import logging
 import os
 from radiantkit import const
 from radiantkit import particle, series
@@ -14,8 +14,8 @@ from radiantkit.scripts import common
 import re
 import sys
 
-log.basicConfig(
-    level=log.INFO, format='%(asctime)s '
+logging.basicConfig(
+    level=logging.INFO, format='%(asctime)s '
     + '[P%(process)s:%(module)s:%(funcName)s] %(levelname)s: %(message)s',
     datefmt='%m/%d/%Y %I:%M:%S')
 
@@ -132,8 +132,8 @@ def parse_arguments(args: argparse.Namespace) -> argparse.Namespace:
     args.mask_suffix = string.add_leading_dot(args.mask_suffix)
 
     if not 0 != args.block_side % 2:
-        log.warning("changed ground block side from "
-                    + f"{args.block_side} to {args.block_side+1}")
+        logging.warning("changed ground block side from "
+                        + f"{args.block_side} to {args.block_side+1}")
         args.block_side += 1
 
     args.threads = ggc.args.check_threads(args.threads)
@@ -184,22 +184,22 @@ def confirm_arguments(args: argparse.Namespace) -> None:
         ggc.args.export_settings(OH, settings_string)
 
 
-def export_object_features(args: argparse.Namespace,
-                           series_list: series.SeriesList) -> None:
+def measure_object_features(
+        args: argparse.Namespace, series_list: series.SeriesList) -> None:
     feat_path = os.path.join(args.output, "nuclear_features.tsv")
-    log.info(f"exporting nuclear features to '{feat_path}'")
+    logging.info(f"exporting nuclear features to '{feat_path}'")
     fdata = series_list.export_particle_features(feat_path)
 
     feat_path = os.path.join(args.output, "single_pixel_features.tsv")
-    log.info(f"exporting single_pixel features to '{feat_path}'")
+    logging.info(f"exporting single_pixel features to '{feat_path}'")
     single_pixel_box_data = series_list.get_particle_single_px_stats()
     single_pixel_box_data.to_csv(feat_path, index=False, sep="\t")
 
     if args.mk_report:
         report_path = os.path.join(
             args.output, "extract_objects.report.html")
-        log.info(f"writing report to\n{report_path}")
-        report.report_extract_objects(
+        logging.info(f"writing report to\n{report_path}")
+        report.report_measure_objects(
             args, report_path, args.online_report,
             data=fdata, spx_data=single_pixel_box_data,
             series_list=series_list)
@@ -209,9 +209,10 @@ def run(args: argparse.Namespace) -> None:
     confirm_arguments(args)
     args, series_list = common.init_series_list(args)
 
-    log.info(f"extracting nuclei")
+    logging.info(f"extracting nuclei")
     series_list.extract_particles(particle.Nucleus, threads=args.threads)
+    logging.info(f"extracted {len(list(series_list.particles()))} nuclei")
 
-    export_object_features(args, series_list)
+    measure_object_features(args, series_list)
 
     common.pickle_series_list(args, series_list)

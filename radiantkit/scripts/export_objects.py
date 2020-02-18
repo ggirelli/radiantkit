@@ -5,7 +5,7 @@
 
 import argparse
 import ggc  # type: ignore
-import logging as log
+import logging
 import os
 from radiantkit import const
 from radiantkit import particle, series
@@ -14,8 +14,8 @@ from radiantkit.scripts import common
 import re
 import sys
 
-log.basicConfig(
-    level=log.INFO, format='%(asctime)s '
+logging.basicConfig(
+    level=logging.INFO, format='%(asctime)s '
     + '[P%(process)s:%(module)s:%(funcName)s] %(levelname)s: %(message)s',
     datefmt='%m/%d/%Y %I:%M:%S')
 
@@ -161,7 +161,7 @@ def export_tiffs(args: argparse.Namespace,
     if not os.path.isdir(tiff_path):
         os.mkdir(tiff_path)
 
-    log.info(f"exporting nuclei images to '{tiff_path}'")
+    logging.info(f"exporting nuclei images to '{tiff_path}'")
     series_list.export_particle_tiffs(
         tiff_path, args.threads, args.compressed)
 
@@ -170,8 +170,9 @@ def run(args: argparse.Namespace) -> None:
     confirm_arguments(args)
     args, series_list = common.init_series_list(args)
 
-    log.info(f"extracting nuclei")
+    logging.info(f"extracting nuclei")
     series_list.extract_particles(particle.Nucleus, threads=args.threads)
+    logging.info(f"extracted {len(list(series_list.particles()))} nuclei")
 
     export_tiffs(args, series_list)
 
