@@ -61,15 +61,16 @@ interactive data visualization.
         'ref_channel', type=str,
         help='Name of channel with DNA staining intensity.')
 
-    parser.add_argument(
+    critical = parser.add_argument_group("critical arguments")
+    critical.add_argument(
         '--k-sigma', type=float, metavar="NUMBER",
         help="""Suffix for output binarized images name.
         Default: 2.5""", default=2.5)
-    parser.add_argument(
+    critical.add_argument(
         '--mask-prefix', type=str, metavar="TEXT",
         help="""Prefix for output binarized images name.
         Default: ''.""", default='')
-    parser.add_argument(
+    critical.add_argument(
         '--mask-suffix', type=str, metavar="TEXT",
         help="""Suffix for output binarized images name.
         Default: 'mask'.""", default='mask')
@@ -93,19 +94,19 @@ interactive data visualization.
         help=f"""Filename for input/output pickle file.
         Default: '{const.default_pickle}'""", default=const.default_pickle)
     pickler.add_argument(
-        '--export-architecture', action='store_const',
-        dest='export_architecture', const=True, default=False,
-        help='Export pickled series architecture.')
+        '--export-instance', action='store_const',
+        dest='export_instance', const=True, default=False,
+        help='Export pickled series instance.')
     pickler.add_argument(
-        '--import-architecture', action='store_const',
-        dest='import_architecture', const=True, default=False,
-        help='Unpickle architecture if pickle file is found.')
+        '--import-instance', action='store_const',
+        dest='import_instance', const=True, default=False,
+        help='Unpickle instance if pickle file is found.')
 
     advanced = parser.add_argument_group("advanced arguments")
     advanced.add_argument(
         '--block-side', type=int, metavar="NUMBER",
-        help="""Structural element side for dilation-based background/foreground
-        measurement. Should be odd. Default: 11.""", default=11)
+        help="""Structural element side for dilation-based background/
+        foreground measurement. Should be odd. Default: 11.""", default=11)
     advanced.add_argument(
         '--use-labels', action='store_const', dest='labeled',
         const=True, default=False,
@@ -178,8 +179,8 @@ def print_settings(args: argparse.Namespace, clear: bool = True) -> str:
             Compressed : {args.compressed}
 
            Pickle name : {args.pickle_name}
-         Import pickle : {args.import_architecture}
-         Export pickle : {args.export_architecture}
+         Import pickle : {args.import_instance}
+         Export pickle : {args.export_instance}
 
                Threads : {args.threads}
                 Regexp : {args.inreg.pattern}

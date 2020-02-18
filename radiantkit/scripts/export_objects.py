@@ -59,13 +59,13 @@ def init_parser(subparsers: argparse._SubParsersAction
         help=f"""Filename for input/output pickle file.
         Default: '{const.default_pickle}'""", default=const.default_pickle)
     pickler.add_argument(
-        '--export-architecture', action='store_const',
-        dest='export_architecture', const=True, default=False,
-        help='Export pickled series architecture.')
+        '--export-instance', action='store_const',
+        dest='export_instance', const=True, default=False,
+        help='Export pickled series instance.')
     pickler.add_argument(
-        '--import-architecture', action='store_const',
-        dest='import_architecture', const=True, default=False,
-        help='Unpickle architecture if pickle file is found.')
+        '--import-instance', action='store_const',
+        dest='import_instance', const=True, default=False,
+        help='Unpickle instance if pickle file is found.')
 
     advanced = parser.add_argument_group("advanced arguments")
     advanced.add_argument(
@@ -130,8 +130,8 @@ Reference channel name : '{args.ref_channel}'
             Compressed : {args.compressed}
 
            Pickle name : {args.pickle_name}
-         Import pickle : {args.import_architecture}
-         Export pickle : {args.export_architecture}
+         Import pickle : {args.import_instance}
+         Export pickle : {args.export_instance}
 
                Threads : {args.threads}
                 Regexp : {args.inreg.pattern}
@@ -149,7 +149,7 @@ def confirm_arguments(args: argparse.Namespace) -> None:
 
     assert os.path.isdir(args.input), f"image folder not found: {args.input}"
 
-    settings_path = os.path.join(args.output, "extract_objects.config.txt")
+    settings_path = os.path.join(args.output, "export_objects.config.txt")
     with open(settings_path, "w+") as OH:
         ggc.args.export_settings(OH, settings_string)
 
