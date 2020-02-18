@@ -234,14 +234,46 @@ def plot_profile(dtype: str, profile: Polynomial, raw_data: pd.DataFrame
     q3 = go.Scatter(
         name="q3", x=x, y=y, xaxis="x", yaxis="y", mode='lines')
 
+    x, y = profile['q1'].deriv().linspace(npoints)
+    q1_d1 = go.Scatter(
+        name="q1", x=x, y=y, xaxis="x", yaxis="y2", mode='lines')
+    x, y = profile['mean'].deriv().linspace(npoints)
+    mean_d1 = go.Scatter(
+        name="mean", x=x, y=y, xaxis="x", yaxis="y2", mode='lines')
+    x, y = profile['median'].deriv().linspace(npoints)
+    median_d1 = go.Scatter(
+        name="median", x=x, y=y, xaxis="x", yaxis="y2", mode='lines')
+    x, y = profile['q3'].deriv().linspace(npoints)
+    q3_d1 = go.Scatter(
+        name="q3", x=x, y=y, xaxis="x", yaxis="y2", mode='lines')
+
+    x, y = profile['q1'].deriv().deriv().linspace(npoints)
+    q1_d2 = go.Scatter(
+        name="q1", x=x, y=y, xaxis="x", yaxis="y3", mode='lines')
+    x, y = profile['mean'].deriv().deriv().linspace(npoints)
+    mean_d2 = go.Scatter(
+        name="mean", x=x, y=y, xaxis="x", yaxis="y3", mode='lines')
+    x, y = profile['median'].deriv().deriv().linspace(npoints)
+    median_d2 = go.Scatter(
+        name="median", x=x, y=y, xaxis="x", yaxis="y3", mode='lines')
+    x, y = profile['q3'].deriv().deriv().linspace(npoints)
+    q3_d2 = go.Scatter(
+        name="q3", x=x, y=y, xaxis="x", yaxis="y3", mode='lines')
+
     layout = go.Layout(
         xaxis=dict(title=distance.__distance_labels__[dtype]),
         yaxis=dict(title="Intensity (a.u.)"),
+        yaxis2=dict(title="1st Derivative Intensity (a.u.)"),
+        yaxis3=dict(title="2nd Derivative Intensity (a.u.)"),
         autosize=False, width=1000, height=1000
     )
 
     fig = go.Figure(
-        data=[q1_raw, q1, mean_raw, mean, median_raw, median, q3_raw, q3],
+        data=[
+            q1_raw, q1, q1_d1, q1_d2,
+            mean_raw, mean, mean_d1, mean_d2,
+            median_raw, median, median_d1, median_d2,
+            q3_raw, q3, q3_d1, q3_d2],
         layout=layout)
 
     fig.update_layout(template="plotly_white")

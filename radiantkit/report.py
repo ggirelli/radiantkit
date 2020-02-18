@@ -73,19 +73,19 @@ def report_radial_population(
         online: bool = False, **kwargs) -> None:
     report = Report('report_radial_population.tpl.html')
 
-    distance_type_set = set()
+    distance_lab_set = set()
     figures: Dict[str, Dict[str, go.Figure]] = {}
     for channel_name in kwargs['profiles']:
         figures[channel_name] = {}
         for distance_type in kwargs['profiles'][channel_name]:
-            distance_type_set.add(distance_type)
             profile = kwargs['profiles'][channel_name][distance_type]
             dlab = distance.__distance_labels__[distance_type]
+            distance_lab_set.add(dlab)
             figures[channel_name][dlab] = plot.plot_profile(
                 distance_type, *profile)
 
     report.render(
         opath, title="RadIAnT-Kit - Population radiality",
         online=online, args=args, series_list=kwargs['series_list'],
-        profiles=figures, dtypes=distance_type_set,
+        profiles=figures, dlabs=distance_lab_set,
         now=str(datetime.now()))

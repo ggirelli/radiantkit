@@ -5,7 +5,7 @@
 			<nav>
 				<div class="nav nav-tabs" id="nav-tab" role="tablist">
 					<a class="nav-item nav-link active" id="nav-Settings-tab" data-toggle="tab" href="#nav-Settings" role="tab" aria-controls="nav-Settings" aria-selected="true">Settings</a>
-					{% for distance_type in dtypes: %}
+					{% for distance_type in dlabs: %}
 					<a class="nav-item nav-link" id="nav-{{distance_type}}-tab" data-toggle="tab" href="#nav-{{distance_type}}" role="tab" aria-controls="nav-{{distance_type}}" aria-selected="false">{{distance_type}}</a>
 					{% endfor %}
 				</div>
@@ -91,7 +91,7 @@
 						</tbody>
 					</table>
 				</div>
-				{% for distance_type in dtypes: %}
+				{% for distance_type in dlabs: %}
 				<div class="tab-pane fade" id="nav-{{distance_type}}" role="tabpanel" aria-labelledby="nav-{{distance_type}}-tab">
 					<nav>
 						<div class="nav nav-tabs" id="nav-tab" role="tablist">
@@ -102,7 +102,7 @@
 					</nav>
 					<div class="tab-content p-3" id="nav-tab-{{distance_type}}">
 						{% for channel_name in profiles: %}
-						<div class="tab-pane fade show{% if channel_name == args.ref_channel %} active{% endif %}" id="nav-{{distance-type}}-{{channel_name}}" role="tabpanel" aria-labelledby="nav-{{distance-type}}-{{channel_name}}-tab">
+						<div class="tab-pane fade show{% if channel_name == args.ref_channel %} active{% endif %}" id="nav-{{distance_type}}-{{channel_name}}" role="tabpanel" aria-labelledby="nav-{{distance_type}}-{{channel_name}}-tab">
 							<div id="profile-{{distance_type}}-{{channel_name}}" class="mx-auto" style="width: 1000px;"></div>
 							<script>
 								CONTAINER = document.getElementById('profile-{{distance_type}}-{{channel_name}}');
