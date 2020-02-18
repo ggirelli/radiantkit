@@ -7,8 +7,10 @@ import argparse
 import ggc  # type: ignore
 import logging
 import os
-from radiantkit import const, io, string
-from radiantkit.distance import CenterType
+from radiantkit import const
+from radiantkit import distance, io, report, string
+from radiantkit import particle, series
+from radiantkit.scripts import common
 import re
 import sys
 
@@ -49,14 +51,15 @@ def init_parser(subparsers: argparse._SubParsersAction
         help="""Axes to be used for distance calculation.""")
     critical.add_argument(
         '--center-type', type=str,
-        default=CenterType.get_default().value,
-        choices=[t.value for t in CenterType],
+        default=distance.CenterType.get_default().name,
+        choices=[t.name for t in distance.CenterType],
         help=f"""Type of center for distance normalization.
-        Default: {CenterType.get_default().value}""")
+        Default: {distance.CenterType.get_default().name}""")
     critical.add_argument(
         '--quantile', type=float, metavar="NUMBER", help=f"""Quantile used to
-        identify the center when '--center-type {CenterType.QUANTILE.value}'
-        is used. A number from 0 to 1 is expected. Defaults to 1e-N where N is
+        identify the center when '--center-type
+        {distance.CenterType.QUANTILE.name}' is used.
+        A number from 0 to 1 is expected. Defaults to 1e-N where N is
         the number of axes in an image.""")
     critical.add_argument(
         '--mask-prefix', type=str, metavar="TEXT",
@@ -66,6 +69,12 @@ def init_parser(subparsers: argparse._SubParsersAction
         '--mask-suffix', type=str, metavar="TEXT",
         help="""Suffix for output binarized images name.
         Default: 'mask'.""", default='mask')
+    critical.add_argument(
+        '--bins', type=int, metavar="NUMBER", default=200,
+        help=f"""Number of bins for polynomial fitting. Default: 200.""")
+    critical.add_argument(
+        '--degree', type=int, metavar="NUMBER", default=5,
+        help=f"""Degree of polynomial fitting. Default: 5.""")
 
     report = parser.add_argument_group("report arguments")
     report.add_argument(
@@ -143,8 +152,10 @@ def parse_arguments(args: argparse.Namespace) -> argparse.Namespace:
 
     if args.axes is not None:
         assert all([a in const.default_axes for a in args.axes])
-    if args.center_type is CenterType.QUANTILE and args.quantile is not None:
-        assert args.quantile > 0 and args.quantile <= 1
+    if args.center_type is distance.CenterType.QUANTILE:
+        if args.quantile is not None:
+            assert args.quantile > 0 and args.quantile <= 1
+    args.center_type = distance.CenterType[args.center_type]
 
     if not 0 != args.block_side % 2:
         logging.warning("changed ground block side from "
@@ -169,6 +180,8 @@ Reference channel name : '{args.ref_channel}'
                   Axes : {args.axes}
            Center type : {args.center_type}
               Quantile : {args.quantile}
+                  Bins : {args.bins}
+                Degree : {args.degree}
 
            Mask prefix : '{args.mask_prefix}'
            Mask suffix : '{args.mask_suffix}'
@@ -203,6 +216,27 @@ def confirm_arguments(args: argparse.Namespace) -> None:
         ggc.args.export_settings(OH, settings_string)
 
 
+def mk_report(args: argparse.Namespace, profiles: series.RadialProfileData,
+              series_list: series.SeriesList) -> None:
+    if args.mk_report:
+        report_path = os.path.join(args.input, "radial_population.report.html")
+        logging.info(f"writing report to\n{report_path}")
+        report.report_select_nuclei(
+            args, report_path, args.online_report,
+            profiles=profiles, series_list=series_list)
+
+
 def run(args: argparse.Namespace) -> None:
     confirm_arguments(args)
-    raise NotImplementedError
+    args, series_list = common.init_series_list(args)
+
+    logging.info(f"extracting nuclei")
+    series_list.extract_particles(particle.Nucleus, threads=args.threads)
+    logging.info(f"extracted {len(list(series_list.particles()))} nuclei")
+
+    logging.info(f"generating radial profiles")
+    rdc = distance.RadialDistanceCalculator(
+        args.axes, args.center_type, args.quantile)
+    profiles = series_list.get_radial_profiles(rdc, args.bins, args.degree)
+
+    mk_report(args, profiles, series_list)
