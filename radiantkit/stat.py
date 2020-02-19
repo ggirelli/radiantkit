@@ -309,3 +309,28 @@ def get_polynomial_real_roots(
         roots = select_minima_roots(roots, poly, npoints)
 
     return np.real(roots)
+
+
+def get_radial_profile_roots(
+        profile: Polynomial, npoints: int = 1000
+        ) -> Tuple[np.ndarray, np.ndarray]:
+
+    roots_der1 = get_polynomial_real_roots(
+        profile.deriv(), RootType.MAXIMA)
+    roots_der2 = get_polynomial_real_roots(
+        profile.deriv().deriv(), RootType.MINIMA)
+
+    if 0 == len(roots_der1):
+        x, y = profile.linspace(npoints)
+        roots_der1 = np.array(x[np.argmax(y)])
+    if 0 == len(roots_der2):
+        x, y = profile.linspace(npoints)
+        roots_der2 = np.array(x[np.argmin(y)])
+
+    if 0 == len(roots_der1):
+        return (roots_der1, roots_der2)
+
+    if 0 != len(roots_der2) and not all(roots_der2 < roots_der1[0]):
+        roots_der2 = roots_der2[np.argmax(roots_der2 >= roots_der1[0]):]
+
+    return (roots_der1, roots_der2)

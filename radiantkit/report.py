@@ -9,7 +9,8 @@ import jinja2 as jj2
 import numpy as np  # type: ignore
 import os
 import plotly.graph_objects as go  # type: ignore
-from radiantkit import distance, plot
+from radiantkit import distance, plot, stat
+from radiantkit import series
 from typing import Dict, Tuple
 
 
@@ -71,25 +72,32 @@ def report_measure_objects(
 
 def report_radial_population(
         args: argparse.Namespace, opath: str,
+        profile_data: series.RadialProfileData,
         online: bool = False, **kwargs) -> None:
     report = Report('report_radial_population.tpl.html')
 
+    roots: Dict[str, Dict[str, Dict[str, Tuple[np.ndarray, np.ndarray]]]] = {}
     distance_type_set = set()
     figures: Dict[str, Dict[str, go.Figure]] = {}
-    roots: Dict[str, Dict[str, Dict[str, Tuple[np.ndarray, np.ndarray]]]] = {}
-    for channel_name in kwargs['profiles']:
+    for channel_name in profile_data:
         figures[channel_name] = {}
         roots[channel_name] = {}
-        for distance_type in kwargs['profiles'][channel_name]:
+        for distance_type in profile_data[channel_name]:
             distance_type_set.add(distance_type)
-            profile = kwargs['profiles'][channel_name][distance_type]
-            new_fig, new_roots = plot.plot_profile(distance_type, *profile)
-            figures[channel_name][distance_type] = new_fig
-            roots[channel_name][distance_type] = new_roots
+            profile, raw_data = profile_data[channel_name][distance_type]
+
+            roots_dict = {}
+            for stat_name in profile:
+                roots_dict[stat_name] = stat.get_radial_profile_roots(
+                    profile[stat_name])
+            roots[channel_name][distance_type] = roots_dict
+
+            figures[channel_name][distance_type] = plot.plot_profile(
+                distance_type, profile, raw_data, roots_dict)
 
     report.render(
         opath, title="RadIAnT-Kit - Population radiality",
         online=online, args=args, series_list=kwargs['series_list'],
-        profiles=kwargs['profiles'], figures=figures, roots=roots,
+        profiles=profile_data, figures=figures, roots=roots,
         dtypes=distance_type_set, dlabs=distance.__distance_labels__,
         now=str(datetime.now()))

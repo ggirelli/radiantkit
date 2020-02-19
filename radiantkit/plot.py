@@ -232,62 +232,60 @@ def add_profile_trace(
                 legendgroup=label, showlegend=False)]
 
 
-def add_profile_roots(label: str, profile: Polynomial,
-                      yranges: Dict[str, Tuple[float, float]]
-                      ) -> Tuple[List[go.Scatter],
-                                 Tuple[np.ndarray, np.ndarray]]:
+def add_profile_roots(
+        label: str, profile: Polynomial, roots: Tuple[float, float],
+        yranges: Dict[str, Tuple[float, float]], npoints: int = 1000
+        ) -> List[go.Scatter]:
     data = []
 
-    roots_der1 = stat.get_polynomial_real_roots(
-        profile.deriv(), stat.RootType.MAXIMA)
-    if 0 != len(roots_der1):
+    if roots[0] is not None:
         data.extend([
             go.Scatter(
                 name=f"root_der1_{label}",
-                x=[roots_der1[0], roots_der1[0]], y=yranges['y'],
+                x=[roots[0], roots[0]], y=yranges['y'],
                 xaxis="x", yaxis="y", mode="lines",
                 line=dict(color="#969696", dash="dash"), legendgroup=label),
             go.Scatter(
                 name=f"root_der1_{label}",
-                x=[roots_der1[0], roots_der1[0]], y=yranges['y2'],
+                x=[roots[0], roots[0]], y=yranges['y2'],
                 xaxis="x", yaxis="y2", mode="lines",
                 line=dict(color="#969696", dash="dash"),
                 legendgroup=label, showlegend=False)
         ])
 
-    roots_der2 = stat.get_polynomial_real_roots(
-        profile.deriv().deriv(), stat.RootType.MINIMA)
-    if 0 != len(roots_der2):
+    if roots[1] is not None:
         data.extend([
             go.Scatter(
                 name=f"root_der2_{label}",
-                x=[roots_der2[0], roots_der2[0]], y=yranges['y'],
+                x=[roots[1], roots[1]], y=yranges['y'],
                 xaxis="x", yaxis="y", mode="lines",
-                line=dict(color="#969696", dash="dot"), legendgroup=label),
+                line=dict(color="#969696", dash="dot"),
+                legendgroup=label),
             go.Scatter(
                 name=f"root_der2_{label}",
-                x=[roots_der2[0], roots_der2[0]], y=yranges['y2'],
+                x=[roots[1], roots[1]], y=yranges['y2'],
                 xaxis="x", yaxis="y2", mode="lines",
                 line=dict(color="#969696", dash="dot"),
                 legendgroup=label, showlegend=False),
             go.Scatter(
                 name=f"root_der2_{label}",
-                x=[roots_der2[0], roots_der2[0]], y=yranges['y3'],
+                x=[roots[1], roots[1]], y=yranges['y3'],
                 xaxis="x", yaxis="y3", mode="lines",
                 line=dict(color="#969696", dash="dot"),
                 legendgroup=label, showlegend=False)
         ])
 
-    return (data, (roots_der1, roots_der2))
+    return data
 
 
 def plot_profile(
-        dtype: str, profiles: stat.PolyFitResult, raw_data: pd.DataFrame
-        ) -> Tuple[go.Figure, Dict[str, Tuple[np.ndarray, np.ndarray]]]:
+        dtype: str, profiles: stat.PolyFitResult, raw_data: pd.DataFrame,
+        roots: Dict[str, Tuple[float, float]]) -> go.Figure:
     pal = get_palette(len(profiles))
     stat_name_list = list(profiles.keys())
     npoints = 1000
     data = []
+
     for pi in range(len(stat_name_list)):
         data.extend(add_profile_trace(
             stat_name_list[pi], profiles[stat_name_list[pi]],
@@ -307,13 +305,11 @@ def plot_profile(
             np.max([trace['y'].max() for trace in data
                     if 'y3' == trace['yaxis']])))
 
-    roots_dict: Dict[str, Tuple[np.ndarray, np.ndarray]] = {}
     for pi in range(len(stat_name_list)):
         stat_name = stat_name_list[pi]
-        new_traces, roots = add_profile_roots(
-            stat_name, profiles[stat_name], yranges)
-        roots_dict[stat_name] = roots
-        data.extend(new_traces)
+        data.extend(add_profile_roots(
+            stat_name, profiles[stat_name],
+            roots[stat_name], yranges))
 
     layout = go.Layout(
         xaxis=dict(title=distance.__distance_labels__[dtype], anchor="y3"),
@@ -338,7 +334,7 @@ def plot_profile(
         y0=0, x0=0, y1=0, x1=raw_data['x'].values.max(), yref="y3"))
 
     fig.update_layout(template="plotly_white")
-    return (fig, roots_dict)
+    return fig
 
 # END =========================================================================
 

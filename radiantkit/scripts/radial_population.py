@@ -221,8 +221,8 @@ def mk_report(args: argparse.Namespace, profiles: series.RadialProfileData,
             args.output, "radial_population.report.html")
         logging.info(f"writing report to\n{report_path}")
         report.report_radial_population(
-            args, report_path, args.online_report,
-            profiles=profiles, series_list=series_list)
+            args, report_path, profiles,
+            args.online_report, series_list=series_list)
 
 
 def export_profiles(
