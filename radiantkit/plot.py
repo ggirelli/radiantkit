@@ -207,74 +207,74 @@ def plot_profile(dtype: str, profile: Polynomial, raw_data: pd.DataFrame
         name="raw_q1", xaxis="x", yaxis="y",
         x=raw_data['x'].values, y=raw_data['q1_raw'].values,
         mode='markers', marker=dict(size=4, opacity=.5, color="#989898"),
-        legendgroup="f")
+        legendgroup="q1")
     mean_raw = go.Scatter(
         name="raw_mean", xaxis="x", yaxis="y",
         x=raw_data['x'].values, y=raw_data['mean_raw'].values,
         mode='markers', marker=dict(size=4, opacity=.5, color="#989898"),
-        legendgroup="f")
+        legendgroup="mean")
     median_raw = go.Scatter(
         name="raw_median", xaxis="x", yaxis="y",
         x=raw_data['x'].values, y=raw_data['median_raw'].values,
         mode='markers', marker=dict(size=4, opacity=.5, color="#989898"),
-        legendgroup="f")
+        legendgroup="median")
     q3_raw = go.Scatter(
         name="raw_q3", xaxis="x", yaxis="y",
         x=raw_data['x'].values, y=raw_data['q3_raw'].values,
         mode='markers', marker=dict(size=4, opacity=.5, color="#989898"),
-        legendgroup="f")
+        legendgroup="q3")
 
     npoints = 1000
     x, y = profile['q1'].linspace(npoints)
     q1 = go.Scatter(
         name="q1", x=x, y=y, xaxis="x", yaxis="y", mode='lines',
-        legendgroup="f")
+        legendgroup="q1")
     x, y = profile['mean'].linspace(npoints)
     mean = go.Scatter(
         name="mean", x=x, y=y, xaxis="x", yaxis="y", mode='lines',
-        legendgroup="f")
+        legendgroup="mean")
     x, y = profile['median'].linspace(npoints)
     median = go.Scatter(
         name="median", x=x, y=y, xaxis="x", yaxis="y", mode='lines',
-        legendgroup="f")
+        legendgroup="median")
     x, y = profile['q3'].linspace(npoints)
     q3 = go.Scatter(
         name="q3", x=x, y=y, xaxis="x", yaxis="y", mode='lines',
-        legendgroup="f")
+        legendgroup="q3")
 
     x, y = profile['q1'].deriv().linspace(npoints)
     q1_d1 = go.Scatter(
         name="der1_q1", x=x, y=y, xaxis="x", yaxis="y2", mode='lines',
-        legendgroup="d1")
+        legendgroup="q1")
     x, y = profile['mean'].deriv().linspace(npoints)
     mean_d1 = go.Scatter(
         name="der1_mean", x=x, y=y, xaxis="x", yaxis="y2", mode='lines',
-        legendgroup="d1")
+        legendgroup="mean")
     x, y = profile['median'].deriv().linspace(npoints)
     median_d1 = go.Scatter(
         name="der1_median", x=x, y=y, xaxis="x", yaxis="y2", mode='lines',
-        legendgroup="d1")
+        legendgroup="median")
     x, y = profile['q3'].deriv().linspace(npoints)
     q3_d1 = go.Scatter(
         name="der1_q3", x=x, y=y, xaxis="x", yaxis="y2", mode='lines',
-        legendgroup="d1")
+        legendgroup="q3")
 
     x, y = profile['q1'].deriv().deriv().linspace(npoints)
     q1_d2 = go.Scatter(
         name="der2_q1", x=x, y=y, xaxis="x", yaxis="y3", mode='lines',
-        legendgroup="d2")
+        legendgroup="q1")
     x, y = profile['mean'].deriv().deriv().linspace(npoints)
     mean_d2 = go.Scatter(
         name="der2_mean", x=x, y=y, xaxis="x", yaxis="y3", mode='lines',
-        legendgroup="d2")
+        legendgroup="mean")
     x, y = profile['median'].deriv().deriv().linspace(npoints)
     median_d2 = go.Scatter(
         name="der2_median", x=x, y=y, xaxis="x", yaxis="y3", mode='lines',
-        legendgroup="d2")
+        legendgroup="median")
     x, y = profile['q3'].deriv().deriv().linspace(npoints)
     q3_d2 = go.Scatter(
         name="der2_q3", x=x, y=y, xaxis="x", yaxis="y3", mode='lines',
-        legendgroup="d2")
+        legendgroup="q3")
 
     layout = go.Layout(
         xaxis=dict(title=distance.__distance_labels__[dtype], anchor="y3"),
