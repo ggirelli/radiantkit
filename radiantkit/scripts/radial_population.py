@@ -244,10 +244,15 @@ def export_profiles(
                     channel=[cname], distance_type=[dtype],
                     stat=[sname], coef=[pfit.coef],
                     roots=[stat.get_polynomial_real_roots(pfit)],
+                    domain=[pfit.domain], window=[pfit.window],
                     coef_der1=[pfit_der1.coef],
                     roots_der1=[stat.get_polynomial_real_roots(pfit_der1)],
+                    domain_der1=[pfit_der1.domain],
+                    window_der1=[pfit_der1.window],
                     coef_der2=[pfit_der2.coef],
-                    roots_der2=[stat.get_polynomial_real_roots(pfit_der2)]))
+                    roots_der2=[stat.get_polynomial_real_roots(pfit_der2)],
+                    domain_der2=[pfit_der2.domain],
+                    window_der2=[pfit_der2.window]))
                 pfit_data_separate.append(pfit_data_tmp)
 
     logging.info("exporting profile data")
