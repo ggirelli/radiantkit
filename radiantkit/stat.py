@@ -271,6 +271,10 @@ def radial_fit(x: np.ndarray, y: np.ndarray,
             q3_raw=yy[:, 2])))
 
 
-def get_polynomial_real_roots(poly: Polynomial) -> np.ndarray:
+def get_polynomial_real_roots(
+        poly: Polynomial, inWindow: bool = True) -> np.ndarray:
     roots = poly.roots()
-    return roots[np.logical_not(np.iscomplex(roots))]
+    roots = roots[np.logical_not(np.iscomplex(roots))]
+    roots = roots[roots >= poly.window[0]]
+    roots = roots[roots <= poly.window[1]]
+    return roots

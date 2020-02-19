@@ -12,7 +12,7 @@ import plotly.graph_objects as go  # type: ignore
 from plotly.subplots import make_subplots  # type: ignore
 from radiantkit import distance, path, stat
 from scipy.stats import gaussian_kde  # type: ignore
-from typing import Dict, Optional
+from typing import Dict, List, Optional, Tuple
 
 
 def export(opath: str, exp_format: str = 'pdf') -> None:
@@ -24,6 +24,10 @@ def export(opath: str, exp_format: str = 'pdf') -> None:
         pp.close()
     else:
         plt.savefig(opath, format=exp_format)
+
+
+def get_palette(N: int) -> List[str]:
+    return ['hsl('+str(h)+',50%'+',50%)' for h in np.linspace(0, 360, N)]
 
 
 def plot_nuclear_selection(
@@ -146,8 +150,7 @@ def plot_nuclear_features(
         data: pd.DataFrame, spx_data: pd.DataFrame, labels: Dict[str, str],
         n_id_cols: int = 3, n_plot_grid_col: int = 3) -> go.Figure:
     root_list = np.unique(data['root'].values)
-    N = root_list.shape[0]
-    pal = ['hsl('+str(h)+',50%'+',50%)' for h in np.linspace(0, 360, N)]
+    pal = get_palette(root_list.shape[0])
 
     channel_list = np.unique(spx_data['channel'].values)
     n_features = data.shape[1]-n_id_cols
@@ -201,110 +204,130 @@ def plot_nuclear_features(
     return fig
 
 
-def plot_profile(dtype: str, profile: Polynomial, raw_data: pd.DataFrame
-                 ) -> go.Figure:
-    q1_raw = go.Scatter(
-        name="raw_q1", xaxis="x", yaxis="y",
-        x=raw_data['x'].values, y=raw_data['q1_raw'].values,
-        mode='markers', marker=dict(size=4, opacity=.5, color="#989898"),
-        legendgroup="q1")
-    mean_raw = go.Scatter(
-        name="raw_mean", xaxis="x", yaxis="y",
-        x=raw_data['x'].values, y=raw_data['mean_raw'].values,
-        mode='markers', marker=dict(size=4, opacity=.5, color="#989898"),
-        legendgroup="mean")
-    median_raw = go.Scatter(
-        name="raw_median", xaxis="x", yaxis="y",
-        x=raw_data['x'].values, y=raw_data['median_raw'].values,
-        mode='markers', marker=dict(size=4, opacity=.5, color="#989898"),
-        legendgroup="median")
-    q3_raw = go.Scatter(
-        name="raw_q3", xaxis="x", yaxis="y",
-        x=raw_data['x'].values, y=raw_data['q3_raw'].values,
-        mode='markers', marker=dict(size=4, opacity=.5, color="#989898"),
-        legendgroup="q3")
+def add_profile_trace(
+        label: str, profile: Polynomial, raw_data: pd.DataFrame,
+        npoints: int = 1000, color: Optional[str] = None) -> List[go.Scatter]:
+    raw_label = f"{label}_raw"
+    assert raw_label in raw_data.columns
 
+    x, y = profile.linspace(npoints)
+    xx, yy = profile.deriv().linspace(npoints)
+    xxx, yyy = profile.deriv().deriv().linspace(npoints)
+
+    return [go.Scatter(
+                name=f"raw_{label}", xaxis="x", yaxis="y",
+                x=raw_data['x'].values, y=raw_data[raw_label].values,
+                mode='markers', legendgroup=label,
+                marker=dict(size=4, opacity=.5, color="#989898")),
+            go.Scatter(
+                name=label, x=x, y=y, xaxis="x", yaxis="y", mode='lines',
+                legendgroup=label, color=color),
+            go.Scatter(
+                name=f"der1_{label}", x=xx, y=yy, xaxis="x", yaxis="y2",
+                mode='lines', legendgroup=label, color=color),
+            go.Scatter(
+                name=f"der2_{label}", x=xxx, y=yyy, xaxis="x", yaxis="y3",
+                mode='lines', legendgroup=label, color=color)]
+
+
+def add_profile_roots(label: str, profile: Polynomial,
+                      yranges: Dict[str, Tuple[float, float]]
+                      ) -> List[go.Scatter]:
+    data = []
+
+    roots_der1 = stat.get_polynomial_real_roots(profile.deriv())
+    if 0 != len(roots_der1):
+        roots_der1 = roots_der1[0]
+        data.extend([
+            go.Scatter(
+                name=f"root_der1_{label}",
+                x=[roots_der1[0], roots_der1[0]], y=yranges['y'],
+                xaxis="x", yaxis="y", mode="lines",
+                line=dict(color="#969696", dash="dash"), legendgroup=label),
+            go.Scatter(
+                name=f"root_der1_{label}",
+                x=[roots_der1[0], roots_der1[0]], y=yranges['y2'],
+                xaxis="x", yaxis="y2", mode="lines",
+                line=dict(color="#969696", dash="dash"),
+                legendgroup=label, showlegend=False)
+        ])
+
+    roots_der2 = stat.get_polynomial_real_roots(profile.deriv().deriv())
+    if 0 != len(roots_der2):
+        roots_der2 = roots_der2[0]
+        data.extend([
+            go.Scatter(
+                name=f"root_der2_{label}",
+                x=[roots_der2[0], roots_der2[0]], y=yranges['y'],
+                xaxis="x", yaxis="y", mode="lines",
+                line=dict(color="#969696", dash="dot"), legendgroup=label),
+            go.Scatter(
+                name=f"root_der2_{label}",
+                x=[roots_der2[0], roots_der2[0]], y=yranges['y2'],
+                xaxis="x", yaxis="y2", mode="lines",
+                line=dict(color="#969696", dash="dot"),
+                legendgroup=label, showlegend=False),
+            go.Scatter(
+                name=f"root_der2_{label}",
+                x=[roots_der2[0], roots_der2[0]], y=yranges['y3'],
+                xaxis="x", yaxis="y3", mode="lines",
+                line=dict(color="#969696", dash="dot"),
+                legendgroup=label, showlegend=False)
+        ])
+
+    return data
+
+
+def plot_profile(dtype: str, profiles: stat.PolyFitResult,
+                 raw_data: pd.DataFrame) -> go.Figure:
+    pal = get_palette(len(profiles))
+    stat_name_list = list(profiles.keys())
     npoints = 1000
-    x, y = profile['q1'].linspace(npoints)
-    q1 = go.Scatter(
-        name="q1", x=x, y=y, xaxis="x", yaxis="y", mode='lines',
-        legendgroup="q1")
-    x, y = profile['mean'].linspace(npoints)
-    mean = go.Scatter(
-        name="mean", x=x, y=y, xaxis="x", yaxis="y", mode='lines',
-        legendgroup="mean")
-    x, y = profile['median'].linspace(npoints)
-    median = go.Scatter(
-        name="median", x=x, y=y, xaxis="x", yaxis="y", mode='lines',
-        legendgroup="median")
-    x, y = profile['q3'].linspace(npoints)
-    q3 = go.Scatter(
-        name="q3", x=x, y=y, xaxis="x", yaxis="y", mode='lines',
-        legendgroup="q3")
+    data = []
+    for pi in range(len(stat_name_list)):
+        data.extend(add_profile_trace(
+            stat_name_list[pi], profiles[stat_name_list[pi]],
+            raw_data, npoints, pal[pi]))
 
-    x, y = profile['q1'].deriv().linspace(npoints)
-    q1_d1 = go.Scatter(
-        name="der1_q1", x=x, y=y, xaxis="x", yaxis="y2", mode='lines',
-        legendgroup="q1")
-    x, y = profile['mean'].deriv().linspace(npoints)
-    mean_d1 = go.Scatter(
-        name="der1_mean", x=x, y=y, xaxis="x", yaxis="y2", mode='lines',
-        legendgroup="mean")
-    x, y = profile['median'].deriv().linspace(npoints)
-    median_d1 = go.Scatter(
-        name="der1_median", x=x, y=y, xaxis="x", yaxis="y2", mode='lines',
-        legendgroup="median")
-    x, y = profile['q3'].deriv().linspace(npoints)
-    q3_d1 = go.Scatter(
-        name="der1_q3", x=x, y=y, xaxis="x", yaxis="y2", mode='lines',
-        legendgroup="q3")
+    yranges = dict(
+        y1=(np.min([trace['y'].min()
+                    for trace in data if 'y' == trace['yaxis']]),
+            np.max([trace['y'].max()
+                    for trace in data if 'y' == trace['yaxis']])),
+        y2=(np.min([trace['y'].min() for trace in data
+                    if 'y2' == trace['yaxis']]),
+            np.max([trace['y'].max() for trace in data
+                    if 'y2' == trace['yaxis']])),
+        y3=(np.min([trace['y'].min() for trace in data
+                    if 'y3' == trace['yaxis']]),
+            np.max([trace['y'].max() for trace in data
+                    if 'y3' == trace['yaxis']])))
 
-    x, y = profile['q1'].deriv().deriv().linspace(npoints)
-    q1_d2 = go.Scatter(
-        name="der2_q1", x=x, y=y, xaxis="x", yaxis="y3", mode='lines',
-        legendgroup="q1")
-    x, y = profile['mean'].deriv().deriv().linspace(npoints)
-    mean_d2 = go.Scatter(
-        name="der2_mean", x=x, y=y, xaxis="x", yaxis="y3", mode='lines',
-        legendgroup="mean")
-    x, y = profile['median'].deriv().deriv().linspace(npoints)
-    median_d2 = go.Scatter(
-        name="der2_median", x=x, y=y, xaxis="x", yaxis="y3", mode='lines',
-        legendgroup="median")
-    x, y = profile['q3'].deriv().deriv().linspace(npoints)
-    q3_d2 = go.Scatter(
-        name="der2_q3", x=x, y=y, xaxis="x", yaxis="y3", mode='lines',
-        legendgroup="q3")
+    for pi in range(len(stat_name_list)):
+        stat_name = stat_name_list[pi]
+        data.extend(add_profile_roots(stat_name, profiles[stat_name], yranges))
 
     layout = go.Layout(
         xaxis=dict(title=distance.__distance_labels__[dtype], anchor="y3"),
-        yaxis=dict(
-            domain=[.66, 1], title="Intensity (a.u.)"),
-        yaxis2=dict(
-            domain=[.33, .63], title="1st Derivative Intensity (a.u.)"),
-        yaxis3=dict(
-            domain=[0, .30], title="2nd Derivative Intensity (a.u.)"),
+        yaxis=dict(domain=[.66, 1], range=yranges['y'],
+                   title="Intensity (a.u.)"),
+        yaxis2=dict(domain=[.33, .63], range=yranges['y2'],
+                    title="1st Derivative Intensity (a.u.)"),
+        yaxis3=dict(domain=[0, .30], range=yranges['y3'],
+                    title="2nd Derivative Intensity (a.u.)"),
         autosize=False, width=1000, height=1000
     )
 
     fig = go.Figure(
-        data=[
-            q1_raw, q1, q1_d1, q1_d2,
-            mean_raw, mean, mean_d1, mean_d2,
-            median_raw, median, median_d1, median_d2,
-            q3_raw, q3, q3_d1, q3_d2],
+        data=data,
         layout=layout)
 
     fig.add_shape(go.layout.Shape(
         type="line", line=dict(dash="dash", color="#969696"),
-        y0=0, x0=0, y1=0, x1=raw_data['x'].values.max(),
-        yref="y2"
-    ))
+        y0=0, x0=0, y1=0, x1=raw_data['x'].values.max(), yref="y2"))
     fig.add_shape(go.layout.Shape(
         type="line", line=dict(dash="dash", color="#969696"),
-        y0=0, x0=0, y1=0, x1=raw_data['x'].values.max(),
-        yref="y3"
-    ))
+        y0=0, x0=0, y1=0, x1=raw_data['x'].values.max(), yref="y3"))
 
     fig.update_layout(template="plotly_white")
     return fig
