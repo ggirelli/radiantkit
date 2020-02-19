@@ -353,7 +353,8 @@ class Series(ChannelList):
             C.unload()
 
     def get_particles_intensity_at_distance(
-            self, channel_name: str) -> pd.DataFrame:
+            self, channel_name: str, normOverRef: bool = False
+            ) -> pd.DataFrame:
         assert channel_name in self.names
         assert all([p.has_distances for p in self._particles])
         df = pd.concat([p.get_intensity_at_distance(self[channel_name][1])
@@ -577,13 +578,17 @@ class SeriesList(object):
 
     def __prep_single_channel_profile(
             self, channel_name: ChannelName, rdc: RadialDistanceCalculator,
-            nbins: int = 200, deg: int = 5, reInit: bool = False
+            nbins: int = 200, deg: int = 5,
+            reInit: bool = False, normOverRef: bool = False
             ) -> ChannelRadialProfileData:
+        logging.info(f"extracting vx values for channel '{channel_name}'")
+
         channel_idata_dflist = []
         for s in self.series:
             s.init_particles_distances(rdc, reInit)
             channel_idata_dflist.append(
-                s.get_particles_intensity_at_distance(channel_name))
+                s.get_particles_intensity_at_distance(
+                    channel_name, normOverRef))
         channel_intensity_data = pd.concat(channel_idata_dflist)
 
         logging.info("fitting polynomial curve")
@@ -608,7 +613,6 @@ class SeriesList(object):
             ) -> RadialProfileData:
         profiles: RadialProfileData = {}
         for channel_name in tqdm(self.channel_names, desc="channel"):
-            logging.info(f"extracting vx values for channel '{channel_name}'")
             profiles[channel_name] = self.__prep_single_channel_profile(
                 channel_name, rdc, nbins, deg, reInit)
         return profiles
