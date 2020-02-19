@@ -239,7 +239,6 @@ def add_profile_roots(label: str, profile: Polynomial,
 
     roots_der1 = stat.get_polynomial_real_roots(profile.deriv())
     if 0 != len(roots_der1):
-        roots_der1 = roots_der1[0]
         data.extend([
             go.Scatter(
                 name=f"root_der1_{label}",
@@ -256,7 +255,6 @@ def add_profile_roots(label: str, profile: Polynomial,
 
     roots_der2 = stat.get_polynomial_real_roots(profile.deriv().deriv())
     if 0 != len(roots_der2):
-        roots_der2 = roots_der2[0]
         data.extend([
             go.Scatter(
                 name=f"root_der2_{label}",
