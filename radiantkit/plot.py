@@ -290,8 +290,8 @@ def plot_profile(dtype: str, profiles: stat.PolyFitResult,
             raw_data, npoints, pal[pi]))
 
     yranges = dict(
-        y1=(np.min([trace['y'].min()
-                    for trace in data if 'y' == trace['yaxis']]),
+        y=(np.min([trace['y'].min()
+                   for trace in data if 'y' == trace['yaxis']]),
             np.max([trace['y'].max()
                     for trace in data if 'y' == trace['yaxis']])),
         y2=(np.min([trace['y'].min() for trace in data
