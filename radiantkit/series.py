@@ -378,15 +378,22 @@ class SeriesList(object):
     series: List[Series]
     label: Optional[str] = None
     __current_series: int = 0
+    _reference: Optional[str] = None
 
-    def __init__(self, name: str = "", series_list: List[Series] = []):
+    def __init__(self, name: str = "", series_list: List[Series] = [],
+                 ref: Optional[str] = None):
         super(SeriesList, self).__init__()
         self.series = series_list
         self.name = name
+        self._reference = ref
 
     @property
-    def channel_names(self):
+    def channel_names(self) -> List[str]:
         return list(set(itertools.chain(*[s.names for s in self.series])))
+
+    @property
+    def reference(self) -> Optional[str]:
+        return self._reference
 
     @staticmethod
     def __initialize_channels(
@@ -460,7 +467,7 @@ class SeriesList(object):
         assert 1 == clen, (
             f"inconsistent number of channels in '{dpath}' series")
 
-        return SeriesList(os.path.basename(dpath), list(series.values()))
+        return SeriesList(os.path.basename(dpath), list(series.values()), ref)
 
     def extract_particles(self, particleClass: Type[Particle],
                           channel_list: Optional[List[str]] = None,
