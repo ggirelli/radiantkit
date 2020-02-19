@@ -358,7 +358,7 @@ class Series(ChannelList):
         assert channel_name in self.names
         assert all([p.has_distances for p in self._particles])
 
-        if self.reference is not None:
+        if self.reference is not None and self.reference != channel_name:
             df = pd.concat([p.get_intensity_at_distance(
                 self[channel_name][1], self[self.reference][1])
                 for p in self._particles])
@@ -608,6 +608,7 @@ class SeriesList(object):
                 nbins, deg)))]
 
         if "ivalue_norm" in channel_intensity_data.columns:
+            logging.info("fitting normalized polynomial curve")
             profiles.append((f"{channel_name}/ref", dict(
                 lamina_dist=stat.radial_fit(
                     channel_intensity_data['lamina_dist'],
