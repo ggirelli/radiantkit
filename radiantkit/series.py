@@ -24,8 +24,9 @@ from typing import Iterator, Optional, Pattern, Type, Union
 
 ChannelName = str
 DistanceType = str
-RadialProfileData = Dict[ChannelName, Dict[DistanceType,
-                         Tuple[stat.PolyFitResult, pd.DataFrame]]]
+ChannelRadialProfileData = Dict[
+    DistanceType, Tuple[stat.PolyFitResult, pd.DataFrame]]
+RadialProfileData = Dict[ChannelName, ChannelRadialProfileData]
 
 
 class ChannelList(object):
@@ -574,6 +575,32 @@ class SeriesList(object):
                 joblib.delayed(Series.static_export_particles)(
                     series, path, compressed) for series in self)
 
+    def __prep_single_channel_profile(
+            self, channel_name: ChannelName, rdc: RadialDistanceCalculator,
+            nbins: int = 200, deg: int = 5, reInit: bool = False
+            ) -> ChannelRadialProfileData:
+        channel_idata_dflist = []
+        for s in self.series:
+            s.init_particles_distances(rdc, reInit)
+            channel_idata_dflist.append(
+                s.get_particles_intensity_at_distance(channel_name))
+        channel_intensity_data = pd.concat(channel_idata_dflist)
+
+        logging.info("fitting polynomial curve")
+        return dict(
+            lamina_dist=stat.radial_fit(
+                channel_intensity_data['lamina_dist'],
+                channel_intensity_data['ivalue'],
+                nbins, deg),
+            center_dist=stat.radial_fit(
+                channel_intensity_data['center_dist'],
+                channel_intensity_data['ivalue'],
+                nbins, deg),
+            lamina_dist_norm=stat.radial_fit(
+                channel_intensity_data['lamina_dist_norm'],
+                channel_intensity_data['ivalue'],
+                nbins, deg))
+
     def get_radial_profiles(
             self, rdc: RadialDistanceCalculator,
             nbins: int = 200, deg: int = 5,
@@ -581,30 +608,9 @@ class SeriesList(object):
             ) -> RadialProfileData:
         profiles: RadialProfileData = {}
         for channel_name in tqdm(self.channel_names, desc="channel"):
-            channel_idata_dflist = []
-
             logging.info(f"extracting vx values for channel '{channel_name}'")
-            for s in self.series:
-                s.init_particles_distances(rdc, reInit)
-                channel_idata_dflist.append(
-                    s.get_particles_intensity_at_distance(channel_name))
-            channel_intensity_data = pd.concat(channel_idata_dflist)
-
-            logging.info("fitting polynomial curve")
-            profiles[channel_name] = dict(
-                lamina_dist=stat.radial_fit(
-                    channel_intensity_data['lamina_dist'],
-                    channel_intensity_data['ivalue'],
-                    nbins, deg),
-                center_dist=stat.radial_fit(
-                    channel_intensity_data['center_dist'],
-                    channel_intensity_data['ivalue'],
-                    nbins, deg),
-                lamina_dist_norm=stat.radial_fit(
-                    channel_intensity_data['lamina_dist_norm'],
-                    channel_intensity_data['ivalue'],
-                    nbins, deg))
-
+            profiles[channel_name] = self.__prep_single_channel_profile(
+                channel_name, rdc, nbins, deg, reInit)
         return profiles
 
     def to_pickle(self, dpath: str, pickle_name: str = "radiant.pkl") -> None:
