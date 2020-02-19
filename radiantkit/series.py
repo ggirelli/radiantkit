@@ -609,7 +609,7 @@ class SeriesList(object):
 
         if "ivalue_norm" in channel_intensity_data.columns:
             logging.info("fitting normalized polynomial curve")
-            profiles.append((f"{channel_name}/ref", dict(
+            profiles.append((f"{channel_name}_over_ref", dict(
                 lamina_dist=stat.radial_fit(
                     channel_intensity_data['lamina_dist'],
                     channel_intensity_data['ivalue_norm'],
