@@ -6,10 +6,11 @@
 import argparse
 from datetime import datetime
 import jinja2 as jj2
+import numpy as np  # type: ignore
 import os
 import plotly.graph_objects as go  # type: ignore
 from radiantkit import distance, plot
-from typing import Dict
+from typing import Dict, Tuple
 
 
 class Report(object):
@@ -75,17 +76,20 @@ def report_radial_population(
 
     distance_type_set = set()
     figures: Dict[str, Dict[str, go.Figure]] = {}
+    roots: Dict[str, Dict[str, Dict[str, Tuple[np.ndarray, np.ndarray]]]] = {}
     for channel_name in kwargs['profiles']:
         figures[channel_name] = {}
+        roots[channel_name] = {}
         for distance_type in kwargs['profiles'][channel_name]:
             distance_type_set.add(distance_type)
             profile = kwargs['profiles'][channel_name][distance_type]
-            figures[channel_name][distance_type] = plot.plot_profile(
-                distance_type, *profile)
+            new_fig, new_roots = plot.plot_profile(distance_type, *profile)
+            figures[channel_name][distance_type] = new_fig
+            roots[channel_name][distance_type] = new_roots
 
     report.render(
         opath, title="RadIAnT-Kit - Population radiality",
         online=online, args=args, series_list=kwargs['series_list'],
-        profiles=kwargs['profiles'], figures=figures,
+        profiles=kwargs['profiles'], figures=figures, roots=roots,
         dtypes=distance_type_set, dlabs=distance.__distance_labels__,
         now=str(datetime.now()))

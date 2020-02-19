@@ -114,15 +114,28 @@
 						</div>
 					</form>
 
-					<div id="plots">
+					<div id="canvas-wrap">
 						{% for distance_type in dtypes: %}
 						{% for channel_name in figures %}
-						<div class="canvas" id="profile-{{distance_type}}-{{channel_name}}" class="mx-auto" style="width: 1000px; display: none;"></div>
-						<script>
-							CONTAINER = document.getElementById('profile-{{distance_type}}-{{channel_name}}');
-							PLOT_JSON_{{distance_type}}_{{channel_name}} = {{ figures[channel_name][distance_type].to_json() | safe }};
-							Plotly.newPlot( CONTAINER, PLOT_JSON_{{distance_type}}_{{channel_name}}.data, PLOT_JSON_{{distance_type}}_{{channel_name}}.layout, {"responsive":true, "displayModeBar":true})
-						</script>
+						<div class="canvas" id="canvas-{{distance_type}}-{{channel_name}}" style="display: none;">
+							<div class="plot" id="profile-{{distance_type}}-{{channel_name}}" class="mx-auto" style="width: 1000px"></div>
+							<script>
+								CONTAINER = document.getElementById('profile-{{distance_type}}-{{channel_name}}');
+								PLOT_JSON_{{distance_type}}_{{channel_name}} = {{ figures[channel_name][distance_type].to_json() | safe }};
+								Plotly.newPlot( CONTAINER, PLOT_JSON_{{distance_type}}_{{channel_name}}.data, PLOT_JSON_{{distance_type}}_{{channel_name}}.layout, {"responsive":true, "displayModeBar":true})
+							</script>
+
+							{% for stat_name in roots[channel_name][distance_type]: %}
+							<p>
+								<h4>{{stat_name}}</h4>
+								<ul>
+									<li><b>1st derivative root:</b> <code>{{roots[channel_name][distance_type][stat_name][0]}}</code></li>
+									<li><b>2nd derivative root:</b> <code>{{roots[channel_name][distance_type][stat_name][1]}}</code></li>
+								</ul>
+							</p>
+							{% endfor %}
+
+						</div>
 						{% endfor %}
 						{% endfor %}
 					</div>
@@ -130,18 +143,17 @@
 
 					<script>
 						function hide_all_plots() {
-							$("#plots .canvas").css({'display':'none'});
+							$("#canvas-wrap .canvas").css({'display':'none'});
 						}
 
 						function show_plot(hook) {
-							console.log(hook);
 							$(hook).css({'display':'block'});
 						}
 
 						function get_selected_plot_hook() {
 							distance_type = $("#plot-selection-form").find("#distance_type").val();
 							channel = $("#plot-selection-form").find("#channel").val();
-							return "#profile-" + distance_type + "-" + channel;
+							return "#canvas-" + distance_type + "-" + channel;
 						}
 
 						function init_plot() {

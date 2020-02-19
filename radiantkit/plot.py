@@ -234,7 +234,8 @@ def add_profile_trace(
 
 def add_profile_roots(label: str, profile: Polynomial,
                       yranges: Dict[str, Tuple[float, float]]
-                      ) -> List[go.Scatter]:
+                      ) -> Tuple[List[go.Scatter],
+                                 Tuple[np.ndarray, np.ndarray]]:
     data = []
 
     roots_der1 = stat.get_polynomial_real_roots(
@@ -277,11 +278,12 @@ def add_profile_roots(label: str, profile: Polynomial,
                 legendgroup=label, showlegend=False)
         ])
 
-    return data
+    return (data, (roots_der1, roots_der2))
 
 
-def plot_profile(dtype: str, profiles: stat.PolyFitResult,
-                 raw_data: pd.DataFrame) -> go.Figure:
+def plot_profile(
+        dtype: str, profiles: stat.PolyFitResult, raw_data: pd.DataFrame
+        ) -> Tuple[go.Figure, Dict[str, Tuple[np.ndarray, np.ndarray]]]:
     pal = get_palette(len(profiles))
     stat_name_list = list(profiles.keys())
     npoints = 1000
@@ -305,9 +307,13 @@ def plot_profile(dtype: str, profiles: stat.PolyFitResult,
             np.max([trace['y'].max() for trace in data
                     if 'y3' == trace['yaxis']])))
 
+    roots_dict: Dict[str, Tuple[np.ndarray, np.ndarray]] = {}
     for pi in range(len(stat_name_list)):
         stat_name = stat_name_list[pi]
-        data.extend(add_profile_roots(stat_name, profiles[stat_name], yranges))
+        new_traces, roots = add_profile_roots(
+            stat_name, profiles[stat_name], yranges)
+        roots_dict[stat_name] = roots
+        data.extend(new_traces)
 
     layout = go.Layout(
         xaxis=dict(title=distance.__distance_labels__[dtype], anchor="y3"),
@@ -332,7 +338,7 @@ def plot_profile(dtype: str, profiles: stat.PolyFitResult,
         y0=0, x0=0, y1=0, x1=raw_data['x'].values.max(), yref="y3"))
 
     fig.update_layout(template="plotly_white")
-    return fig
+    return (fig, roots_dict)
 
 # END =========================================================================
 
