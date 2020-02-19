@@ -277,4 +277,4 @@ def get_polynomial_real_roots(
     roots = roots[np.logical_not(np.iscomplex(roots))]
     roots = roots[roots >= poly.window[0]]
     roots = roots[roots <= poly.window[1]]
-    return roots
+    return np.real(roots)
