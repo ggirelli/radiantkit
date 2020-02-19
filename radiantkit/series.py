@@ -353,13 +353,22 @@ class Series(ChannelList):
             C.unload()
 
     def get_particles_intensity_at_distance(
-            self, channel_name: str, normOverRef: bool = False
+            self, channel_name: str
             ) -> pd.DataFrame:
         assert channel_name in self.names
         assert all([p.has_distances for p in self._particles])
-        df = pd.concat([p.get_intensity_at_distance(self[channel_name][1])
-                        for p in self._particles])
+
+        if self.reference is not None:
+            df = pd.concat([p.get_intensity_at_distance(
+                self[channel_name][1], self[self.reference][1])
+                for p in self._particles])
+            self.unload(self.reference)
+        else:
+            df = pd.concat([p.get_intensity_at_distance(self[channel_name][1])
+                            for p in self._particles])
         self.unload(channel_name)
+
+        df['reference'] = self.reference
         df['channel'] = channel_name
         df['series_label'] = self.ID
         return df
@@ -380,22 +389,15 @@ class SeriesList(object):
     series: List[Series]
     label: Optional[str] = None
     __current_series: int = 0
-    _reference: Optional[str] = None
 
-    def __init__(self, name: str = "", series_list: List[Series] = [],
-                 ref: Optional[str] = None):
+    def __init__(self, name: str = "", series_list: List[Series] = []):
         super(SeriesList, self).__init__()
         self.series = series_list
         self.name = name
-        self._reference = ref
 
     @property
     def channel_names(self) -> List[str]:
         return list(set(itertools.chain(*[s.names for s in self.series])))
-
-    @property
-    def reference(self) -> Optional[str]:
-        return self._reference
 
     @staticmethod
     def __initialize_channels(
@@ -469,7 +471,7 @@ class SeriesList(object):
         assert 1 == clen, (
             f"inconsistent number of channels in '{dpath}' series")
 
-        return SeriesList(os.path.basename(dpath), list(series.values()), ref)
+        return SeriesList(os.path.basename(dpath), list(series.values()))
 
     def extract_particles(self, particleClass: Type[Particle],
                           channel_list: Optional[List[str]] = None,
@@ -580,19 +582,18 @@ class SeriesList(object):
             self, channel_name: ChannelName, rdc: RadialDistanceCalculator,
             nbins: int = 200, deg: int = 5,
             reInit: bool = False, normOverRef: bool = False
-            ) -> ChannelRadialProfileData:
+            ) -> List[Tuple[ChannelName, ChannelRadialProfileData]]:
         logging.info(f"extracting vx values for channel '{channel_name}'")
 
         channel_idata_dflist = []
         for s in self.series:
             s.init_particles_distances(rdc, reInit)
             channel_idata_dflist.append(
-                s.get_particles_intensity_at_distance(
-                    channel_name, normOverRef))
+                s.get_particles_intensity_at_distance(channel_name))
         channel_intensity_data = pd.concat(channel_idata_dflist)
 
         logging.info("fitting polynomial curve")
-        return dict(
+        profiles = [(channel_name, dict(
             lamina_dist=stat.radial_fit(
                 channel_intensity_data['lamina_dist'],
                 channel_intensity_data['ivalue'],
@@ -604,7 +605,24 @@ class SeriesList(object):
             lamina_dist_norm=stat.radial_fit(
                 channel_intensity_data['lamina_dist_norm'],
                 channel_intensity_data['ivalue'],
-                nbins, deg))
+                nbins, deg)))]
+
+        if "ivalue_norm" in channel_intensity_data.columns:
+            profiles.append((f"{channel_name}/ref", dict(
+                lamina_dist=stat.radial_fit(
+                    channel_intensity_data['lamina_dist'],
+                    channel_intensity_data['ivalue_norm'],
+                    nbins, deg),
+                center_dist=stat.radial_fit(
+                    channel_intensity_data['center_dist'],
+                    channel_intensity_data['ivalue_norm'],
+                    nbins, deg),
+                lamina_dist_norm=stat.radial_fit(
+                    channel_intensity_data['lamina_dist_norm'],
+                    channel_intensity_data['ivalue_norm'],
+                    nbins, deg))))
+
+        return profiles
 
     def get_radial_profiles(
             self, rdc: RadialDistanceCalculator,
@@ -613,8 +631,8 @@ class SeriesList(object):
             ) -> RadialProfileData:
         profiles: RadialProfileData = {}
         for channel_name in tqdm(self.channel_names, desc="channel"):
-            profiles[channel_name] = self.__prep_single_channel_profile(
-                channel_name, rdc, nbins, deg, reInit)
+            profiles.update(self.__prep_single_channel_profile(
+                            channel_name, rdc, nbins, deg, reInit))
         return profiles
 
     def to_pickle(self, dpath: str, pickle_name: str = "radiant.pkl") -> None:
