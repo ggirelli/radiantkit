@@ -97,7 +97,7 @@
 							<div class="col-sm-10">
 								<select class="form-control" name="distance_type" id="distance_type">
 									{% for distance_type in dtypes: %}
-									<option value="{{distance_type}}">{{dlabs[distance_type]}}</option>
+									<option value="{{distance_type}}"{% if distance_type == "lamina_dist_norm": %} selected{% endif %}>{{dlabs[distance_type]}}</option>
 									{% endfor %}
 								</select>
 							</div>
@@ -107,7 +107,7 @@
 							<div class="col-sm-10">
 								<select class="form-control" name="channel" id="channel">
 									{% for channel_name in figures %}
-									<option value="{{channel_name}}">{{channel_name}}</option>
+									<option value="{{channel_name}}"{% if channel_name == args.ref_channel: %} selected{% endif %}>{{channel_name}}</option>
 									{% endfor %}
 								</select>
 							</div>		

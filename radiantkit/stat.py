@@ -271,10 +271,41 @@ def radial_fit(x: np.ndarray, y: np.ndarray,
             q3_raw=yy[:, 2])))
 
 
+class RootType(Enum):
+    MAXIMA = "max"
+    MINIMA = "min"
+    BOTH = "both"
+
+
+def select_maxima_roots(roots: np.ndarray, poly: Polynomial, npoints: int):
+    delta = np.diff(poly.domain)/npoints
+    return roots[np.logical_and(poly(roots-delta) > 0, poly(roots+delta) < 0)]
+
+
+def select_minima_roots(roots: np.ndarray, poly: Polynomial, npoints: int):
+    delta = np.diff(poly.domain)/npoints
+    return roots[np.logical_and(poly(roots-delta) < 0, poly(roots+delta) > 0)]
+
+
 def get_polynomial_real_roots(
-        poly: Polynomial, inWindow: bool = True) -> np.ndarray:
+        poly: Polynomial, mode: RootType = RootType.MAXIMA,
+        npoints: int = 1000, inDomain: bool = True, inWindow: bool = False
+        ) -> np.ndarray:
+    assert mode in RootType
+
     roots = poly.roots()
     roots = roots[np.logical_not(np.iscomplex(roots))]
-    roots = roots[roots >= poly.window[0]]
-    roots = roots[roots <= poly.window[1]]
+
+    if inWindow:
+        roots = roots[roots >= poly.window[0]]
+        roots = roots[roots <= poly.window[1]]
+    if inDomain:
+        roots = roots[roots >= poly.domain[0]]
+        roots = roots[roots <= poly.domain[1]]
+
+    if RootType.MAXIMA == mode:
+        roots = select_maxima_roots(roots, poly, npoints)
+    elif RootType.MINIMA == mode:
+        roots = select_minima_roots(roots, poly, npoints)
+
     return np.real(roots)

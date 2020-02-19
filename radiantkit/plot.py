@@ -237,7 +237,8 @@ def add_profile_roots(label: str, profile: Polynomial,
                       ) -> List[go.Scatter]:
     data = []
 
-    roots_der1 = stat.get_polynomial_real_roots(profile.deriv())
+    roots_der1 = stat.get_polynomial_real_roots(
+        profile.deriv(), stat.RootType.MAXIMA)
     if 0 != len(roots_der1):
         data.extend([
             go.Scatter(
@@ -253,7 +254,8 @@ def add_profile_roots(label: str, profile: Polynomial,
                 legendgroup=label, showlegend=False)
         ])
 
-    roots_der2 = stat.get_polynomial_real_roots(profile.deriv().deriv())
+    roots_der2 = stat.get_polynomial_real_roots(
+        profile.deriv().deriv(), stat.RootType.MINIMA)
     if 0 != len(roots_der2):
         data.extend([
             go.Scatter(
