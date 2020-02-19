@@ -221,13 +221,15 @@ def add_profile_trace(
                 marker=dict(size=4, opacity=.5, color="#989898")),
             go.Scatter(
                 name=label, x=x, y=y, xaxis="x", yaxis="y", mode='lines',
-                legendgroup=label, color=color),
+                legendgroup=label, line=dict(color=color)),
             go.Scatter(
                 name=f"der1_{label}", x=xx, y=yy, xaxis="x", yaxis="y2",
-                mode='lines', legendgroup=label, color=color),
+                mode='lines', line=dict(color=color),
+                legendgroup=label, showlegend=False),
             go.Scatter(
                 name=f"der2_{label}", x=xxx, y=yyy, xaxis="x", yaxis="y3",
-                mode='lines', legendgroup=label, color=color)]
+                mode='lines', line=dict(color=color),
+                legendgroup=label, showlegend=False)]
 
 
 def add_profile_roots(label: str, profile: Polynomial,
