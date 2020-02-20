@@ -37,6 +37,7 @@ class ImageSettings(object):
 
     @aspect.setter
     def aspect(self, spacing: np.ndarray) -> None:
+        spacing = np.array(spacing)
         if len(self.aspect) == len(spacing):
             self._aspect = spacing
         elif len(spacing) < len(self._axes_order):

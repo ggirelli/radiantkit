@@ -48,7 +48,7 @@ class ChannelList(object):
         self._channels = {}
         if ground_block_side is not None:
             self._ground_block_side = ground_block_side
-        self._aspect = aspect
+        self._aspect = np.array(aspect)
 
     @property
     def ID(self) -> int:
@@ -68,10 +68,13 @@ class ChannelList(object):
 
     @aspect.setter
     def aspect(self, spacing: np.ndarray) -> None:
+        spacing = np.array(spacing)
         if 0 != len(self):
             for name, channel in self._channels.items():
                 channel.aspect = spacing
             self._aspect = list(self._channels.values())[0].aspect
+        else:
+            self._aspect = spacing
 
     @property
     def ground_block_side(self) -> int:
@@ -237,7 +240,7 @@ class Series(ChannelList):
 
     def __init__(self, ID: int, ground_block_side: Optional[int] = None,
                  aspect: Optional[np.ndarray] = None):
-        super(Series, self).__init__(ID, ground_block_side)
+        super(Series, self).__init__(ID, ground_block_side, aspect)
         self._particles = []
 
     @property

@@ -250,7 +250,7 @@ def radial_fit(x: np.ndarray, y: np.ndarray,
     bin_IDs = np.digitize(x, bins)-1
 
     x_IDs = list(set(bin_IDs))
-    x_mids = bins[x_IDs] + np.diff(bins)[0]/2
+    x_mids = bins[x_IDs] + np.diff(bins).min().round(12)/2
     yy_stubs = []
     for bi in x_IDs:
         yy_stubs.append(np.hstack([
@@ -322,15 +322,23 @@ def get_radial_profile_roots(
 
     if 0 == len(roots_der1):
         x, y = profile.linspace(npoints)
-        roots_der1 = np.array(x[np.argmax(y)])
+        roots_der1 = np.array([x[np.argmax(y)]])
+        roots_der1 = roots_der1[roots_der1 >= profile.domain[0]]
+        roots_der1 = roots_der1[roots_der1 <= profile.domain[1]]
+    else:
+        roots_der1 = np.array([roots_der1.min()])
     if 0 == len(roots_der2):
         x, y = profile.linspace(npoints)
-        roots_der2 = np.array(x[np.argmin(y)])
+        roots_der2 = np.array([x[np.argmin(y)]])
+        roots_der2 = roots_der2[roots_der2 >= profile.domain[0]]
+        roots_der2 = roots_der2[roots_der2 <= profile.domain[1]]
 
     if 0 == len(roots_der1):
-        return (roots_der1, roots_der2)
+        roots_der2 = roots_der2[0] if 0 != len(roots_der2) else np.nan
+        return (np.nan, roots_der2)
 
-    if 0 != len(roots_der2) and not all(roots_der2 < roots_der1[0]):
-        roots_der2 = roots_der2[np.argmax(roots_der2 >= roots_der1[0]):]
+    if 0 != len(roots_der2) and not all(roots_der2 < roots_der1):
+        return (roots_der1[0],
+                roots_der2[np.argmax(roots_der2 >= roots_der1)])
 
-    return (roots_der1, roots_der2)
+    return (roots_der1[0], np.nan)
