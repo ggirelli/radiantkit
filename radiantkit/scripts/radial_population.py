@@ -24,7 +24,34 @@ logging.basicConfig(
 def init_parser(subparsers: argparse._SubParsersAction
                 ) -> argparse.ArgumentParser:
     parser = subparsers.add_parser(
-        __name__.split('.')[-1], description=f'''Long description''',
+        __name__.split('.')[-1], description=f'''Generate average radial
+        profiles for a cell population. Requires a folder containing tiff
+        images with grayscale intensities and masks with segmented nuclei.
+        We recommend deconvolving the grayscale images to obtain a better
+        reconstruction of the radial profile.
+
+        Crucial aspect and axes
+
+        A radial profile is intended to be a curve with voxel intensity (Y) as
+        a function of a distance (X). This distance can either be the distance
+        of a voxel from the nuclear lamina, or from the nuclear center. Here,
+        the distance from the nuclear lamina is calculated as the euclidean
+        distance from the background of masks of segmented nuclei. See below,
+        for multiple definitions of nuclear center, accessible via the
+        --center-type parameter. The profile is also generated for a normalized
+        lamina distance, obtain by dividing the absolute lamina distance of a
+        voxel by the sum of absolute lamina and center distances.
+
+        Center definitions:
+        - Centroid: ...
+        - Center of Mass: ...
+        - Quantile: ...
+        - Maxima: ...
+
+        Bins and degree, polynomial fit
+
+        Roots
+        ''',
         formatter_class=argparse.RawDescriptionHelpFormatter,
         help="Generate average radial profiles for a cell population.")
 
