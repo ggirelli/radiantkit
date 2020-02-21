@@ -6,7 +6,8 @@
 import logging
 from logging import Logger
 from radiantkit import const
-from radiantkit.image import Image, ImageBinary, ImageLabeled
+from radiantkit.channel import ImageGrayScale
+from radiantkit.image import ImageBinary, ImageLabeled
 from skimage.filters import threshold_otsu  # type: ignore
 from typing import Optional, Union
 
@@ -45,7 +46,7 @@ class Binarizer(BinarizerSettings):
     def __init__(self, logger: Logger = logging.getLogger("radiantkit")):
         super(Binarizer, self).__init__(logger)
 
-    def __do_global_threshold(self, img: Image) -> ImageBinary:
+    def __do_global_threshold(self, img: ImageGrayScale) -> ImageBinary:
         global_threshold = threshold_otsu(img.pixels)
         self.logger.info(f"applying global threshold of {global_threshold}")
         gmask = img.threshold_global(global_threshold)
@@ -55,7 +56,7 @@ class Binarizer(BinarizerSettings):
 
         return gmask
 
-    def __do_local_threshold(self, img: Image) -> ImageBinary:
+    def __do_local_threshold(self, img: ImageGrayScale) -> ImageBinary:
         self.logger.info("applying adaptive threshold to neighbourhood "
                          + f"with side of {self.local_side} px. "
                          + f"({self.local_method}, {self.local_mode})")
@@ -67,7 +68,8 @@ class Binarizer(BinarizerSettings):
 
         return local_mask
 
-    def __combine_global_and_local_thresholds(self, img: Image) -> ImageBinary:
+    def __combine_global_and_local_thresholds(
+            self, img: ImageGrayScale) -> ImageBinary:
         mask_list = []
 
         if self.do_global:
@@ -103,9 +105,9 @@ class Binarizer(BinarizerSettings):
 
         return ImageBinary(L.pixels)
 
-    def run(self, img: Image,
+    def run(self, img: ImageGrayScale,
             mask2d: Optional[Union[ImageBinary, ImageLabeled]] = None
-            ) -> Union[Image, ImageBinary]:
+            ) -> Union[ImageGrayScale, ImageBinary]:
         if not self.do_global and not self.do_local:
             self.logger.warning("no threshold applied.")
             return img

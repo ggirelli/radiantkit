@@ -358,7 +358,7 @@ def run(args: argparse.Namespace) -> None:
     confirm_arguments(args)
 
     logging.info("Reading input image...")
-    img = imt.ImageBase.from_tiff(args.input).pixels
+    img = imt.Image.from_tiff(args.input).pixels
 
     if 3 == len(img.shape):
         logging.info(f"3D stack found: {img.shape}")

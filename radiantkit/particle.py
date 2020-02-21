@@ -10,7 +10,8 @@ import numpy as np  # type: ignore
 import os
 import pandas as pd  # type: ignore
 from radiantkit.distance import RadialDistanceCalculator
-from radiantkit.image import Image, ImageBase, ImageBinary, ImageLabeled
+from radiantkit.channel import ImageGrayScale
+from radiantkit.image import Image, ImageBinary, ImageLabeled
 from radiantkit.selection import BoundingElement
 from radiantkit.stat import cell_cycle_fit, range_from_fit
 from skimage.measure import marching_cubes_lewiner  # type: ignore
@@ -124,7 +125,7 @@ class Particle(ParticleBase):
             return np.nan
 
     def init_intensity_features(
-            self, img: Image, channel_name: str = 'unknown') -> None:
+            self, img: ImageGrayScale, channel_name: str = 'unknown') -> None:
         if channel_name in self._intensity:
             logging.warning(
                 f"overwriting intensity mean of channel '{channel_name}'.")
@@ -137,7 +138,8 @@ class Particle(ParticleBase):
         self._intensity[channel_name]['mean'] = np.mean(pixels)
         self._intensity[channel_name]['sum'] = np.sum(pixels)
 
-    def get_intensity_value_counts(self, img: Image) -> List[np.ndarray]:
+    def get_intensity_value_counts(
+            self, img: ImageGrayScale) -> List[np.ndarray]:
         pixels = self._region_of_interest.apply(img)[self._mask.pixels]
         img.unload()
         if img.background is not None:
@@ -164,13 +166,14 @@ class Nucleus(Particle):
         return self._lamina_dist is not None and self._center_dist is not None
 
     def init_distances(self, rdc: RadialDistanceCalculator,
-                       C: Optional[ImageBase] = None) -> None:
+                       C: Optional[Image] = None) -> None:
         distances = rdc.calc(self.mask, C)
         assert distances is not None
         self._lamina_dist, self._center_dist = distances
 
     def get_intensity_at_distance(
-            self, img: Image, ref: Optional[Image] = None) -> pd.DataFrame:
+            self, img: ImageGrayScale, ref: Optional[ImageGrayScale] = None
+            ) -> pd.DataFrame:
         assert self._lamina_dist is not None and self._center_dist is not None
 
         df = pd.DataFrame.from_dict(dict(
@@ -202,7 +205,7 @@ class NucleiList(object):
     @staticmethod
     def from_field_of_view(maskpath: str, rawpath: str,
                            doRescale: bool = True) -> 'NucleiList':
-        img = Image.from_tiff(rawpath, doRescale=doRescale)
+        img = ImageGrayScale.from_tiff(rawpath, doRescale=doRescale)
         mask = ImageBinary.from_tiff(maskpath)
         assert img.shape == mask.shape
 

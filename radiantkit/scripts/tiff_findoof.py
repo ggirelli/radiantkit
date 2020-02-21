@@ -13,7 +13,7 @@ import numpy as np  # type: ignore
 import os
 import pandas as pd  # type: ignore
 from radiantkit.const import __version__
-from radiantkit import image, path, plot, stat
+from radiantkit import channel, path, plot, stat
 import sys
 from tqdm import tqdm  # type: ignore
 from typing import List
@@ -116,7 +116,8 @@ def plot_profile(args: argparse.Namespace, series_data: pd.DataFrame,
     plot.export(path)
 
 
-def describe_slices(args: argparse.Namespace, img: image.Image) -> List[float]:
+def describe_slices(
+        args: argparse.Namespace, img: channel.ImageGrayScale) -> List[float]:
     slice_descriptors = []
     for zi in range(img.shape[0]):
         if args.intensity_sum:
@@ -131,7 +132,7 @@ def describe_slices(args: argparse.Namespace, img: image.Image) -> List[float]:
 
 def is_OOF(args: argparse.Namespace, ipath: str,
            logger: logging.Logger) -> pd.DataFrame:
-    img = image.Image.from_tiff(os.path.join(args.input, ipath))
+    img = channel.ImageGrayScale.from_tiff(os.path.join(args.input, ipath))
 
     slice_descriptors = describe_slices(args, img)
 

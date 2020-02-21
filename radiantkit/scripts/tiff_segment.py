@@ -11,7 +11,7 @@ import numpy as np  # type: ignore
 import os
 from radiantkit.const import __version__
 from radiantkit import const, path, stat, string
-from radiantkit import image, io, segmentation
+from radiantkit import channel, image, io, segmentation
 import re
 import sys
 from tqdm import tqdm  # type: ignore
@@ -219,7 +219,7 @@ def run_segmentation(args: argparse.Namespace, imgpath: str, imgdir: str,
     logging.getLogger().setLevel(loglevel)
     logging.info(f"Segmenting image '{imgpath}'")
 
-    img = image.Image.from_tiff(
+    img = channel.ImageGrayScale.from_tiff(
         os.path.join(imgdir, imgpath), doRescale=args.do_rescaling)
     logging.info(f"image axes: {img.axes}")
     logging.info(f"image shape: {img.shape}")

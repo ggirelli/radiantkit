@@ -4,7 +4,7 @@
 '''
 
 import numpy as np  # type: ignore
-from radiantkit.image import ImageBase, ImageBinary
+from radiantkit.image import Image, ImageBinary
 from typing import Tuple
 
 
@@ -36,7 +36,7 @@ class BoundingElement(object):
             axes_bounds.append((axis.argmax(), len(axis)-axis[::-1].argmax()))
         return BoundingElement(tuple(axes_bounds))
 
-    def apply(self, I: ImageBase) -> np.ndarray:
+    def apply(self, I: Image) -> np.ndarray:
         assert len(self._bounds) == len(I.shape)
         for axis_id in range(len(I.shape)):
             assert self._bounds[axis_id][1] <= I.shape[axis_id]

@@ -99,7 +99,7 @@ def export_image(ipath: str, opath: str, compress: bool = None) -> str:
 
     if compress is None:
         compress = False
-    img = image.ImageBase.from_tiff(os.path.join(idir, ipath))
+    img = image.Image.from_tiff(os.path.join(idir, ipath))
     if opath is None:
         opath = ipath
 

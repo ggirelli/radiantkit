@@ -19,13 +19,13 @@ from typing import Any, Dict, List, Optional, Tuple, Union
 import warnings
 
 
-class ImageSettings(object):
+class ImageBase(object):
     _ALLOWED_AXES: str = default_axes
     _axes_order: str = default_axes
     _aspect: np.ndarray = np.ones(6)
 
     def __init__(self):
-        super(ImageSettings, self).__init__()
+        super(ImageBase, self).__init__()
 
     @property
     def nd(self) -> int:
@@ -50,14 +50,14 @@ class ImageSettings(object):
                             + f"(used only last {len(self.aspect)} values)")
 
 
-class ImageBase(ImageSettings):
+class Image(ImageBase):
     _path_to_local: Optional[str] = None
     _pixels: Optional[np.ndarray] = None
     _shape: Tuple[int]
 
     def __init__(self, pixels: np.ndarray, path: Optional[str] = None,
                  axes: Optional[str] = None):
-        super(ImageSettings, self).__init__()
+        super(ImageBase, self).__init__()
         assert len(pixels.shape) <= len(self._ALLOWED_AXES)
         self._pixels = pixels.copy()
         self._remove_empty_axes()
@@ -148,8 +148,8 @@ class ImageBase(ImageSettings):
             return self._pixels is not None
 
     @staticmethod
-    def from_tiff(path: str) -> 'ImageBase':
-        return ImageBase(read_tiff(path), path)
+    def from_tiff(path: str) -> 'Image':
+        return Image(read_tiff(path), path)
 
     def _extract_nd(self) -> None:
         self._pixels = extract_nd(self._pixels, self.nd)
@@ -173,7 +173,7 @@ class ImageBase(ImageSettings):
 
     def flatten(self, axes_to_keep: str,
                 projection_type: ProjectionType = ProjectionType.SUM
-                ) -> 'ImageBase':
+                ) -> 'Image':
         axes_to_flatten = tuple([ai for ai in range(len(self.axes))
                                  if self.axes[ai] not in axes_to_keep])
         if projection_type is ProjectionType.SUM:
@@ -187,7 +187,7 @@ class ImageBase(ImageSettings):
     def z_project(self, projection_type: ProjectionType) -> np.ndarray:
         return z_project(self.pixels, projection_type)
 
-    def tile_to(self, shape: Tuple[int, ...]) -> 'ImageBase':
+    def tile_to(self, shape: Tuple[int, ...]) -> 'Image':
         return self.from_this(tile_to(self.pixels, shape))
 
     def is_loadable(self) -> bool:
@@ -200,7 +200,7 @@ class ImageBase(ImageSettings):
 
     def unload(self) -> None:
         if self._path_to_local is None:
-            logging.error("cannot unload ImageBase without path_to_local.")
+            logging.error("cannot unload Image without path_to_local.")
             return
         if not os.path.isfile(self._path_to_local):
             logging.error("path_to_local not found, cannot unload: "
@@ -220,11 +220,11 @@ class ImageBase(ImageSettings):
     def offset(self, offset: int) -> np.ndarray:
         return self.from_this(offset2(self.pixels, offset))
 
-    def copy(self) -> 'ImageBase':
+    def copy(self) -> 'Image':
         return self.from_this(self.pixels, True)
 
     def from_this(self, pixels: np.ndarray,
-                  keepPath: bool = False) -> 'ImageBase':
+                  keepPath: bool = False) -> 'Image':
         if keepPath:
             I2 = type(self)(pixels, self._path_to_local, self.axes)
         else:
@@ -245,7 +245,7 @@ class ImageBase(ImageSettings):
         return s
 
 
-class ImageLabeled(ImageBase):
+class ImageLabeled(Image):
     def __init__(self, pixels: np.ndarray, path: Optional[str] = None,
                  axes: Optional[str] = None, doRelabel: bool = True):
         super(ImageLabeled, self).__init__(pixels, path, axes)
@@ -331,7 +331,7 @@ class ImageLabeled(ImageBase):
         return s
 
 
-class ImageBinary(ImageBase):
+class ImageBinary(Image):
     _background: float = 0
     _foreground: float = 0
 
@@ -411,70 +411,6 @@ class ImageBinary(ImageBase):
         s = super(ImageBinary, self).__repr__()
         s += f"; Foreground voxels: {self.foreground}"
         s += f"; Background voxels: {self.background}"
-        return s
-
-
-class Image(ImageBase):
-    _rescale_factor: float = 1.
-    _background: Optional[float] = None
-    _foreground: Optional[float] = None
-
-    def __init__(self, pixels: np.ndarray, path: Optional[str] = None,
-                 axes: Optional[str] = None):
-        super(Image, self).__init__(pixels, path, axes)
-
-    @property
-    def background(self):
-        return self._background
-
-    @property
-    def foreground(self):
-        return self._foreground
-
-    @property
-    def rescale_factor(self) -> float:
-        return self._rescale_factor
-
-    @rescale_factor.setter
-    def rescale_factor(self, new_factor: float) -> None:
-        self._pixels = self.pixels*self.rescale_factor
-        self.__rescale_factor = new_factor
-        self._pixels = self.pixels/self.rescale_factor
-
-    @staticmethod
-    def from_tiff(path: str, axes: Optional[str] = None,
-                  doRescale: bool = True) -> 'Image':
-        img = Image(read_tiff(path), path, axes)
-        if doRescale:
-            img.rescale_factor = img.get_huygens_rescaling_factor()
-        return img
-
-    def get_huygens_rescaling_factor(self) -> float:
-        if self._path_to_local is None:
-            return 1.
-        return get_huygens_rescaling_factor(self._path_to_local)
-
-    def threshold_global(self, thr: Union[int, float]) -> ImageBinary:
-        return ImageBinary(self.pixels > thr, doRebinarize=False)
-
-    def threshold_adaptive(self, block_size: int,
-                           method: str, mode: str,
-                           *args, **kwargs) -> ImageBinary:
-        return ImageBinary(threshold_adaptive(self.pixels, block_size,
-                           method, mode, *args, **kwargs), doRebinarize=False)
-
-    def update_ground(self, M: Union[ImageBinary, ImageLabeled],
-                      block_side: int = 11) -> None:
-        if isinstance(M, ImageLabeled):
-            M = M.binarize()
-        M = dilate(M.pixels, block_side)
-        self._foreground = np.median(self.pixels[M])
-        self._background = np.median(self.pixels[np.logical_not(M)])
-
-    def __repr__(self) -> str:
-        s = super(Image, self).__repr__()
-        if self.background is not None:
-            s += f"; Back/foreground: {(self.background, self.foreground)}"
         return s
 
 
