@@ -37,7 +37,7 @@ class Report(object):
 def report_select_nuclei(
         args: argparse.Namespace, opath: str,
         online: bool = False, **kwargs) -> None:
-    report = Report('report_select_nuclei.tpl.html')
+    report = Report('reports/select_nuclei.tpl.html')
     details = kwargs['details']
 
     figure = plot.plot_nuclear_selection(
@@ -56,7 +56,7 @@ def report_select_nuclei(
 def report_measure_objects(
         args: argparse.Namespace, opath: str,
         online: bool = False, **kwargs) -> None:
-    report = Report('report_measure_objects.tpl.html')
+    report = Report('reports/measure_objects.tpl.html')
 
     figure = plot.plot_nuclear_features(
         kwargs['data'], kwargs['spx_data'],
@@ -74,7 +74,7 @@ def report_radial_population(
         args: argparse.Namespace, opath: str,
         profile_data: series.RadialProfileData,
         online: bool = False, **kwargs) -> None:
-    report = Report('report_radial_population.tpl.html')
+    report = Report('reports/radial_population.tpl.html')
 
     roots: Dict[str, Dict[str, Dict[str, Tuple[np.ndarray, np.ndarray]]]] = {}
     distance_type_set = set()
