@@ -56,7 +56,8 @@ tools for radial analysis of microscopy image.
     scripts.tiff_split.init_parser(subparsers)
     scripts.tiffcu.init_parser(subparsers)
 
-    scripts.make_pipeline.init_parser(subparsers)
+    scripts.pipeline.init_parser(subparsers)
+    scripts.report.init_parser(subparsers)
 
     argcomplete.autocomplete(parser)
     args = parser.parse_args()

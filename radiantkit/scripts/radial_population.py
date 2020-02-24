@@ -20,6 +20,9 @@ logging.basicConfig(
     + '[P%(process)s:%(module)s:%(funcName)s] %(levelname)s: %(message)s',
     datefmt='%m/%d/%Y %I:%M:%S')
 
+__OUTPUT__ = ("radial_population.profile.poly_fit.tsv",
+              "radial_population.profile.raw_data.tsv")
+
 
 def init_parser(subparsers: argparse._SubParsersAction
                 ) -> argparse.ArgumentParser:

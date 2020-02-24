@@ -14,6 +14,13 @@ FileList = List[str]
 RawMaskPair = Tuple[str, str]
 
 
+def add_suffix(path: str, suffix: str) -> str:
+    fname, fext = os.path.splitext(path)
+    if not fname.endswith(suffix):
+        fname += string.add_leading_dot(suffix)
+    return f"{fname}{fext}"
+
+
 def add_extension(path: str, ext: str) -> str:
     ext = string.add_leading_dot(ext)
     if not path.endswith(ext):

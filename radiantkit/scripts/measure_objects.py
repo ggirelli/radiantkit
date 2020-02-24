@@ -19,6 +19,9 @@ logging.basicConfig(
     + '[P%(process)s:%(module)s:%(funcName)s] %(levelname)s: %(message)s',
     datefmt='%m/%d/%Y %I:%M:%S')
 
+__OUTPUT__ = ("nuclear_features.tsv",
+              "single_pixel_features.tsv")
+
 
 def init_parser(subparsers: argparse._SubParsersAction
                 ) -> argparse.ArgumentParser:
