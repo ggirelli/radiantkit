@@ -118,7 +118,7 @@ interactive data visualization.
     advanced.add_argument(
         '--no-remove', action='store_const', dest='remove_labels',
         const=False, default=True,
-        help='Do not regenerate masks after removing discarded nuclei labels.')
+        help='Do not export masks after removing discarded nuclei labels.')
     advanced.add_argument(
         '--uncompressed', action='store_const', dest='compressed',
         const=False, default=True,
@@ -226,13 +226,12 @@ def remove_labels_from_series_mask(
         return series
 
     series.mask.load_from_local()
-    os.rename(series.mask.path, f"{series.mask.path}.old")
 
     if labeled:
         L = series.mask.pixels
         L[np.logical_not(np.isin(L, labels))] = 0
         L = ImageLabeled(L)
-        L.to_tiff(series.mask.path, compressed)
+        L.to_tiff(path.add_suffix(series.mask.path, "selected"), compressed)
     else:
         if isinstance(series.mask, ImageBinary):
             L = series.mask.label().pixels
@@ -240,7 +239,7 @@ def remove_labels_from_series_mask(
             L = series.mask.pixels
         L[np.logical_not(np.isin(L, labels))] = 0
         M = ImageBinary(L)
-        M.to_tiff(series.mask.path, compressed)
+        M.to_tiff(path.add_suffix(series.mask.path, "selected"), compressed)
 
     series.unload()
     return series
