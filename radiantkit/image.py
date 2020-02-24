@@ -37,6 +37,8 @@ class ImageBase(object):
 
     @aspect.setter
     def aspect(self, spacing: np.ndarray) -> None:
+        if spacing is None:
+            return
         spacing = np.array(spacing)
         if len(self.aspect) == len(spacing):
             self._aspect = spacing

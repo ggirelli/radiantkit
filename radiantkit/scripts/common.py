@@ -52,8 +52,8 @@ def init_series_list(args: argparse.Namespace
 
     if os.path.exists(pickle_path):
         if not args.import_instance:
-            logging.info(f"Found '{args.pickle_name}' file in input folder.")
-            logging.info(" Use --import-instance flag to unpickle it.")
+            logging.info(f"found '{args.pickle_name}' file in input folder.")
+            logging.info("use --import-instance flag to unpickle it.")
         if args.import_instance:
             with open(pickle_path, "rb") as PI:
                 series_list = pickle.load(PI)

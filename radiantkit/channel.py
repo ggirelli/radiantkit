@@ -95,7 +95,8 @@ class ChannelList(object):
         self._channels = {}
         if ground_block_side is not None:
             self._ground_block_side = ground_block_side
-        self._aspect = np.array(aspect)
+        if aspect is not None:
+            self._aspect = np.array(aspect)
 
     @property
     def ID(self) -> int:
@@ -115,6 +116,8 @@ class ChannelList(object):
 
     @aspect.setter
     def aspect(self, spacing: np.ndarray) -> None:
+        if spacing is None:
+            return
         spacing = np.array(spacing)
         if 0 != len(self):
             for name, channel in self._channels.items():

@@ -78,15 +78,15 @@ interactive data visualization.
     parser.add_argument('--version', action='version',
                         version='%s %s' % (sys.argv[0], const.__version__,))
 
-    report = parser.add_argument_group("report arguments")
-    report.add_argument(
-        '--no-report', action='store_const',
-        help="""Do not generate an HTML report.""",
-        dest="mk_report", const=False, default=True)
-    report.add_argument(
-        '--online-report', action='store_const',
-        help="""Make a smaller HTML report by linking remote JS libraries.""",
-        dest="online_report", const=True, default=False)
+    # report = parser.add_argument_group("report arguments")
+    # report.add_argument(
+    #     '--no-report', action='store_const',
+    #     help="""Do not generate an HTML report.""",
+    #     dest="mk_report", const=False, default=True)
+    # report.add_argument(
+    #     '--online-report', action='store_const',
+    #     help="""Make a smaller HTML report by linking remote JS libraries.""",
+    #     dest="online_report", const=True, default=False)
 
     pickler = parser.add_argument_group("pickle arguments")
     pickler.add_argument(
@@ -308,6 +308,6 @@ def run(args: argparse.Namespace) -> None:
     log.info(f"writing nuclear data to:\n{ndpath}")
     nuclei_data.to_csv(ndpath, sep="\t", index=False)
 
-    mk_report(args, nuclei_data, details, series_list)
+    # mk_report(args, nuclei_data, details, series_list)
 
     common.pickle_series_list(args, series_list)

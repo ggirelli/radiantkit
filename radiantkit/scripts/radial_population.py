@@ -104,15 +104,15 @@ def init_parser(subparsers: argparse._SubParsersAction
         '--degree', type=int, metavar="NUMBER", default=5,
         help=f"""Degree of polynomial fitting. Default: 5.""")
 
-    report = parser.add_argument_group("report arguments")
-    report.add_argument(
-        '--no-report', action='store_const',
-        help="""Do not generate an HTML report.""",
-        dest="mk_report", const=False, default=True)
-    report.add_argument(
-        '--online-report', action='store_const',
-        help="""Make a smaller HTML report by linking remote JS libraries.""",
-        dest="online_report", const=True, default=False)
+    # report = parser.add_argument_group("report arguments")
+    # report.add_argument(
+    #     '--no-report', action='store_const',
+    #     help="""Do not generate an HTML report.""",
+    #     dest="mk_report", const=False, default=True)
+    # report.add_argument(
+    #     '--online-report', action='store_const',
+    #     help="""Make a smaller HTML report by linking remote JS libraries.""",
+    #     dest="online_report", const=True, default=False)
 
     pickler = parser.add_argument_group("pickle arguments")
     pickler.add_argument(
@@ -304,5 +304,5 @@ def run(args: argparse.Namespace) -> None:
         args.axes, args.center_type, args.quantile)
     profiles = series_list.get_radial_profiles(rdc, args.bins, args.degree)
 
-    mk_report(args, profiles, series_list)
+    #mk_report(args, profiles, series_list)
     export_profiles(args, profiles)

@@ -61,15 +61,15 @@ def init_parser(subparsers: argparse._SubParsersAction
         help="""Suffix for output binarized images name.
         Default: 'mask'.""", default='mask')
 
-    report = parser.add_argument_group("report arguments")
-    report.add_argument(
-        '--no-report', action='store_const',
-        help="""Do not generate an HTML report.""",
-        dest="mk_report", const=False, default=True)
-    report.add_argument(
-        '--online-report', action='store_const',
-        help="""Make a smaller HTML report by linking remote JS libraries.""",
-        dest="online_report", const=True, default=False)
+    # report = parser.add_argument_group("report arguments")
+    # report.add_argument(
+    #     '--no-report', action='store_const',
+    #     help="""Do not generate an HTML report.""",
+    #     dest="mk_report", const=False, default=True)
+    # report.add_argument(
+    #     '--online-report', action='store_const',
+    #     help="""Make a smaller HTML report by linking remote JS libraries.""",
+    #     dest="online_report", const=True, default=False)
 
     pickler = parser.add_argument_group("pickle arguments")
     pickler.add_argument(
@@ -199,14 +199,14 @@ def measure_object_features(
     single_pixel_box_data = series_list.get_particle_single_px_stats()
     single_pixel_box_data.to_csv(feat_path, index=False, sep="\t")
 
-    if args.mk_report:
-        report_path = os.path.join(
-            args.output, "extract_objects.report.html")
-        logging.info(f"writing report to\n{report_path}")
-        report.report_measure_objects(
-            args, report_path, args.online_report,
-            data=fdata, spx_data=single_pixel_box_data,
-            series_list=series_list)
+    # if args.mk_report:
+    #     report_path = os.path.join(
+    #         args.output, "extract_objects.report.html")
+    #     logging.info(f"writing report to\n{report_path}")
+    #     report.report_measure_objects(
+    #         args, report_path, args.online_report,
+    #         data=fdata, spx_data=single_pixel_box_data,
+    #         series_list=series_list)
 
 
 def run(args: argparse.Namespace) -> None:
