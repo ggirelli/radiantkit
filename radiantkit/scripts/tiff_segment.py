@@ -49,8 +49,8 @@ Input images that have the specified prefix and suffix are not segmented.''',
         help="Segment tiff images (default optimized for DAPI staining).")
 
     parser.add_argument(
-        'input', type=str,
-        help='Path to folder containing deconvolved tiff images.')
+        'input', type=str, help='''Path single tiff image,
+        or to folder containing deconvolved tiff images.''')
 
     parser.add_argument(
         '-o', metavar="DIRPATH", type=str, default=None,
@@ -132,7 +132,10 @@ def parse_arguments(args: argparse.Namespace) -> argparse.Namespace:
     args.version = __version__
 
     if args.output is None:
-        args.output = args.input
+        if os.path.isfile(args.input):
+            args.output = os.path.dirname(args.input)
+        else:
+            args.output = args.input
 
     args.inreg = re.compile(args.inreg)
     args.outprefix = string.add_trailing_dot(args.outprefix)
@@ -147,10 +150,9 @@ def parse_arguments(args: argparse.Namespace) -> argparse.Namespace:
 
     args.threads = check_threads(args.threads)
 
-    if args.debug_mode:
-        logging.getLogger().level = logging.DEBUG
-    if args.silent:
-        logging.getLogger().level = logging.CRITICAL
+    loglvl = 20
+    loglvl = logging.DEBUG if args.debug_mode else 20
+    logging.getLogger().level = logging.CRITICAL if args.silent else loglvl
 
     return args
 
@@ -192,7 +194,9 @@ def confirm_arguments(args: argparse.Namespace) -> None:
     if not args.do_all:
         io.ask("Confirm settings and proceed?")
 
-    assert os.path.isdir(args.input), f"image folder not found: {args.input}"
+    if not os.path.isfile(args.input):
+        assert os.path.isdir(args.input), (
+            f"image folder not found: {args.input}")
     if not os.path.isdir(args.output):
         os.mkdir(args.output)
 
@@ -271,7 +275,13 @@ def run_segmentation(args: argparse.Namespace, imgpath: str, imgdir: str,
 
 def run(args: argparse.Namespace) -> None:
     confirm_arguments(args)
-    imglist = path.find_re(args.input, args.inreg)
+    if os.path.isfile(args.input):
+        assert re.match(args.inreg, os.path.basename(args.input)), (
+            "the provided image name does not match the pattern")
+        imglist = [os.path.basename(args.input)]
+        args.input = os.path.dirname(args.input)
+    else:
+        imglist = path.find_re(args.input, args.inreg)
 
     _, imglist = path.select_by_prefix_and_suffix(
         args.input, imglist, args.outprefix, args.outsuffix)
