@@ -36,6 +36,7 @@ def set_default_args_for_series_init(
 
 def check_parallelization_and_pickling(
         args: argparse.Namespace, pickled: bool) -> argparse.Namespace:
+    args.pre_threads = args.threads
     if pickled:
         args.threads = 1
         logging.warning(
