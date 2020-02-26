@@ -5,7 +5,7 @@
 
 import ggc  # type: ignore
 import itertools
-import joblib  # type: ignore
+from joblib import delayed, Parallel  # type: ignore
 import logging
 import numpy as np  # type: ignore
 import os
@@ -117,7 +117,7 @@ class Series(ChannelList):
                                      f"mask_{basename}.tif"), compressed)
 
                 if nucleus.has_distances():
-                    lamina_dist, center_dist = nucleus.distances
+                    center_dist, lamina_dist = nucleus.distances
 
                     ImageGrayScale(center_dist).to_tiff(
                         os.path.join(path, f"centerDist_{basename}.tif"),
@@ -138,7 +138,8 @@ class Series(ChannelList):
         series.export_particles(path, compressed)
 
     def init_particles_distances(
-            self, rdc: RadialDistanceCalculator, reInit: bool = False) -> None:
+            self, rdc: RadialDistanceCalculator, reInit: bool = False
+            ) -> 'Series':
         C = None
         if self.reference is not None and (
                 rdc.center_type is CenterType.CENTER_OF_MASS):
@@ -148,6 +149,13 @@ class Series(ChannelList):
                 particle.init_distances(rdc, C)
         if C is not None:
             C.unload()
+        return self
+
+    @staticmethod
+    def static_init_particles_distances(
+            series: 'Series', rdc: RadialDistanceCalculator,
+            reInit: bool = False) -> 'Series':
+        return series.init_particles_distances(rdc, reInit)
 
     def get_particles_intensity_at_distance(
             self, channel_name: str
@@ -169,6 +177,12 @@ class Series(ChannelList):
         df['channel'] = channel_name
         df['series_label'] = self.ID
         return df
+
+    @staticmethod
+    def static_get_particles_intensity_at_distance(
+            series: 'Series', channel_name: str
+            ) -> pd.DataFrame:
+        return series.get_particles_intensity_at_distance(channel_name)
 
     def __str__(self):
         s = super(Series, self).__str__()
@@ -278,8 +292,8 @@ class SeriesList(object):
             [series.init_particles(particleClass, channel_list)
                 for series in tqdm(self)]
         else:
-            self.series = joblib.Parallel(n_jobs=threads, verbose=11)(
-                joblib.delayed(Series.extract_particles)(
+            self.series = Parallel(n_jobs=threads, verbose=11)(
+                delayed(Series.extract_particles)(
                     series, particleClass, channel_list)
                 for series in self)
 
@@ -371,23 +385,39 @@ class SeriesList(object):
             for series in tqdm(self, desc="series"):
                 series.export_particles(path, compressed)
         else:
-            joblib.Parallel(n_jobs=threads, verbose=11)(
-                joblib.delayed(Series.static_export_particles)(
+            Parallel(n_jobs=threads, verbose=11)(
+                delayed(Series.static_export_particles)(
                     series, path, compressed) for series in self)
+
+    def __retrieve_channel_intensity_at_distance(
+            self, channel_name: str, rdc: RadialDistanceCalculator,
+            threads: int = 1, reInit: bool = False) -> pd.DataFrame:
+        assert threads > 0
+        if 1 == threads:
+            channel_idata_dflist = []
+            for s in self.series:
+                s.init_particles_distances(rdc, reInit)
+                channel_idata_dflist.append(
+                    s.get_particles_intensity_at_distance(channel_name))
+            return pd.concat(channel_idata_dflist)
+        else:
+            self.series = Parallel(n_jobs=threads, verbose=0)(
+                delayed(Series.static_init_particles_distances)(
+                    s, rdc, reInit) for s in self.series)
+            return pd.concat(Parallel(n_jobs=threads, verbose=0)(
+                delayed(Series.static_get_particles_intensity_at_distance)(
+                    s, channel_name) for s in self.series))
 
     def __prep_single_channel_profile(
             self, channel_name: ChannelName, rdc: RadialDistanceCalculator,
-            nbins: int = 200, deg: int = 5,
+            nbins: int = 200, deg: int = 5, threads: int = 1,
             reInit: bool = False, normOverRef: bool = False
             ) -> List[Tuple[ChannelName, ChannelRadialProfileData]]:
-        logging.info(f"extracting vx values for channel '{channel_name}'")
+        logging.info(f"extracting vx values for channel '{channel_name}'"
+                     + f" [threads:{threads}]")
 
-        channel_idata_dflist = []
-        for s in self.series:
-            s.init_particles_distances(rdc, reInit)
-            channel_idata_dflist.append(
-                s.get_particles_intensity_at_distance(channel_name))
-        channel_intensity_data = pd.concat(channel_idata_dflist)
+        channel_intensity_data = self.__retrieve_channel_intensity_at_distance(
+            channel_name, rdc, threads, reInit)
 
         logging.info("fitting polynomial curve")
         profiles = [(channel_name, dict(
@@ -425,12 +455,12 @@ class SeriesList(object):
     def get_radial_profiles(
             self, rdc: RadialDistanceCalculator,
             nbins: int = 200, deg: int = 5,
-            reInit: bool = False
+            reInit: bool = False, threads: int = 1
             ) -> RadialProfileData:
         profiles: RadialProfileData = {}
         for channel_name in tqdm(self.channel_names, desc="channel"):
             profiles.update(self.__prep_single_channel_profile(
-                            channel_name, rdc, nbins, deg, reInit))
+                            channel_name, rdc, nbins, deg, threads, reInit))
         return profiles
 
     def to_pickle(self, dpath: str, pickle_name: str = "radiant.pkl") -> None:

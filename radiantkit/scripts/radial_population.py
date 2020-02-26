@@ -305,7 +305,8 @@ def run(args: argparse.Namespace) -> None:
     logging.info(f"generating radial profiles")
     rdc = distance.RadialDistanceCalculator(
         args.axes, args.center_type, args.quantile)
-    profiles = series_list.get_radial_profiles(rdc, args.bins, args.degree)
+    profiles = series_list.get_radial_profiles(
+        rdc, args.bins, args.degree, threads=args.threads)
 
     #mk_report(args, profiles, series_list)
     export_profiles(args, profiles)

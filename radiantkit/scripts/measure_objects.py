@@ -47,6 +47,10 @@ def init_parser(subparsers: argparse._SubParsersAction
         help='''Path to folder where output should be written to.
         Defaults to "objects" subfolder in the input directory.''')
     parser.add_argument(
+        '--export-single-voxel', action='store_const',
+        const=True, default=False, dest='exportSingleVoxel',
+        help='Export also quantiles of single voxel features.')
+    parser.add_argument(
         '--version', action='version',
         version='%s %s' % (sys.argv[0], const.__version__,))
 
@@ -197,10 +201,11 @@ def measure_object_features(
     logging.info(f"exporting nuclear features to '{feat_path}'")
     fdata = series_list.export_particle_features(feat_path)
 
-    feat_path = os.path.join(args.output, "single_pixel_features.tsv")
-    logging.info(f"exporting single_pixel features to '{feat_path}'")
-    single_pixel_box_data = series_list.get_particle_single_px_stats()
-    single_pixel_box_data.to_csv(feat_path, index=False, sep="\t")
+    if args.exportSingleVoxel:
+        feat_path = os.path.join(args.output, "single_pixel_features.tsv")
+        logging.info(f"exporting single_pixel features to '{feat_path}'")
+        single_pixel_box_data = series_list.get_particle_single_px_stats()
+        single_pixel_box_data.to_csv(feat_path, index=False, sep="\t")
 
     # if args.mk_report:
     #     report_path = os.path.join(
