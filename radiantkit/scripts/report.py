@@ -7,7 +7,7 @@ import argparse
 import logging
 import os
 from radiantkit import const
-from radiantkit.scripts import output
+from radiantkit.scripts.common import output
 import sys
 
 logging.basicConfig(
@@ -54,9 +54,11 @@ def run(args: argparse.Namespace) -> None:
     logging.info(f"looking at '{args.input}'")
     output_list = output.get_output_list_per_folder(args.input, args.inreg)
 
-    if len(output.OutputType) == len(output_list):
+    if 1 == len(output_list):
+        # single condition report
         pass
     else:
+        # multi-condition report
         pass
 
     raise NotImplementedError

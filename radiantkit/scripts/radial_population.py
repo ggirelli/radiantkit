@@ -11,7 +11,8 @@ import pandas as pd  # type: ignore
 from radiantkit import const
 from radiantkit import distance, io, report, stat, string
 from radiantkit import particle, series
-from radiantkit.scripts import common
+from radiantkit.scripts.common import series as ra_series
+from radiantkit.scripts.common import args as ra_args
 import re
 import sys
 
@@ -170,7 +171,7 @@ def parse_arguments(args: argparse.Namespace) -> argparse.Namespace:
 
     if args.output is None:
         args.output = os.path.join(args.input, 'objects')
-    common.check_output_folder_path(args.output)
+    ra_args.check_output_folder_path(args.output)
 
     assert '(?P<channel_name>' in args.inreg
     assert '(?P<series_id>' in args.inreg
@@ -179,7 +180,7 @@ def parse_arguments(args: argparse.Namespace) -> argparse.Namespace:
     args.mask_prefix = string.add_trailing_dot(args.mask_prefix)
     args.mask_suffix = string.add_leading_dot(args.mask_suffix)
 
-    common.check_axes(args.axes)
+    ra_args.check_axes(args.axes)
     if args.center_type is distance.CenterType.QUANTILE:
         if args.quantile is not None:
             assert args.quantile > 0 and args.quantile <= 1
@@ -296,7 +297,7 @@ def export_profiles(
 
 def run(args: argparse.Namespace) -> None:
     confirm_arguments(args)
-    args, series_list = common.init_series_list(args)
+    args, series_list = ra_series.init_series_list(args)
 
     logging.info(f"extracting nuclei")
     series_list.extract_particles(particle.Nucleus, threads=args.threads)
@@ -310,4 +311,4 @@ def run(args: argparse.Namespace) -> None:
 
     #mk_report(args, profiles, series_list)
     export_profiles(args, profiles)
-    common.pickle_series_list(args, series_list)
+    ra_series.pickle_series_list(args, series_list)

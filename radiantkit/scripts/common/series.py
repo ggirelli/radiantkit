@@ -7,41 +7,9 @@ import argparse
 import logging
 import os
 import pickle
-from radiantkit import const
 from radiantkit import series
+from radiantkit.scripts.common import args as ra_args
 from typing import Tuple
-
-
-def check_axes(axes: str) -> None:
-    if axes is not None:
-        assert all([a in const.default_axes for a in axes])
-
-
-def check_output_folder_path(opath: str) -> None:
-    assert not os.path.isfile(opath)
-    if not os.path.isdir(opath):
-        os.mkdir(opath)
-
-
-def set_default_args_for_series_init(
-        args: argparse.Namespace) -> argparse.Namespace:
-    if "aspect" not in args:
-        args.aspect = None
-    if "labeled" not in args:
-        args.labeled = None
-    if "block_side" not in args:
-        args.block_side = None
-    return args
-
-
-def check_parallelization_and_pickling(
-        args: argparse.Namespace, pickled: bool) -> argparse.Namespace:
-    args.pre_threads = args.threads
-    if pickled:
-        args.threads = 1
-        logging.warning(
-            "deactivated parallelization when loading pickled instance.")
-    return args
 
 
 def init_series_list(args: argparse.Namespace
@@ -49,7 +17,7 @@ def init_series_list(args: argparse.Namespace
     pickled = False
     series_list = None
     pickle_path = os.path.join(args.input, args.pickle_name)
-    args = set_default_args_for_series_init(args)
+    args = ra_args.set_default_args_for_series_init(args)
 
     if os.path.exists(pickle_path):
         if not args.import_instance:
@@ -71,7 +39,7 @@ def init_series_list(args: argparse.Namespace
                  + f"{len(series_list.channel_names)} channels each"
                  + f": {series_list.channel_names}")
 
-    args = check_parallelization_and_pickling(args, pickled)
+    args = ra_args.check_parallelization_and_pickling(args, pickled)
 
     return args, series_list
 

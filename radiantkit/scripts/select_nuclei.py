@@ -14,7 +14,7 @@ import pandas as pd  # type: ignore
 from radiantkit import const
 from radiantkit.image import ImageBinary, ImageLabeled
 from radiantkit.particle import NucleiList, Nucleus
-from radiantkit.scripts import common
+from radiantkit.scripts.common import series as ra_series
 from radiantkit.series import Series, SeriesList
 from radiantkit import io, path, report, string
 import re
@@ -280,7 +280,7 @@ def mk_report(args: argparse.Namespace, nuclei_data: pd.DataFrame,
 
 def run(args: argparse.Namespace) -> None:
     confirm_arguments(args)
-    args, series_list = common.init_series_list(args)
+    args, series_list = ra_series.init_series_list(args)
 
     log.info(f"extracting nuclei")
     series_list.extract_particles(Nucleus, [args.ref_channel], args.threads)
@@ -311,4 +311,4 @@ def run(args: argparse.Namespace) -> None:
 
     # mk_report(args, nuclei_data, details, series_list)
 
-    common.pickle_series_list(args, series_list)
+    ra_series.pickle_series_list(args, series_list)

@@ -10,7 +10,7 @@ import os
 from radiantkit import const
 from radiantkit import particle, series
 from radiantkit import io, string
-from radiantkit.scripts import common
+from radiantkit.scripts.common import series as ra_series
 import re
 import sys
 
@@ -172,7 +172,7 @@ def export_tiffs(args: argparse.Namespace,
 
 def run(args: argparse.Namespace) -> None:
     confirm_arguments(args)
-    args, series_list = common.init_series_list(args)
+    args, series_list = ra_series.init_series_list(args)
 
     logging.info(f"extracting nuclei")
     series_list.extract_particles(particle.Nucleus, threads=args.threads)
@@ -180,4 +180,4 @@ def run(args: argparse.Namespace) -> None:
 
     export_tiffs(args, series_list)
 
-    common.pickle_series_list(args, series_list)
+    ra_series.pickle_series_list(args, series_list)
