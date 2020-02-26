@@ -7,10 +7,12 @@ from radiantkit.const import __version__
 from radiantkit import const, scripts
 from radiantkit import conversion, segmentation
 from radiantkit import image, particle, series
-from radiantkit import path, plot, report, stat, string
+from radiantkit import path, plot, stat, string
+from radiantkit import report, pipeline
 
 __all__ = ["__version__",
            "const", "scripts",
            "conversion", "segmentation",
            "image", "particle", "series",
-           "path", "plot", "report", "stat", "string"]
+           "path", "plot", "stat", "string",
+           "report", "pipeline"]
