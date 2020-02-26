@@ -108,16 +108,6 @@ def init_parser(subparsers: argparse._SubParsersAction
         '--degree', type=int, metavar="NUMBER", default=5,
         help=f"""Degree of polynomial fitting. Default: 5.""")
 
-    # report = parser.add_argument_group("report arguments")
-    # report.add_argument(
-    #     '--no-report', action='store_const',
-    #     help="""Do not generate an HTML report.""",
-    #     dest="mk_report", const=False, default=True)
-    # report.add_argument(
-    #     '--online-report', action='store_const',
-    #     help="""Make a smaller HTML report by linking remote JS libraries.""",
-    #     dest="online_report", const=True, default=False)
-
     pickler = parser.add_argument_group("pickle arguments")
     pickler.add_argument(
         '--pickle-name', type=str, metavar="STRING",
@@ -245,17 +235,6 @@ def confirm_arguments(args: argparse.Namespace) -> None:
         ggc.args.export_settings(OH, settings_string)
 
 
-def mk_report(args: argparse.Namespace, profiles: series.RadialProfileData,
-              series_list: series.SeriesList) -> None:
-    if args.mk_report:
-        report_path = os.path.join(
-            args.output, "radial_population.report.html")
-        logging.info(f"writing report to\n{report_path}")
-        report.report_radial_population(
-            args, report_path, profiles,
-            args.online_report, series_list=series_list)
-
-
 def export_profiles(
         args: argparse.Namespace, profiles: series.RadialProfileData) -> None:
     raw_data_separate = []
@@ -309,6 +288,5 @@ def run(args: argparse.Namespace) -> None:
     profiles = series_list.get_radial_profiles(
         rdc, args.bins, args.degree, threads=args.threads)
 
-    #mk_report(args, profiles, series_list)
     export_profiles(args, profiles)
     ra_series.pickle_series_list(args, series_list)

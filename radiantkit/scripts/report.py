@@ -52,7 +52,9 @@ def parse_arguments(args: argparse.Namespace) -> argparse.Namespace:
 
 def run(args: argparse.Namespace) -> None:
     logging.info(f"looking at '{args.input}'")
-    output_list = output.get_output_list_per_folder(args.input, args.inreg)
+
+    ofinder = output.OutputFinder()
+    output_list = ofinder.nested_search_output_types(args.input, args.inreg)
 
     if 1 == len(output_list):
         # single condition report

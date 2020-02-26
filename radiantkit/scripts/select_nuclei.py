@@ -80,16 +80,6 @@ interactive data visualization.
     parser.add_argument('--version', action='version',
                         version='%s %s' % (sys.argv[0], const.__version__,))
 
-    # report = parser.add_argument_group("report arguments")
-    # report.add_argument(
-    #     '--no-report', action='store_const',
-    #     help="""Do not generate an HTML report.""",
-    #     dest="mk_report", const=False, default=True)
-    # report.add_argument(
-    #     '--online-report', action='store_const',
-    #     help="""Make a smaller HTML report by linking remote JS libraries.""",
-    #     dest="online_report", const=True, default=False)
-
     pickler = parser.add_argument_group("pickle arguments")
     pickler.add_argument(
         '--pickle-name', type=str, metavar="STRING",
@@ -268,16 +258,6 @@ def remove_labels_from_series_list_masks(
     return series_list
 
 
-def mk_report(args: argparse.Namespace, nuclei_data: pd.DataFrame,
-              details: Dict, series_list: SeriesList) -> None:
-    if args.mk_report:
-        report_path = os.path.join(args.input, "select_nuclei.report.html")
-        log.info(f"writing report to\n{report_path}")
-        report.report_select_nuclei(
-            args, report_path, args.online_report,
-            data=nuclei_data, details=details, series_list=series_list)
-
-
 def run(args: argparse.Namespace) -> None:
     confirm_arguments(args)
     args, series_list = ra_series.init_series_list(args)
@@ -308,7 +288,5 @@ def run(args: argparse.Namespace) -> None:
     ndpath = os.path.join(args.input, "select_nuclei.data.tsv")
     log.info(f"writing nuclear data to:\n{ndpath}")
     nuclei_data.to_csv(ndpath, sep="\t", index=False)
-
-    # mk_report(args, nuclei_data, details, series_list)
 
     ra_series.pickle_series_list(args, series_list)
