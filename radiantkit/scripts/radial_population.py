@@ -310,3 +310,4 @@ def run(args: argparse.Namespace) -> None:
 
     #mk_report(args, profiles, series_list)
     export_profiles(args, profiles)
+    common.pickle_series_list(args, series_list)
