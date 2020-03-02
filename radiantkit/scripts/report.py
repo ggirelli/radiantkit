@@ -61,8 +61,6 @@ def run(args: argparse.Namespace) -> None:
 
     output_list = output.OutputReader.read_recursive(args.input, args.inreg)
 
-    # Dict[str, Tuple[str, Dict[str, pd.DataFrame]]]
-
     report.general_report(args, output_list)
 
     raise NotImplementedError

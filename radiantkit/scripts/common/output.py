@@ -10,7 +10,7 @@ import pandas as pd  # type: ignore
 import pickle
 import plotly.graph_objects as go  # type: ignore
 from radiantkit import const, path, scripts
-from typing import Any, Dict, List, Optional, Pattern, Tuple
+from typing import Any, Dict, List, Optional, Pattern
 
 
 class OutputType(Enum):
@@ -44,9 +44,18 @@ class OutputType(Enum):
     def label(self):
         return getattr(scripts, self.value).__LABEL__
 
+    @staticmethod
+    def to_dict():
+        return dict([(x.value, x.label()) for x in OutputType])
+
 
 DirectoryPath = str
 OutputTypeList = List[OutputType]
+ScriptStub = str
+ScriptLabel = str
+OutputFileLabel = str
+OutputData = Dict[OutputFileLabel, Any]
+BaseName = str
 
 
 class OutputChecker(object):
@@ -131,12 +140,6 @@ class OutputFinder(object):
         return output_list
 
 
-ScriptStub = str
-ScriptLabel = str
-OutputFileLabel = str
-OutputData = Dict[OutputFileLabel, Any]
-
-
 class OutputReader(object):
     def __init__(self):
         super(OutputReader, self).__init__()
@@ -202,7 +205,7 @@ class OutputReader(object):
     @staticmethod
     def read_recursive(dpath: str, inreg: Pattern,
                        subname: str = const.default_subfolder
-                       ) -> Dict[ScriptStub, Tuple[ScriptLabel, OutputData]]:
+                       ) -> Dict[ScriptStub, OutputData]:
         output_list = OutputFinder.search_recursive(dpath, inreg)
 
         output_locations: Dict[OutputType, List[DirectoryPath]] = {}
@@ -212,10 +215,9 @@ class OutputReader(object):
                     output_locations[otype] = []
                 output_locations[otype].append(tpath)
 
-        output: Dict[ScriptStub, Tuple[ScriptLabel, OutputData]] = {}
+        output: Dict[ScriptStub, OutputData] = {}
         for otype, locations in output_locations.items():
-            output[otype.value] = (
-                otype.label(), OutputReader.read(otype, locations, subname))
+            output[otype.value] = OutputReader.read(otype, locations, subname)
 
         return output
 
@@ -225,6 +227,6 @@ class OutputPlotter(object):
         super(OutputPlotter, self).__init__()
 
     @staticmethod
-    def to_plot(output_list: Dict[ScriptStub, Tuple[ScriptLabel, OutputData]]
-                ) -> Dict[ScriptStub, Tuple[ScriptLabel, List[go.Figure]]]:
+    def to_plot(output_list: Dict[ScriptStub, OutputData]
+                ) -> Dict[ScriptStub, Dict[BaseName, go.Figure]]:
         pass

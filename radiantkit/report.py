@@ -7,6 +7,7 @@ import argparse
 from datetime import datetime
 import jinja2 as jj2
 import os
+from radiantkit.scripts.common import output
 from typing import Any, Dict
 
 
@@ -49,5 +50,5 @@ def general_report(
     repi.render(
         "radiant.html",
         args=args, odata=output_list,
-        title="RadIAntKit",
+        title="RadIAntKit", otd=output.OutputType.to_dict(),
         now=str(datetime.now()), online=args.online)
