@@ -9,7 +9,7 @@ import logging
 import os
 import pandas as pd  # type: ignore
 from radiantkit import const
-from radiantkit import distance, io, report, stat, string
+from radiantkit import distance, io, stat, string
 from radiantkit import particle, series
 from radiantkit.scripts.common import series as ra_series
 from radiantkit.scripts.common import args as ra_args
@@ -21,8 +21,9 @@ logging.basicConfig(
     + '[P%(process)s:%(module)s:%(funcName)s] %(levelname)s: %(message)s',
     datefmt='%m/%d/%Y %I:%M:%S')
 
-__OUTPUT__ = ("radial_population.profile.poly_fit.tsv",
-              "radial_population.profile.raw_data.tsv")
+__OUTPUT__ = {"radial_population.profile.poly_fit.tsv": "poly_fit",
+              "radial_population.profile.raw_data.tsv": "raw_data"}
+__OUTPUT_CONDITION__ = all
 
 
 def init_parser(subparsers: argparse._SubParsersAction

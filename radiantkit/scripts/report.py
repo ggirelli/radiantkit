@@ -53,14 +53,7 @@ def parse_arguments(args: argparse.Namespace) -> argparse.Namespace:
 def run(args: argparse.Namespace) -> None:
     logging.info(f"looking at '{args.input}'")
 
-    ofinder = output.OutputFinder()
-    output_list = ofinder.nested_search_output_types(args.input, args.inreg)
-
-    if 1 == len(output_list):
-        # single condition report
-        pass
-    else:
-        # multi-condition report
-        pass
+    output_list = output.OutputReader.read_recursive(args.input, args.inreg)
+    print(output_list)
 
     raise NotImplementedError

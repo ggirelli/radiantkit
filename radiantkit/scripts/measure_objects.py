@@ -19,8 +19,9 @@ logging.basicConfig(
     + '[P%(process)s:%(module)s:%(funcName)s] %(levelname)s: %(message)s',
     datefmt='%m/%d/%Y %I:%M:%S')
 
-__OUTPUT__ = ("nuclear_features.tsv",
-              "single_pixel_features.tsv")
+__OUTPUT__ = {"nuclear_features.tsv": "obj_features",
+              "single_pixel_features.tsv": "spx_features"}
+__OUTPUT_CONDITION__ = any
 
 
 def init_parser(subparsers: argparse._SubParsersAction
@@ -67,16 +68,6 @@ def init_parser(subparsers: argparse._SubParsersAction
         '--mask-suffix', type=str, metavar="TEXT",
         help="""Suffix for output binarized images name.
         Default: 'mask'.""", default='mask')
-
-    # report = parser.add_argument_group("report arguments")
-    # report.add_argument(
-    #     '--no-report', action='store_const',
-    #     help="""Do not generate an HTML report.""",
-    #     dest="mk_report", const=False, default=True)
-    # report.add_argument(
-    #     '--online-report', action='store_const',
-    #     help="""Make a smaller HTML report by linking remote JS libraries.""",
-    #     dest="online_report", const=True, default=False)
 
     pickler = parser.add_argument_group("pickle arguments")
     pickler.add_argument(
@@ -199,23 +190,13 @@ def measure_object_features(
         args: argparse.Namespace, series_list: series.SeriesList) -> None:
     feat_path = os.path.join(args.output, "nuclear_features.tsv")
     logging.info(f"exporting nuclear features to '{feat_path}'")
-    fdata = series_list.export_particle_features(feat_path)
+    series_list.export_particle_features(feat_path)
 
     if args.exportSingleVoxel:
         feat_path = os.path.join(args.output, "single_pixel_features.tsv")
         logging.info(f"exporting single_pixel features to '{feat_path}'")
         single_pixel_box_data = series_list.get_particle_single_px_stats()
         single_pixel_box_data.to_csv(feat_path, index=False, sep="\t")
-
-    # if args.mk_report:
-    #     report_path = os.path.join(
-    #         args.output, "extract_objects.report.html")
-    #     logging.info(f"writing report to\n{report_path}")
-    #     report.report_measure_objects(
-    #         args, report_path, args.online_report,
-    #         data=fdata, spx_data=single_pixel_box_data,
-    #         series_list=series_list)
-
 
 def run(args: argparse.Namespace) -> None:
     confirm_arguments(args)

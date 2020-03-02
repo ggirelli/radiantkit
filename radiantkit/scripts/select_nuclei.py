@@ -16,7 +16,7 @@ from radiantkit.image import ImageBinary, ImageLabeled
 from radiantkit.particle import NucleiList, Nucleus
 from radiantkit.scripts.common import series as ra_series
 from radiantkit.series import Series, SeriesList
-from radiantkit import io, path, report, string
+from radiantkit import io, path, string
 import re
 import sys
 from tqdm import tqdm  # type: ignore
@@ -27,7 +27,8 @@ log.basicConfig(
     + '[P%(process)s:%(module)s:%(funcName)s] %(levelname)s: %(message)s',
     datefmt='%m/%d/%Y %I:%M:%S')
 
-__OUTPUT__ = ("select_nuclei.data.tsv",)
+__OUTPUT__ = {"select_nuclei.data.tsv": "data"}
+__OUTPUT_CONDITION__ = all
 
 
 def init_parser(subparsers: argparse._SubParsersAction
