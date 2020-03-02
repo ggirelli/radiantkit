@@ -32,21 +32,28 @@ class OutputType(Enum):
     MEASURE_OBJECTS = "measure_objects"
     RADIAL_POPULATION = "radial_population"
 
+    @property
     def filenames(self):
         return list(getattr(scripts, self.value).__OUTPUT__.values())
 
+    @property
     def file_labels(self):
         return list(getattr(scripts, self.value).__OUTPUT__.items())
 
+    @property
     def report_condition(self):
         return getattr(scripts, self.value).__OUTPUT_CONDITION__
 
+    @property
     def label(self):
         return getattr(scripts, self.value).__LABEL__
 
+    def plot(self, data):
+        pass
+
     @staticmethod
     def to_dict():
-        return dict([(x.value, x.label()) for x in OutputType])
+        return dict([(x.value, x.label) for x in OutputType])
 
 
 DirectoryPath = str
@@ -82,8 +89,8 @@ class OutputChecker(object):
         if not os.path.isdir(dpath):
             return False
         flist = os.listdir(dpath)
-        return self.__type.report_condition()([
-            oname in flist for oname in self.__type.filenames()])
+        return self.__type.report_condition([
+            oname in flist for oname in self.__type.filenames])
 
     def is_in_folder(
             self, dpath: str, subname: Optional[str] = None) -> bool:
@@ -145,61 +152,68 @@ class OutputReader(object):
         super(OutputReader, self).__init__()
 
     @staticmethod
-    def read_csv(ofname: str, path_list: List[DirectoryPath],
+    def read_csv(ofname: str, root_path: DirectoryPath,
                  subname: str = const.default_subfolder, sep=","
-                 ) -> pd.DataFrame:
-        merged_output_df = pd.DataFrame()
-        for root_path in path_list:
-            opath = os.path.join(root_path, ofname)
-            if not os.path.isfile(opath):
-                opath = os.path.join(root_path, subname, ofname)
-            if not os.path.isfile(opath):
-                continue
-            output_df = pd.read_csv(opath, sep=sep)
-            output_df['root'] = os.path.dirname(root_path)
-            output_df['base'] = os.path.basename(root_path)
-            merged_output_df = pd.concat([merged_output_df, output_df])
-        return merged_output_df
+                 ) -> Optional[pd.DataFrame]:
+        opath = os.path.join(root_path, ofname)
+        if not os.path.isfile(opath):
+            opath = os.path.join(root_path, subname, ofname)
+        if not os.path.isfile(opath):
+            return None
+        output_df = pd.read_csv(opath, sep=sep)
+        output_df['root'] = os.path.dirname(root_path)
+        output_df['base'] = os.path.basename(root_path)
+
+        return output_df
 
     @staticmethod
-    def read_tsv(ofname: str, path_list: List[DirectoryPath],
+    def read_tsv(ofname: str, dpath: DirectoryPath,
                  subname: str = const.default_subfolder) -> pd.DataFrame:
-        return OutputReader.read_csv(ofname, path_list, subname, "\t")
+        return OutputReader.read_csv(ofname, dpath, subname, "\t")
 
     @staticmethod
-    def read_pkl(ofname: str, path_list: List[DirectoryPath],
-                 subname: str = const.default_subfolder) -> List[Dict]:
-        merged_data = []
-        for root_path in path_list:
-            opath = os.path.join(root_path, ofname)
-            if not os.path.isfile(opath):
-                opath = os.path.join(root_path, subname, ofname)
-            if not os.path.isfile(opath):
-                continue
-            with open(opath, "rb") as PIH:
-                output_data = {'data': pickle.load(PIH)}
-            output_data['root'] = os.path.dirname(root_path)
-            output_data['base'] = os.path.basename(root_path)
-            merged_data.append(output_data)
-        return merged_data
+    def read_pkl(ofname: str, root_path: DirectoryPath,
+                 subname: str = const.default_subfolder) -> Dict:
+        opath = os.path.join(root_path, ofname)
+        if not os.path.isfile(opath):
+            opath = os.path.join(root_path, subname, ofname)
+        if not os.path.isfile(opath):
+            raise FileNotFoundError
+        with open(opath, "rb") as PIH:
+            output_data = {'data': pickle.load(PIH)}
+        output_data['root'] = os.path.dirname(root_path)
+        output_data['base'] = os.path.basename(root_path)
+
+        return output_data
+
+    @staticmethod
+    def read_single_file(
+            oflab: OutputFileLabel, ofname: str,
+            dpath: DirectoryPath, subname: str = const.default_subfolder
+            ) -> OutputData:
+        if ofname.endswith(".csv"):
+            return {oflab: OutputReader.read_csv(
+                ofname, dpath, subname)}
+        if ofname.endswith(".tsv"):
+            return {oflab: OutputReader.read_tsv(
+                ofname, dpath, subname)}
+        elif ofname.endswith(".pkl"):
+            return {oflab: OutputReader.read_pkl(
+                ofname, dpath, subname)}
+        else:
+            raise NotImplementedError
 
     @staticmethod
     def read(otype: OutputType, path_list: List[DirectoryPath],
              subname: str = const.default_subfolder
              ) -> OutputData:
-        output_data: OutputData = {}
-        for oflab, ofname in otype.file_labels():
-            if ofname.endswith(".csv"):
-                output_data[oflab] = OutputReader.read_csv(
-                    ofname, path_list, subname)
-            if ofname.endswith(".tsv"):
-                output_data[oflab] = OutputReader.read_tsv(
-                    ofname, path_list, subname)
-            elif ofname.endswith(".pkl"):
-                output_data[oflab] = OutputReader.read_pkl(
-                    ofname, path_list, subname)
-            else:
-                raise NotImplementedError
+        output_data: Dict[DirectoryPath, OutputData] = {}
+        for root_path in path_list:
+            root_data: OutputData = {}
+            for oflab, ofname in otype.file_labels:
+                root_data.update(OutputReader.read_single_file(
+                    oflab, ofname, root_path, subname))
+            output_data.update({root_path: root_data})
         return output_data
 
     @staticmethod
@@ -218,6 +232,7 @@ class OutputReader(object):
         output: Dict[ScriptStub, OutputData] = {}
         for otype, locations in output_locations.items():
             output[otype.value] = OutputReader.read(otype, locations, subname)
+        print(output)
 
         return output
 
