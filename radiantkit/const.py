@@ -9,8 +9,10 @@ from enum import Enum
 
 default_inreg = ("^([^\\.]*\\.)?(?P<channel_name>[^/]*)_(?P<series_id>[0-9]+)"
                  + "(?P<ext>(_cmle)?(\\.[^\\.]*)?\\.tiff?)$")
-default_pickle = "radiant.pkl"
 default_axes = "VCTZYX"
+
+default_pickle = "radiant.pkl"
+default_subfolder = "objects"
 
 
 class ProjectionType(Enum):

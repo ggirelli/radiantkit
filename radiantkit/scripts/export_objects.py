@@ -41,8 +41,8 @@ def init_parser(subparsers: argparse._SubParsersAction
 
     parser.add_argument(
         '--output', type=str,
-        help='''Path to folder where output should be written to.
-        Defaults to "objects" subfolder in the input directory.''')
+        help=f'''Path to folder where output should be written to. Defaults to
+        "{const.default_subfolder}" subfolder in the input directory.''')
     parser.add_argument(
         '--version', action='version',
         version='%s %s' % (sys.argv[0], const.__version__,))
@@ -101,7 +101,7 @@ def parse_arguments(args: argparse.Namespace) -> argparse.Namespace:
     args.version = const.__version__
 
     if args.output is None:
-        args.output = os.path.join(args.input, 'objects')
+        args.output = os.path.join(args.input, const.default_subfolder)
     assert not os.path.isfile(args.output)
     if not os.path.isdir(args.output):
         os.mkdir(args.output)

@@ -7,8 +7,9 @@ from enum import Enum
 import logging
 import os
 import pandas as pd  # type: ignore
-from radiantkit import path, scripts
-from typing import Dict, List, Optional, Pattern
+import pickle
+from radiantkit import const, path, scripts
+from typing import Any, Dict, List, Optional, Pattern
 
 
 class OutputType(Enum):
@@ -89,7 +90,8 @@ class OutputFinder(object):
     @staticmethod
     def search(
             dpath: str, output_list: Dict[DirectoryPath, OutputTypeList],
-            subname: str = "objects") -> Dict[DirectoryPath, OutputTypeList]:
+            subname: str = const.default_subfolder
+            ) -> Dict[DirectoryPath, OutputTypeList]:
         current_output_list = []
         for otype in OutputType:
             if OutputChecker(otype).is_in_folder(dpath, subname):
@@ -105,7 +107,7 @@ class OutputFinder(object):
 
     @staticmethod
     def search_recursive(
-            dpath: str, inreg: Pattern
+            dpath: str, inreg: Pattern, skipHidden: bool = True
             ) -> Dict[DirectoryPath, OutputTypeList]:
         output_list: Dict[DirectoryPath, OutputTypeList] = {}
 
@@ -113,6 +115,10 @@ class OutputFinder(object):
             return OutputFinder.search(dpath, output_list)
 
         subfolder_list = [f for f in os.scandir(dpath) if os.path.isdir(f)]
+        if skipHidden:
+            subfolder_list = [
+                f for f in subfolder_list if not f.name.startswith(".")]
+
         for f in subfolder_list:
             logging.info(f"looking into subfolder '{f.name}'")
             output_list.update(
@@ -126,27 +132,67 @@ class OutputReader(object):
         super(OutputReader, self).__init__()
 
     @staticmethod
-    def read(otype: OutputType, path_list: List[str],
-             subname: str = "objects") -> Dict[str, pd.DataFrame]:
-        output_data: Dict[str, pd.DataFrame] = {}
+    def read_csv(ofname: str, path_list: List[DirectoryPath],
+                 subname: str = const.default_subfolder, sep=","
+                 ) -> pd.DataFrame:
+        merged_output_df = pd.DataFrame()
+        for root_path in path_list:
+            opath = os.path.join(root_path, ofname)
+            if not os.path.isfile(opath):
+                opath = os.path.join(root_path, subname, ofname)
+            if not os.path.isfile(opath):
+                continue
+            output_df = pd.read_csv(opath, sep=sep)
+            output_df['root'] = os.path.dirname(root_path)
+            output_df['base'] = os.path.basename(root_path)
+            merged_output_df = pd.concat([merged_output_df, output_df])
+        return merged_output_df
+
+    @staticmethod
+    def read_tsv(ofname: str, path_list: List[DirectoryPath],
+                 subname: str = const.default_subfolder) -> pd.DataFrame:
+        return OutputReader.read_csv(ofname, path_list, subname, "\t")
+
+    @staticmethod
+    def read_pkl(ofname: str, path_list: List[DirectoryPath],
+                 subname: str = const.default_subfolder) -> List[Dict]:
+        merged_data = []
+        for root_path in path_list:
+            opath = os.path.join(root_path, ofname)
+            if not os.path.isfile(opath):
+                opath = os.path.join(root_path, subname, ofname)
+            if not os.path.isfile(opath):
+                continue
+            with open(opath, "rb") as PIH:
+                output_data = {'data': pickle.load(PIH)}
+            output_data['root'] = os.path.dirname(root_path)
+            output_data['base'] = os.path.basename(root_path)
+            merged_data.append(output_data)
+        return merged_data
+
+    @staticmethod
+    def read(otype: OutputType, path_list: List[DirectoryPath],
+             subname: str = const.default_subfolder
+             ) -> Dict[str, Any]:
+        output_data: Dict[str, Any] = {}
         for oflab, ofname in otype.file_labels():
-            merged_output_df = pd.DataFrame()
-            for root_path in path_list:
-                opath = os.path.join(root_path, ofname)
-                if not os.path.isfile(opath):
-                    opath = os.path.join(root_path, subname, ofname)
-                if not os.path.isfile(opath):
-                    continue
-                output_df = pd.read_csv(opath, sep="\t")
-                output_df['root'] = os.path.dirname(root_path)
-                output_df['base'] = os.path.basename(root_path)
-                merged_output_df = pd.concat([merged_output_df, output_df])
-            output_data[oflab] = merged_output_df
+            if ofname.endswith(".csv"):
+                output_data[oflab] = OutputReader.read_csv(
+                    ofname, path_list, subname)
+            if ofname.endswith(".tsv"):
+                output_data[oflab] = OutputReader.read_tsv(
+                    ofname, path_list, subname)
+            elif ofname.endswith(".pkl"):
+                output_data[oflab] = OutputReader.read_pkl(
+                    ofname, path_list, subname)
+            else:
+                raise NotImplementedError
         return output_data
 
     @staticmethod
-    def read_recursive(dpath: str, inreg: Pattern, subname: str = "objects"
-                       ) -> Dict[str, pd.DataFrame]:
+    def read_recursive(dpath: str, inreg: Pattern,
+                       subname: str = const.default_subfolder
+                       ) -> Dict[str, Any]:
         output_list = OutputFinder.search_recursive(dpath, inreg)
 
         output_locations: Dict[OutputType, List[DirectoryPath]] = {}
