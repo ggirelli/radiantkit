@@ -8,8 +8,9 @@ import ggc  # type: ignore
 import logging
 import os
 import pandas as pd  # type: ignore
+import pickle
 from radiantkit import const
-from radiantkit import distance, io, stat, string
+from radiantkit import distance, io, string
 from radiantkit import particle, series
 from radiantkit.scripts.common import series as ra_series
 from radiantkit.scripts.common import args as ra_args
@@ -21,8 +22,8 @@ logging.basicConfig(
     + '[P%(process)s:%(module)s:%(funcName)s] %(levelname)s: %(message)s',
     datefmt='%m/%d/%Y %I:%M:%S')
 
-__OUTPUT__ = {"radial_population.profile.poly_fit.tsv": "poly_fit",
-              "radial_population.profile.raw_data.tsv": "raw_data"}
+__OUTPUT__ = {"poly_fit": "radial_population.profile.poly_fit.pkl",
+              "raw_data": "radial_population.profile.raw_data.tsv"}
 __OUTPUT_CONDITION__ = all
 
 
@@ -248,31 +249,17 @@ def export_profiles(
             raw_data_separate.append(raw_data_tmp)
 
             for sname in profiles[cname][dtype][0]:
-                pfit = profiles[cname][dtype][0][sname]
-                pfit_der1 = pfit.deriv()
-                pfit_der2 = pfit_der1.deriv()
-                pfit_data_tmp = pd.DataFrame.from_dict(dict(
-                    channel=[cname], distance_type=[dtype],
-                    stat=[sname], coef=[pfit.coef],
-                    roots=[stat.get_polynomial_real_roots(pfit)],
-                    domain=[pfit.domain], window=[pfit.window],
-                    coef_der1=[pfit_der1.coef],
-                    roots_der1=[stat.get_polynomial_real_roots(pfit_der1)],
-                    domain_der1=[pfit_der1.domain],
-                    window_der1=[pfit_der1.window],
-                    coef_der2=[pfit_der2.coef],
-                    roots_der2=[stat.get_polynomial_real_roots(pfit_der2)],
-                    domain_der2=[pfit_der2.domain],
-                    window_der2=[pfit_der2.window]))
-                pfit_data_separate.append(pfit_data_tmp)
+                pfit_data_separate.append(dict(
+                    cname=cname, distance_type=dtype, stat=sname,
+                    pfit=profiles[cname][dtype][0][sname]))
 
     logging.info("exporting profile data")
     pd.concat(raw_data_separate).to_csv(
-        os.path.join(args.output, "radial_population.profile.raw_data.tsv"),
+        os.path.join(args.output, __OUTPUT__['raw_data']),
         sep="\t", index=False)
-    pd.concat(pfit_data_separate).to_csv(
-        os.path.join(args.output, "radial_population.profile.poly_fit.tsv"),
-        sep="\t", index=False)
+    pickle_path = os.path.join(args.output, __OUTPUT__['poly_fit'])
+    with open(pickle_path, "wb") as POH:
+        pickle.dump(pfit_data_separate, POH)
 
 
 def run(args: argparse.Namespace) -> None:

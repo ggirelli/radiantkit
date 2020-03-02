@@ -31,7 +31,7 @@ class OutputType(Enum):
     RADIAL_POPULATION = "radial_population"
 
     def filenames(self):
-        return list(getattr(scripts, self.value).__OUTPUT__.keys())
+        return list(getattr(scripts, self.value).__OUTPUT__.values())
 
     def file_labels(self):
         return list(getattr(scripts, self.value).__OUTPUT__.items())
@@ -129,7 +129,7 @@ class OutputReader(object):
     def read(otype: OutputType, path_list: List[str],
              subname: str = "objects") -> Dict[str, pd.DataFrame]:
         output_data: Dict[str, pd.DataFrame] = {}
-        for ofname, oflab in otype.file_labels():
+        for oflab, ofname in otype.file_labels():
             merged_output_df = pd.DataFrame()
             for root_path in path_list:
                 opath = os.path.join(root_path, ofname)

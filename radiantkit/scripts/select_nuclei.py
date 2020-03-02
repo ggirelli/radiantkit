@@ -27,7 +27,7 @@ log.basicConfig(
     + '[P%(process)s:%(module)s:%(funcName)s] %(levelname)s: %(message)s',
     datefmt='%m/%d/%Y %I:%M:%S')
 
-__OUTPUT__ = {"select_nuclei.data.tsv": "data"}
+__OUTPUT__ = {"data": "select_nuclei.data.tsv"}
 __OUTPUT_CONDITION__ = all
 
 
@@ -286,7 +286,7 @@ def run(args: argparse.Namespace) -> None:
     np.set_printoptions(formatter={'float_kind': '{:.2E}'.format})
     log.info(f"intensity sum range: {details['isum']['range']}")
 
-    ndpath = os.path.join(args.input, "select_nuclei.data.tsv")
+    ndpath = os.path.join(args.input, __OUTPUT__['data'])
     log.info(f"writing nuclear data to:\n{ndpath}")
     nuclei_data.to_csv(ndpath, sep="\t", index=False)
 

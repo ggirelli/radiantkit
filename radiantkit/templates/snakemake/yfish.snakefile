@@ -53,7 +53,7 @@ def add_suffix(path: str, suffix: str) -> str:
 final_output = [
     [os.path.join(cf, "objects", "nuclear_features.tsv")
      for cf in CONDITION_FOLDERS],
-    [os.path.join(cf, "objects", "radial_population.profile.poly_fit.tsv")
+    [os.path.join(cf, "objects", "radial_population.profile.poly_fit.pkl")
      for cf in CONDITION_FOLDERS],
     [os.path.join(cf, "objects", "radial_population.profile.raw_data.tsv")
      for cf in CONDITION_FOLDERS]]
@@ -160,7 +160,7 @@ rule radial_population:
                      "select_nuclei.data.tsv")
     output:
         os.path.join(ROOT, "{condition}", "objects",
-                     "radial_population.profile.poly_fit.tsv"),
+                     "radial_population.profile.poly_fit.pkl"),
         os.path.join(ROOT, "{condition}", "objects",
                      "radial_population.profile.raw_data.tsv")
     log:

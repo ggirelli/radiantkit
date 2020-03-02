@@ -19,8 +19,8 @@ logging.basicConfig(
     + '[P%(process)s:%(module)s:%(funcName)s] %(levelname)s: %(message)s',
     datefmt='%m/%d/%Y %I:%M:%S')
 
-__OUTPUT__ = {"nuclear_features.tsv": "obj_features",
-              "single_pixel_features.tsv": "spx_features"}
+__OUTPUT__ = {"obj_features": "nuclear_features.tsv",
+              "spx_features": "single_pixel_features.tsv"}
 __OUTPUT_CONDITION__ = any
 
 
@@ -188,12 +188,12 @@ def confirm_arguments(args: argparse.Namespace) -> None:
 
 def measure_object_features(
         args: argparse.Namespace, series_list: series.SeriesList) -> None:
-    feat_path = os.path.join(args.output, "nuclear_features.tsv")
+    feat_path = os.path.join(args.output, __OUTPUT__['obj_features'])
     logging.info(f"exporting nuclear features to '{feat_path}'")
     series_list.export_particle_features(feat_path)
 
     if args.exportSingleVoxel:
-        feat_path = os.path.join(args.output, "single_pixel_features.tsv")
+        feat_path = os.path.join(args.output, __OUTPUT__['spx_features'])
         logging.info(f"exporting single_pixel features to '{feat_path}'")
         single_pixel_box_data = series_list.get_particle_single_px_stats()
         single_pixel_box_data.to_csv(feat_path, index=False, sep="\t")
