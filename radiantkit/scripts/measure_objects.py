@@ -22,6 +22,7 @@ logging.basicConfig(
 __OUTPUT__ = {"obj_features": "nuclear_features.tsv",
               "spx_features": "single_pixel_features.tsv"}
 __OUTPUT_CONDITION__ = any
+__LABEL__ = "Object features"
 
 
 def init_parser(subparsers: argparse._SubParsersAction

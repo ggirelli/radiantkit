@@ -3,8 +3,11 @@
 @contact: gigi.ga90@gmail.com
 '''
 
+import argparse
+from datetime import datetime
 import jinja2 as jj2
 import os
+from typing import Any, Dict
 
 
 class JinjaTemplate(object):
@@ -37,3 +40,14 @@ class Report(JinjaTemplate):
     def render(self, path: str, **kwargs) -> None:
         assert "title" in kwargs
         super(Report, self).render(path, **kwargs)
+
+
+def general_report(
+        args: argparse.Namespace, output_list: Dict[str, Any]
+        ) -> None:
+    repi = Report("reports/main.tpl.html")
+    repi.render(
+        "radiant.html",
+        args=args, odata=output_list,
+        title="RadIAntKit",
+        now=str(datetime.now()), online=args.online)

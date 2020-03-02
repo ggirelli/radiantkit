@@ -6,7 +6,7 @@
 import argparse
 import logging
 import os
-from radiantkit import const
+from radiantkit import const, report
 from radiantkit.scripts.common import output
 import sys
 
@@ -37,6 +37,11 @@ def init_parser(subparsers: argparse._SubParsersAction
         Must contain 'channel_name' and 'series_id' fields.
         Default: '{const.default_inreg}'""", default=const.default_inreg)
 
+    advanced.add_argument(
+        '--offline', action='store_const', dest='online',
+        const=False, default=True, help='''Generate report that does not
+        require a live internet connection to be visualized.''')
+
     parser.add_argument('--version', action='version',
                         version=f'{sys.argv[0]} {const.__version__}')
 
@@ -47,6 +52,7 @@ def init_parser(subparsers: argparse._SubParsersAction
 
 def parse_arguments(args: argparse.Namespace) -> argparse.Namespace:
     assert os.path.isdir(args.input)
+    args.version = const.__version__
     return args
 
 
@@ -54,6 +60,9 @@ def run(args: argparse.Namespace) -> None:
     logging.info(f"looking at '{args.input}'")
 
     output_list = output.OutputReader.read_recursive(args.input, args.inreg)
-    print(output_list)
+
+    # Dict[str, Tuple[str, Dict[str, pd.DataFrame]]]
+
+    report.general_report(args, output_list)
 
     raise NotImplementedError

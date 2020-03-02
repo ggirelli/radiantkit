@@ -8,8 +8,9 @@ import logging
 import os
 import pandas as pd  # type: ignore
 import pickle
+import plotly.graph_objects as go  # type: ignore
 from radiantkit import const, path, scripts
-from typing import Any, Dict, List, Optional, Pattern
+from typing import Any, Dict, List, Optional, Pattern, Tuple
 
 
 class OutputType(Enum):
@@ -39,6 +40,9 @@ class OutputType(Enum):
 
     def report_condition(self):
         return getattr(scripts, self.value).__OUTPUT_CONDITION__
+
+    def label(self):
+        return getattr(scripts, self.value).__LABEL__
 
 
 DirectoryPath = str
@@ -127,6 +131,12 @@ class OutputFinder(object):
         return output_list
 
 
+ScriptStub = str
+ScriptLabel = str
+OutputFileLabel = str
+OutputData = Dict[OutputFileLabel, Any]
+
+
 class OutputReader(object):
     def __init__(self):
         super(OutputReader, self).__init__()
@@ -173,8 +183,8 @@ class OutputReader(object):
     @staticmethod
     def read(otype: OutputType, path_list: List[DirectoryPath],
              subname: str = const.default_subfolder
-             ) -> Dict[str, Any]:
-        output_data: Dict[str, Any] = {}
+             ) -> OutputData:
+        output_data: OutputData = {}
         for oflab, ofname in otype.file_labels():
             if ofname.endswith(".csv"):
                 output_data[oflab] = OutputReader.read_csv(
@@ -192,7 +202,7 @@ class OutputReader(object):
     @staticmethod
     def read_recursive(dpath: str, inreg: Pattern,
                        subname: str = const.default_subfolder
-                       ) -> Dict[str, Any]:
+                       ) -> Dict[ScriptStub, Tuple[ScriptLabel, OutputData]]:
         output_list = OutputFinder.search_recursive(dpath, inreg)
 
         output_locations: Dict[OutputType, List[DirectoryPath]] = {}
@@ -202,8 +212,19 @@ class OutputReader(object):
                     output_locations[otype] = []
                 output_locations[otype].append(tpath)
 
-        output: Dict[str, Dict[str, pd.DataFrame]] = {}
+        output: Dict[ScriptStub, Tuple[ScriptLabel, OutputData]] = {}
         for otype, locations in output_locations.items():
-            output[otype.value] = OutputReader.read(otype, locations, subname)
+            output[otype.value] = (
+                otype.label(), OutputReader.read(otype, locations, subname))
 
         return output
+
+
+class OutputPlotter(object):
+    def __init__(self):
+        super(OutputPlotter, self).__init__()
+
+    @staticmethod
+    def to_plot(output_list: Dict[ScriptStub, Tuple[ScriptLabel, OutputData]]
+                ) -> Dict[ScriptStub, Tuple[ScriptLabel, List[go.Figure]]]:
+        pass

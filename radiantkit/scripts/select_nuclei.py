@@ -29,6 +29,7 @@ log.basicConfig(
 
 __OUTPUT__ = {"data": "select_nuclei.data.tsv"}
 __OUTPUT_CONDITION__ = all
+__LABEL__ = "Nuclei selection"
 
 
 def init_parser(subparsers: argparse._SubParsersAction

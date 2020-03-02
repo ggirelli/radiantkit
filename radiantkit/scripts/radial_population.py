@@ -25,6 +25,7 @@ logging.basicConfig(
 __OUTPUT__ = {"poly_fit": "radial_population.profile.poly_fit.pkl",
               "raw_data": "radial_population.profile.raw_data.tsv"}
 __OUTPUT_CONDITION__ = all
+__LABEL__ = "Radiality (population)"
 
 
 def init_parser(subparsers: argparse._SubParsersAction
