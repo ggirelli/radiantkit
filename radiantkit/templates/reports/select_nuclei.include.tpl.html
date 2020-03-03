@@ -1,16 +1,18 @@
+{% set plt_data = pdata[ks[i]] %}
+{% set out_data = odata[ks[i]] %}
 
 <form id="select_nuclei-selector" class="mb-2">
 	<select name="select_nuclei-dpath" id="select_nuclei-dpath" class="form-control">
-		{% for dpath in pdata[ks[i]].keys()|sort: %}
+		{% for dpath in plt_data.keys()|sort: %}
 		<option value="{{dpath|basename}}">{{dpath|basename}}</option>
 		{% endfor %}
 	</select>
 </form>
 
-{% for dpath,fig in pdata[ks[i]].items(): %}
-{% set raw_data = odata[ks[i]][dpath]['raw_data'] %}
-{% set fit_data = odata[ks[i]][dpath]['fit']['data'] %}
-<div id="select_nuclei-canvas-{{dpath|basename}}" class="select_nuclei-canvas">
+{% for dpath,fig in plt_data.items(): %}
+{% set raw_data = out_data[dpath]['raw_data'] %}
+{% set fit_data = out_data[dpath]['fit']['data'] %}
+<div id="select_nuclei-canvas-{{dpath|basename}}" class="select_nuclei-canvas" style="display: none;">
 	<div class="card">
 		<div class="card-header">
 			<ul class="nav nav-tabs card-header-tabs" role="tablist">

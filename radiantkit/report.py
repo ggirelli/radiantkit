@@ -55,4 +55,5 @@ def general_report(
         os.path.join(dpath, "radiant.html"),
         args=args, odata=output_list, pdata=plot_data,
         title="RadIAntKit", otd=output.OutputType.to_dict(),
+        ref_channel="dapi",
         now=str(datetime.now()), online=args.online)
