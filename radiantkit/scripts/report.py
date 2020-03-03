@@ -63,7 +63,7 @@ def run(args: argparse.Namespace) -> None:
     logging.info("preparing plots")
     plot_data = output.OutputPlotter.plot(output_list)
 
-    print(plot_data)
-    #report.general_report(args, output_list)
+    logging.info("generating HTML report")
+    report.general_report(args.input, args, output_list, plot_data)
 
     raise NotImplementedError

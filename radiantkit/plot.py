@@ -19,7 +19,8 @@ BaseName = str
 ChannelName = str
 ChannelProfile = Dict[ChannelName, stat.PolyFitResult]
 
-StatProfilePlots = Dict[stat.ProfileStatType, go.Figure]
+FigureJSON = str
+StatProfilePlots = Dict[stat.ProfileStatType, FigureJSON]
 ChannelProfilePlots = Dict[ChannelName, StatProfilePlots]
 DistanceProfilePlots = Dict[distance.DistanceType, ChannelProfilePlots]
 BaseProfilePlots = Dict[BaseName, DistanceProfilePlots]
@@ -214,7 +215,7 @@ class NuclearSelectionPlotter(object):
             autosize=False, width=1000, height=1000
         )
 
-    def plot(self) -> go.Figure:
+    def plot(self) -> FigureJSON:
         self.__prepare_data()
         data = [*self.__mk_scatters(),
                 *self.__mk_density_contours(),
@@ -222,12 +223,12 @@ class NuclearSelectionPlotter(object):
         fig = go.Figure(data=data, layout=self._layout())
         fig = self.__mk_border_lines(fig)
         fig.update_layout(template="plotly_white")
-        return fig
+        return fig.to_json()
 
 
 def plot_nuclear_selection(
         raw_data: pd.DataFrame, fit: Dict[str, Dict[str, Any]],
-        npoints: int = 1000) -> go.Figure:
+        npoints: int = 1000) -> FigureJSON:
     nsp = NuclearSelectionPlotter(raw_data, fit)
     nsp.npoints = npoints
     return nsp.plot()
@@ -349,18 +350,18 @@ class NuclearFeaturePlotter(object):
                 self._layout[f"yaxis{ci+1}"] = dict(
                     title=f'"{channel}" single pixel intensity (a.u.)')
 
-    def plot(self) -> go.Figure:
+    def plot(self) -> FigureJSON:
         self.__init_canvas()
         self.__draw_boxes()
         self.__draw_precomputed_boxes()
         self.__update_layout()
-        return self._fig
+        return self._fig.to_json()
 
 
 def plot_nuclear_features(
         obj_features: pd.DataFrame, spx_features: Optional[pd.DataFrame],
         n_input_cols: int = 3, n_grid_cols: int = 3
-        ) -> go.Figure:
+        ) -> FigureJSON:
     nfp = NuclearFeaturePlotter(obj_features, spx_features)
     nfp.n_input_cols = n_input_cols
     nfp.n_grid_cols = n_grid_cols
@@ -531,7 +532,7 @@ class RadialProfilePlotter(object):
 
     def plot_channel_profile(
             self, base: str, dtype: distance.DistanceType, cname: str
-            ) -> go.Figure:
+            ) -> FigureJSON:
         assert base in self.bases
         assert dtype in self.dtypes
         assert cname in self.channels
@@ -587,7 +588,7 @@ class RadialProfilePlotter(object):
             type="line", line=dict(dash="dash", color="#969696"),
             y0=0, x0=0, y1=0, x1=raw_data['x'].values.max(), yref="y3"))
         fig.update_layout(template="plotly_white")
-        return fig
+        return fig.to_json()
 
     def plot_channel_profile_list(self) -> BaseProfilePlots:
         plots: BaseProfilePlots = {}

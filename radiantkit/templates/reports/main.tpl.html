@@ -21,7 +21,7 @@
 			<div class="card">
 				<div class="card-body">
 					<h5 class="card-title">{{otd[ks[i]]}} <small>({{ks[i]}})</small></h5>
-					{{odata[ks[i]]}}
+					{% include "reports/" + ks[i] + ".include.tpl.html" %}
 				</div>
 			</div>
 		</div>

@@ -7,6 +7,7 @@ import argparse
 from datetime import datetime
 import jinja2 as jj2
 import os
+import plotly.graph_objects as go  # type: ignore
 from radiantkit.scripts.common import output
 from typing import Any, Dict
 
@@ -44,11 +45,14 @@ class Report(JinjaTemplate):
 
 
 def general_report(
-        args: argparse.Namespace, output_list: Dict[str, Any]
+        dpath: str, args: argparse.Namespace,
+        output_list: Dict[str, Any],
+        plot_data: Dict[str, Dict[str, go.Figure]]
         ) -> None:
+    assert os.path.isdir(dpath)
     repi = Report("reports/main.tpl.html")
     repi.render(
-        "radiant.html",
-        args=args, odata=output_list,
+        os.path.join(dpath, "radiant.html"),
+        args=args, odata=output_list, pdata=plot_data,
         title="RadIAntKit", otd=output.OutputType.to_dict(),
         now=str(datetime.now()), online=args.online)
