@@ -10,9 +10,7 @@ from radiantkit.image import Image, ImageBinary
 from radiantkit import stat
 from scipy.ndimage.morphology import distance_transform_edt  # type: ignore
 from scipy.ndimage import center_of_mass  # type: ignore
-from typing import Dict, Optional, Tuple
-
-__distance_labels__: Dict[str, str] = 
+from typing import Optional, Tuple
 
 
 class DistanceType(Enum):
