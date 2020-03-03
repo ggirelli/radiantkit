@@ -14,6 +14,7 @@ default_axes = "VCTZYX"
 default_pickle = "radiant.pkl"
 default_subfolder = "objects"
 
+default_plot_npoints = 200
 
 class ProjectionType(Enum):
     SUM = 'SUM_PROJECTION'

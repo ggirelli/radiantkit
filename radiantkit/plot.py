@@ -10,7 +10,7 @@ from numpy.polynomial.polynomial import Polynomial  # type: ignore
 import pandas as pd  # type: ignore
 import plotly.graph_objects as go  # type: ignore
 from plotly.subplots import make_subplots  # type: ignore
-from radiantkit import distance, path, stat
+from radiantkit import const, distance, path, stat
 from scipy.stats import gaussian_kde  # type: ignore
 from typing import Any, Dict, List, Optional, Set, Tuple
 
@@ -46,7 +46,7 @@ class NuclearSelectionPlotter(object):
     __col_req: List[str] = ["size", "ref", "pass", "label", "image"]
     _fit_data: Dict[str, Dict[str, Any]]
     _ref: str
-    _npoints: int = 1000
+    _npoints: int = const.default_plot_npoints
 
     def __init__(self, raw_data: pd.DataFrame,
                  fit_data: Dict[str, Dict[str, Any]]):
@@ -228,7 +228,7 @@ class NuclearSelectionPlotter(object):
 
 def plot_nuclear_selection(
         raw_data: pd.DataFrame, fit: Dict[str, Dict[str, Any]],
-        npoints: int = 1000) -> FigureJSON:
+        npoints: int = const.default_plot_npoints) -> FigureJSON:
     nsp = NuclearSelectionPlotter(raw_data, fit)
     nsp.npoints = npoints
     return nsp.plot()
@@ -375,7 +375,7 @@ class RadialProfilePlotter(object):
     _fit_data: Dict[BaseName, Dict[distance.DistanceType, ChannelProfile]]
     __field_req: Tuple = ("cname", "distance_type", "stat", "pfit")
     _root: Optional[str] = None
-    _npoints: int = 1000
+    _npoints: int = const.default_plot_npoints
     _channel_set: Set[str]
     _stat_set: Set[stat.ProfileStatType]
     _dist_set: Set[distance.DistanceType]
@@ -429,12 +429,13 @@ class RadialProfilePlotter(object):
         cname = profile['cname']
         if cname not in self._fit_data[base][dtype]:
             self._fit_data[base][dtype][cname] = {}
-        else:
-            return
 
         self._dist_set.add(dtype)
         self._channel_set.add(cname)
         stype = stat.ProfileStatType(profile['stat'])
+        if stype in self._fit_data[base][dtype][cname]:
+            return
+
         self._stat_set.add(stype)
         self._fit_data[base][dtype][cname][stype] = profile['pfit']
 
