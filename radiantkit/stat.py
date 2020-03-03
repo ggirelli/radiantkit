@@ -14,9 +14,16 @@ import warnings
 
 
 class FitType(Enum):
-    SOG = "sum_of_gaussians"
-    GAUSSIAN = "gaussian"
-    FWHM = "full_width_half_maximum"
+    SOG: str = "sum_of_gaussians"
+    GAUSSIAN: str = "gaussian"
+    FWHM: str = "full_width_half_maximum"
+
+
+class ProfileStatType(Enum):
+    Q1: str = "q1"
+    MEDIAN: str = "median"
+    MEAN: str = "mean"
+    Q3: str = "q3"
 
 
 class DistanceMode(Enum):
@@ -25,7 +32,7 @@ class DistanceMode(Enum):
 
 Interval = Tuple[float, float]
 FitResult = Tuple[np.ndarray, FitType]
-PolyFitResult = Dict[str, Polynomial]
+PolyFitResult = Dict[ProfileStatType, Polynomial]
 
 
 def gpartial_w(sigma: float) -> int:
@@ -258,12 +265,12 @@ def radial_fit(x: np.ndarray, y: np.ndarray,
             np.mean(y[bi == bin_IDs])]))
     yy = np.vstack(yy_stubs)
 
-    return (dict(
-        q1=Polynomial.fit(x_mids, yy[:, 0], deg),
-        median=Polynomial.fit(x_mids, yy[:, 1], deg),
-        mean=Polynomial.fit(x_mids, yy[:, 3], deg),
-        q3=Polynomial.fit(x_mids, yy[:, 2], deg),
-        ), pd.DataFrame.from_dict(dict(
+    return ({
+        ProfileStatType.Q1: Polynomial.fit(x_mids, yy[:, 0], deg),
+        ProfileStatType.MEDIAN: Polynomial.fit(x_mids, yy[:, 1], deg),
+        ProfileStatType.MEAN: Polynomial.fit(x_mids, yy[:, 3], deg),
+        ProfileStatType.Q3: Polynomial.fit(x_mids, yy[:, 2], deg),
+        }, pd.DataFrame.from_dict(dict(
             x=x_mids,
             q1_raw=yy[:, 0],
             median_raw=yy[:, 1],

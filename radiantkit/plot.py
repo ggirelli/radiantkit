@@ -12,7 +12,7 @@ import plotly.graph_objects as go  # type: ignore
 from plotly.subplots import make_subplots  # type: ignore
 from radiantkit import distance, path, stat
 from scipy.stats import gaussian_kde  # type: ignore
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Dict, List, Optional, Set, Tuple
 
 
 def export(opath: str, exp_format: str = 'pdf') -> None:
@@ -47,27 +47,27 @@ class NuclearSelectionPlotter(object):
         assert f"isum_{self._ref}" in self._raw_data.columns
 
     @property
-    def size_range(self):
+    def size_range(self) -> np.ndarray:
         return self._fit_data['data']['size']['range']
 
     @property
-    def isum_range(self):
+    def isum_range(self) -> np.ndarray:
         return self._fit_data['data']['isum']['range']
 
     @property
-    def size_fit(self):
+    def size_fit(self) -> Polynomial:
         return self._fit_data['data']['size']['fit']
 
     @property
-    def isum_fit(self):
+    def isum_fit(self) -> Polynomial:
         return self._fit_data['data']['isum']['fit']
 
     @property
-    def npoints(self):
+    def npoints(self) -> int:
         return self._npoints
 
     @npoints.setter
-    def npoints(self, n: int):
+    def npoints(self, n: int) -> None:
         assert n > 0
         self._npoints = n
 
@@ -146,7 +146,7 @@ class NuclearSelectionPlotter(object):
                     y=self._y_linsp,
                     x=stat.gaussian(self._y_linsp, *self.isum_fit[0][3:]),
                     xaxis="x2", yaxis="y",
-                    ine=dict(color="#999999", dash="dot")))
+                    line=dict(color="#999999", dash="dot")))
         return data
 
     def __mk_border_lines(self, fig: go.Figure) -> go.Figure:
@@ -205,7 +205,7 @@ class NuclearSelectionPlotter(object):
         )
 
     def plot(self) -> go.Figure:
-        self.__prepare_data
+        self.__prepare_data()
         data = [*self.__mk_scatters(),
                 *self.__mk_density_contours(),
                 *self.__mk_fit_contours()]
@@ -258,7 +258,7 @@ class NuclearFeaturePlotter(object):
         return self._n_input_cols
 
     @n_input_cols.setter
-    def n_input_cols(self, n: int):
+    def n_input_cols(self, n: int) -> None:
         if n >= 1:
             self._n_input_cols = n
 
@@ -267,7 +267,7 @@ class NuclearFeaturePlotter(object):
         return self._n_grid_cols
 
     @n_grid_cols.setter
-    def n_grid_cols(self, n: int):
+    def n_grid_cols(self, n: int) -> None:
         if n >= 1:
             self._n_grid_cols = n
 
@@ -357,142 +357,238 @@ def plot_nuclear_features(
     return nfp.plot()
 
 
-def plot_profiles(**data):
+BaseName = str
+ChannelName = str
+ChannelProfile = Dict[ChannelName, stat.PolyFitResult]
+
+
+class RadialProfilePlotter(object):
+    _raw_data: pd.DataFrame
+    __col_req: Tuple = ("x", "q1_raw", "median_raw", "mean_raw", "q3_raw",
+                        "channel", "distance_type", "root", "base")
+    _fit_data: Dict[BaseName, Dict[distance.DistanceType, ChannelProfile]]
+    __field_req: Tuple = ("cname", "distance_type", "stat", "pfit")
+    _root: Optional[str] = None
+    _npoints: int = 1000
+    _channel_set: Set[str]
+    _stat_set: Set[stat.ProfileStatType]
+    _dist_set: Set[distance.DistanceType]
+
+    def __init__(self, raw_data: pd.DataFrame, fit_data: Dict):
+        super(RadialProfilePlotter, self).__init__()
+        self._raw_data = pd.DataFrame()
+        self._fit_data = {}
+        self._channel_set = set()
+        self._stat_set = set()
+        self._dist_set = set()
+        self.add_new_base(raw_data, fit_data)
+
+    @property
+    def root(self):
+        return self._root
+
+    @property
+    def npoints(self) -> int:
+        return self._npoints
+
+    @npoints.setter
+    def npoints(self, n: int) -> None:
+        assert n > 0
+        self._npoints = n
+
+    @property
+    def bases(self):
+        return list(self._fit_data.keys())
+
+    @property
+    def dtypes(self):
+        return list(self._dtype_set)
+
+    @property
+    def channels(self):
+        return list(self._channel_set)
+
+    @property
+    def stats(self):
+        return list(self._stat_set)
+
+    def __add_profile_to_fit_data(self, profile: Dict) -> None:
+        if profile['root'] != self.root:
+            return
+
+        base = profile['base']
+        if base not in self._fit_data:
+            self._fit_data[base] = {}
+
+        dtype = distance.DistanceType(profile['distance_type'])
+        if dtype not in self._fit_data[base]:
+            self._fit_data[base][dtype] = {}
+
+        cname = profile['cname']
+        if cname not in self._fit_data[base][dtype]:
+            self._fit_data[base][dtype][cname] = {}
+        else:
+            return
+
+        self._dist_set.add(dtype)
+        self._channel_set.add(cname)
+        stype = stat.ProfileStatType(profile[''])
+        self._stat_set.add(stype)
+        self._fit_data[base][dtype][cname][stype] = profile['pfit']
+
+    def add_new_base(self, raw_data: pd.DataFrame, fit_data: Dict) -> None:
+        assert all([x in raw_data.columns for x in self.__col_req])
+        assert 1 == np.unique(raw_data['root'])
+        assert raw_data.loc[0, 'base'] not in self.bases
+        self._raw_data = pd.concat[self._raw_data, raw_data]
+
+        if self._root is None:
+            self._root = raw_data.loc[0, 'root']
+        else:
+            assert self._root == raw_data.loc[0, 'root']
+
+        assert all([x in fit_data.keys() for x in self.__field_req])
+        for profile in fit_data:
+            self.__add_profile_to_fit_data(profile)
+
+    def __add_profile_traces(
+            self, label: str, pfit: Polynomial, raw_data: pd.DataFrame,
+            color: Optional[str] = None) -> List[go.Scatter]:
+        raw_label = f"{label}_raw"
+        assert raw_label in raw_data.columns
+
+        x, y = pfit.linspace(self.npoints)
+        xx, yy = pfit.deriv().linspace(self.npoints)
+        xxx, yyy = pfit.deriv().deriv().linspace(self.npoints)
+
+        return [go.Scatter(
+                    name=f"raw_{label}", xaxis="x", yaxis="y",
+                    x=raw_data['x'].values, y=raw_data[raw_label].values,
+                    mode='markers', legendgroup=label,
+                    marker=dict(size=4, opacity=.5, color="#989898")),
+                go.Scatter(
+                    name=label, x=x, y=y, xaxis="x", yaxis="y", mode='lines',
+                    legendgroup=label, line=dict(color=color)),
+                go.Scatter(
+                    name=f"der1_{label}", x=xx, y=yy, xaxis="x", yaxis="y2",
+                    mode='lines', line=dict(color=color),
+                    legendgroup=label, showlegend=False),
+                go.Scatter(
+                    name=f"der2_{label}", x=xxx, y=yyy, xaxis="x", yaxis="y3",
+                    mode='lines', line=dict(color=color),
+                    legendgroup=label, showlegend=False)]
+
+    def __add_profile_roots(
+            self, label: str, pfit: Polynomial,
+            yranges: Dict[str, Tuple[float, float]]
+            ) -> List[go.Scatter]:
+        data = []
+        roots = stat.get_radial_profile_roots(pfit, self.npoints)
+
+        if roots[0] is not None:
+            data.extend([
+                go.Scatter(
+                    name=f"root_der1_{label}",
+                    x=[roots[0], roots[0]], y=yranges['y'],
+                    xaxis="x", yaxis="y", mode="lines",
+                    line=dict(color="#969696", dash="dash"),
+                    legendgroup=label),
+                go.Scatter(
+                    name=f"root_der1_{label}",
+                    x=[roots[0], roots[0]], y=yranges['y2'],
+                    xaxis="x", yaxis="y2", mode="lines",
+                    line=dict(color="#969696", dash="dash"),
+                    legendgroup=label, showlegend=False)
+            ])
+
+        if roots[1] is not None:
+            data.extend([
+                go.Scatter(
+                    name=f"root_der2_{label}",
+                    x=[roots[1], roots[1]], y=yranges['y'],
+                    xaxis="x", yaxis="y", mode="lines",
+                    line=dict(color="#969696", dash="dot"),
+                    legendgroup=label),
+                go.Scatter(
+                    name=f"root_der2_{label}",
+                    x=[roots[1], roots[1]], y=yranges['y2'],
+                    xaxis="x", yaxis="y2", mode="lines",
+                    line=dict(color="#969696", dash="dot"),
+                    legendgroup=label, showlegend=False),
+                go.Scatter(
+                    name=f"root_der2_{label}",
+                    x=[roots[1], roots[1]], y=yranges['y3'],
+                    xaxis="x", yaxis="y3", mode="lines",
+                    line=dict(color="#969696", dash="dot"),
+                    legendgroup=label, showlegend=False)
+            ])
+
+        return data
+
+    def plot_channel_profile(
+            self, base: str, dtype: distance.DistanceType, cname: str
+            ) -> go.Figure:
+        assert base in self.bases
+        assert dtype in self.dtypes
+        assert cname in self.channels
+
+        profiles = self._fit_data[base][dtype][cname]
+        pal = get_palette(len(profiles))
+        stype_list = list(profiles.keys())
+        data: List[go.Scatter] = []
+
+        query_string = f'base=="{base}" and distance_type=="{dtype.value}"'
+        query_string += f' and channel=="{cname}"'
+        raw_data = self._raw_data.query(query_string)
+
+        for pi in range(len(stype_list)):
+            data.extend(self.__add_profile_traces(
+                stype_list[pi].value, profiles[stype_list[pi]],
+                raw_data, pal[pi]))
+
+        yranges = dict(
+            y=(np.min([trace['y'].min()
+                       for trace in data if 'y' == trace['yaxis']]),
+                np.max([trace['y'].max()
+                        for trace in data if 'y' == trace['yaxis']])),
+            y2=(np.min([trace['y'].min() for trace in data
+                        if 'y2' == trace['yaxis']]),
+                np.max([trace['y'].max() for trace in data
+                        if 'y2' == trace['yaxis']])),
+            y3=(np.min([trace['y'].min() for trace in data
+                        if 'y3' == trace['yaxis']]),
+                np.max([trace['y'].max() for trace in data
+                        if 'y3' == trace['yaxis']])))
+
+        for pi in range(len(stype_list)):
+            data.extend(self.__add_profile_roots(
+                stype_list[pi].value, profiles[stype_list[pi]], yranges))
+
+        layout = go.Layout(
+            xaxis=dict(title=dtype.label, anchor="y3"),
+            yaxis=dict(domain=[.66, 1], range=yranges['y'],
+                       title="Intensity (a.u.)"),
+            yaxis2=dict(domain=[.33, .63], range=yranges['y2'],
+                        title="1st Derivative Intensity (a.u.)"),
+            yaxis3=dict(domain=[0, .30], range=yranges['y3'],
+                        title="2nd Derivative Intensity (a.u.)"),
+            autosize=False, width=1000, height=1000
+        )
+
+        fig = go.Figure(data=data, layout=layout)
+        fig.add_shape(go.layout.Shape(
+            type="line", line=dict(dash="dash", color="#969696"),
+            y0=0, x0=0, y1=0, x1=raw_data['x'].values.max(), yref="y2"))
+        fig.add_shape(go.layout.Shape(
+            type="line", line=dict(dash="dash", color="#969696"),
+            y0=0, x0=0, y1=0, x1=raw_data['x'].values.max(), yref="y3"))
+        fig.update_layout(template="plotly_white")
+        return fig
+
+
+def plot_profiles(poly_fit: Dict, raw_data: pd.DataFrame) -> go.Figure:
+    print(poly_fit)
+    print(raw_data)
+    import sys
+    sys.exit()
     pass
-
-
-# def add_profile_trace(
-#         label: str, profile: Polynomial, raw_data: pd.DataFrame,
-#         npoints: int = 1000, color: Optional[str] = None) -> List[go.Scatter]:
-#     raw_label = f"{label}_raw"
-#     assert raw_label in raw_data.columns
-
-#     x, y = profile.linspace(npoints)
-#     xx, yy = profile.deriv().linspace(npoints)
-#     xxx, yyy = profile.deriv().deriv().linspace(npoints)
-
-#     return [go.Scatter(
-#                 name=f"raw_{label}", xaxis="x", yaxis="y",
-#                 x=raw_data['x'].values, y=raw_data[raw_label].values,
-#                 mode='markers', legendgroup=label,
-#                 marker=dict(size=4, opacity=.5, color="#989898")),
-#             go.Scatter(
-#                 name=label, x=x, y=y, xaxis="x", yaxis="y", mode='lines',
-#                 legendgroup=label, line=dict(color=color)),
-#             go.Scatter(
-#                 name=f"der1_{label}", x=xx, y=yy, xaxis="x", yaxis="y2",
-#                 mode='lines', line=dict(color=color),
-#                 legendgroup=label, showlegend=False),
-#             go.Scatter(
-#                 name=f"der2_{label}", x=xxx, y=yyy, xaxis="x", yaxis="y3",
-#                 mode='lines', line=dict(color=color),
-#                 legendgroup=label, showlegend=False)]
-
-
-# def add_profile_roots(
-#         label: str, profile: Polynomial, roots: Tuple[float, float],
-#         yranges: Dict[str, Tuple[float, float]], npoints: int = 1000
-#         ) -> List[go.Scatter]:
-#     data = []
-
-#     if roots[0] is not None:
-#         data.extend([
-#             go.Scatter(
-#                 name=f"root_der1_{label}",
-#                 x=[roots[0], roots[0]], y=yranges['y'],
-#                 xaxis="x", yaxis="y", mode="lines",
-#                 line=dict(color="#969696", dash="dash"), legendgroup=label),
-#             go.Scatter(
-#                 name=f"root_der1_{label}",
-#                 x=[roots[0], roots[0]], y=yranges['y2'],
-#                 xaxis="x", yaxis="y2", mode="lines",
-#                 line=dict(color="#969696", dash="dash"),
-#                 legendgroup=label, showlegend=False)
-#         ])
-
-#     if roots[1] is not None:
-#         data.extend([
-#             go.Scatter(
-#                 name=f"root_der2_{label}",
-#                 x=[roots[1], roots[1]], y=yranges['y'],
-#                 xaxis="x", yaxis="y", mode="lines",
-#                 line=dict(color="#969696", dash="dot"),
-#                 legendgroup=label),
-#             go.Scatter(
-#                 name=f"root_der2_{label}",
-#                 x=[roots[1], roots[1]], y=yranges['y2'],
-#                 xaxis="x", yaxis="y2", mode="lines",
-#                 line=dict(color="#969696", dash="dot"),
-#                 legendgroup=label, showlegend=False),
-#             go.Scatter(
-#                 name=f"root_der2_{label}",
-#                 x=[roots[1], roots[1]], y=yranges['y3'],
-#                 xaxis="x", yaxis="y3", mode="lines",
-#                 line=dict(color="#969696", dash="dot"),
-#                 legendgroup=label, showlegend=False)
-#         ])
-
-#     return data
-
-
-# def plot_profile(
-#         dtype: str, profiles: stat.PolyFitResult, raw_data: pd.DataFrame,
-#         roots: Dict[str, Tuple[float, float]]) -> go.Figure:
-#     pal = get_palette(len(profiles))
-#     stat_name_list = list(profiles.keys())
-#     npoints = 1000
-#     data = []
-
-#     for pi in range(len(stat_name_list)):
-#         data.extend(add_profile_trace(
-#             stat_name_list[pi], profiles[stat_name_list[pi]],
-#             raw_data, npoints, pal[pi]))
-
-#     yranges = dict(
-#         y=(np.min([trace['y'].min()
-#                    for trace in data if 'y' == trace['yaxis']]),
-#             np.max([trace['y'].max()
-#                     for trace in data if 'y' == trace['yaxis']])),
-#         y2=(np.min([trace['y'].min() for trace in data
-#                     if 'y2' == trace['yaxis']]),
-#             np.max([trace['y'].max() for trace in data
-#                     if 'y2' == trace['yaxis']])),
-#         y3=(np.min([trace['y'].min() for trace in data
-#                     if 'y3' == trace['yaxis']]),
-#             np.max([trace['y'].max() for trace in data
-#                     if 'y3' == trace['yaxis']])))
-
-#     for pi in range(len(stat_name_list)):
-#         stat_name = stat_name_list[pi]
-#         data.extend(add_profile_roots(
-#             stat_name, profiles[stat_name],
-#             roots[stat_name], yranges))
-
-#     layout = go.Layout(
-#         xaxis=dict(title=distance.__distance_labels__[dtype], anchor="y3"),
-#         yaxis=dict(domain=[.66, 1], range=yranges['y'],
-#                    title="Intensity (a.u.)"),
-#         yaxis2=dict(domain=[.33, .63], range=yranges['y2'],
-#                     title="1st Derivative Intensity (a.u.)"),
-#         yaxis3=dict(domain=[0, .30], range=yranges['y3'],
-#                     title="2nd Derivative Intensity (a.u.)"),
-#         autosize=False, width=1000, height=1000
-#     )
-
-#     fig = go.Figure(
-#         data=data,
-#         layout=layout)
-
-#     fig.add_shape(go.layout.Shape(
-#         type="line", line=dict(dash="dash", color="#969696"),
-#         y0=0, x0=0, y1=0, x1=raw_data['x'].values.max(), yref="y2"))
-#     fig.add_shape(go.layout.Shape(
-#         type="line", line=dict(dash="dash", color="#969696"),
-#         y0=0, x0=0, y1=0, x1=raw_data['x'].values.max(), yref="y3"))
-
-#     fig.update_layout(template="plotly_white")
-#     return fig
-
-# END =========================================================================
-
-###############################################################################

@@ -12,11 +12,21 @@ from scipy.ndimage.morphology import distance_transform_edt  # type: ignore
 from scipy.ndimage import center_of_mass  # type: ignore
 from typing import Dict, Optional, Tuple
 
-__distance_labels__: Dict[str, str] = dict(
-    lamina_dist="Distance from lamina (nm)",
-    center_dist="Distance from center (nm)",
-    lamina_dist_norm="Normalized distance from lamina (a.u.)"
-)
+__distance_labels__: Dict[str, str] = 
+
+
+class DistanceType(Enum):
+    LAMINA = 'lamina_dist'
+    CENTER = 'center_dist'
+    LAMINA_NORM = 'lamina_dist_norm'
+
+    @property
+    def label(self) -> str:
+        return dict(
+            lamina_dist="Distance from lamina (nm)",
+            center_dist="Distance from center (nm)",
+            lamina_dist_norm="Normalized distance from lamina (a.u.)"
+        )[self.value]
 
 
 class CenterType(Enum):
