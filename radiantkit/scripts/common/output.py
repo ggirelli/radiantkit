@@ -253,6 +253,8 @@ class OutputPlotter(object):
         for script_stub, script_data in output_list.items():
             plot_dict[script_stub] = {}
             for dname, odata in script_data.items():
+                logging.info(f"preparing plot for '{script_stub}' data"
+                             + f" from '{dname}'")
                 plot_dict[script_stub][dname] = OutputType(
                     script_stub).plot(**odata)
         return plot_dict

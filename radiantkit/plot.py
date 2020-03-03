@@ -15,6 +15,16 @@ from scipy.stats import gaussian_kde  # type: ignore
 from typing import Any, Dict, List, Optional, Set, Tuple
 
 
+BaseName = str
+ChannelName = str
+ChannelProfile = Dict[ChannelName, stat.PolyFitResult]
+
+StatProfilePlots = Dict[stat.ProfileStatType, go.Figure]
+ChannelProfilePlots = Dict[ChannelName, StatProfilePlots]
+DistanceProfilePlots = Dict[distance.DistanceType, ChannelProfilePlots]
+BaseProfilePlots = Dict[BaseName, DistanceProfilePlots]
+
+
 def export(opath: str, exp_format: str = 'pdf') -> None:
     assert exp_format in ['pdf', 'png', 'jpg']
     opath = path.add_extension(opath, f".{exp_format}")
@@ -357,11 +367,6 @@ def plot_nuclear_features(
     return nfp.plot()
 
 
-BaseName = str
-ChannelName = str
-ChannelProfile = Dict[ChannelName, stat.PolyFitResult]
-
-
 class RadialProfilePlotter(object):
     _raw_data: pd.DataFrame
     __col_req: Tuple = ("x", "q1_raw", "median_raw", "mean_raw", "q3_raw",
@@ -402,7 +407,7 @@ class RadialProfilePlotter(object):
 
     @property
     def dtypes(self):
-        return list(self._dtype_set)
+        return list(self._dist_set)
 
     @property
     def channels(self):
@@ -412,11 +417,7 @@ class RadialProfilePlotter(object):
     def stats(self):
         return list(self._stat_set)
 
-    def __add_profile_to_fit_data(self, profile: Dict) -> None:
-        if profile['root'] != self.root:
-            return
-
-        base = profile['base']
+    def __add_profile_to_fit_data(self, base, profile: Dict) -> None:
         if base not in self._fit_data:
             self._fit_data[base] = {}
 
@@ -432,24 +433,27 @@ class RadialProfilePlotter(object):
 
         self._dist_set.add(dtype)
         self._channel_set.add(cname)
-        stype = stat.ProfileStatType(profile[''])
+        stype = stat.ProfileStatType(profile['stat'])
         self._stat_set.add(stype)
         self._fit_data[base][dtype][cname][stype] = profile['pfit']
 
     def add_new_base(self, raw_data: pd.DataFrame, fit_data: Dict) -> None:
         assert all([x in raw_data.columns for x in self.__col_req])
-        assert 1 == np.unique(raw_data['root'])
+        input_root_set = np.unique(raw_data['root'])
+        assert 1 == len(input_root_set), input_root_set
         assert raw_data.loc[0, 'base'] not in self.bases
-        self._raw_data = pd.concat[self._raw_data, raw_data]
+        self._raw_data = pd.concat([self._raw_data, raw_data])
 
         if self._root is None:
             self._root = raw_data.loc[0, 'root']
         else:
             assert self._root == raw_data.loc[0, 'root']
 
-        assert all([x in fit_data.keys() for x in self.__field_req])
-        for profile in fit_data:
-            self.__add_profile_to_fit_data(profile)
+        for profile in fit_data['data']:
+            assert all([x in profile.keys() for x in self.__field_req])
+        assert fit_data['root'] == self.root
+        for profile in fit_data['data']:
+            self.__add_profile_to_fit_data(fit_data['base'], profile)
 
     def __add_profile_traces(
             self, label: str, pfit: Polynomial, raw_data: pd.DataFrame,
@@ -585,10 +589,18 @@ class RadialProfilePlotter(object):
         fig.update_layout(template="plotly_white")
         return fig
 
+    def plot_channel_profile_list(self) -> BaseProfilePlots:
+        plots: BaseProfilePlots = {}
+        for base in self.bases:
+            plots[base] = {}
+            for dtype in self._fit_data[base].keys():
+                plots[base][dtype] = {}
+                for cname in self._fit_data[base][dtype].keys():
+                    plots[base][dtype][cname] = self.plot_channel_profile(
+                        base, dtype, cname)
+        return plots
 
-def plot_profiles(poly_fit: Dict, raw_data: pd.DataFrame) -> go.Figure:
-    print(poly_fit)
-    print(raw_data)
-    import sys
-    sys.exit()
-    pass
+
+def plot_profiles(poly_fit: Dict, raw_data: pd.DataFrame) -> BaseProfilePlots:
+    rpp = RadialProfilePlotter(raw_data, poly_fit)
+    return rpp.plot_channel_profile_list()
