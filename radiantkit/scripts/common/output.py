@@ -9,7 +9,7 @@ import os
 import pandas as pd  # type: ignore
 import pickle
 import plotly.graph_objects as go  # type: ignore
-from radiantkit import const, path, scripts
+from radiantkit import const, path, plot, scripts
 from typing import Any, Dict, List, Optional, Pattern
 
 
@@ -48,8 +48,14 @@ class OutputType(Enum):
     def label(self):
         return getattr(scripts, self.value).__LABEL__
 
-    def plot(self, data):
-        pass
+    def plot(self, **data) -> go.Figure:
+        plot_fun = dict(
+            select_nuclei=plot.plot_nuclear_selection,
+            measure_objects=plot.plot_nuclear_features,
+            radial_population=plot.plot_profiles
+        )
+        print(list(data.keys()))
+        return plot_fun[self.value](**data)
 
     @staticmethod
     def to_dict():
@@ -206,7 +212,7 @@ class OutputReader(object):
     @staticmethod
     def read(otype: OutputType, path_list: List[DirectoryPath],
              subname: str = const.default_subfolder
-             ) -> OutputData:
+             ) -> Dict[DirectoryPath, OutputData]:
         output_data: Dict[DirectoryPath, OutputData] = {}
         for root_path in path_list:
             root_data: OutputData = {}
@@ -229,10 +235,9 @@ class OutputReader(object):
                     output_locations[otype] = []
                 output_locations[otype].append(tpath)
 
-        output: Dict[ScriptStub, OutputData] = {}
+        output: Dict[ScriptStub, Dict[DirectoryPath, OutputData]] = {}
         for otype, locations in output_locations.items():
             output[otype.value] = OutputReader.read(otype, locations, subname)
-        print(output)
 
         return output
 
@@ -242,6 +247,12 @@ class OutputPlotter(object):
         super(OutputPlotter, self).__init__()
 
     @staticmethod
-    def to_plot(output_list: Dict[ScriptStub, OutputData]
-                ) -> Dict[ScriptStub, Dict[BaseName, go.Figure]]:
-        pass
+    def plot(output_list: Dict[ScriptStub, Dict[DirectoryPath, OutputData]]
+             ) -> Dict[ScriptStub, Dict[BaseName, go.Figure]]:
+        plot_dict: Dict[ScriptStub, Dict[BaseName, go.Figure]] = {}
+        for script_stub, script_data in output_list.items():
+            plot_dict[script_stub] = {}
+            for dname, odata in script_data.items():
+                plot_dict[script_stub][dname] = OutputType(
+                    script_stub).plot(**odata)
+        return plot_dict

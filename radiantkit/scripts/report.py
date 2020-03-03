@@ -60,7 +60,9 @@ def run(args: argparse.Namespace) -> None:
     logging.info(f"looking at '{args.input}'")
 
     output_list = output.OutputReader.read_recursive(args.input, args.inreg)
+    plot_data = output.OutputPlotter.plot(output_list)
 
-    report.general_report(args, output_list)
+    print(plot_data)
+    #report.general_report(args, output_list)
 
     raise NotImplementedError

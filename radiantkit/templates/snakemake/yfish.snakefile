@@ -97,7 +97,9 @@ rule nuclear_selection:
             series_id=[f"{sid:03d}" for sid in list_series_id(
                 wildcards.condition, SEGMENTATION_RE)])
     output:
-        os.path.join(ROOT, "{condition}", "select_nuclei.data.tsv")
+        os.path.join(ROOT, "{condition}", "select_nuclei.data.tsv"),
+        os.path.join(ROOT, "{condition}", "select_nuclei.fit.pkl"),
+        os.path.join(ROOT, "{condition}", "select_nuclei.config.txt")
     log:
         os.path.join(ROOT, "{condition}", "select_nuclei.data.log")
     params:
@@ -125,8 +127,8 @@ if config['measure_objects']['measure_single_voxel']:
 
 rule measure_objects:
     input:
-        os.path.join(ROOT, "{condition}",
-                     "select_nuclei.data.tsv")
+        os.path.join(ROOT, "{condition}", "select_nuclei.data.tsv"),
+        os.path.join(ROOT, "{condition}", "select_nuclei.fit.pkl")
     output: measure_objects_output
     log:
         os.path.join(ROOT, "{condition}", "objects",

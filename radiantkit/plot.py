@@ -12,7 +12,7 @@ import plotly.graph_objects as go  # type: ignore
 from plotly.subplots import make_subplots  # type: ignore
 from radiantkit import distance, path, stat
 from scipy.stats import gaussian_kde  # type: ignore
-from typing import Dict, List, Optional, Tuple
+from typing import Any, Dict, List, Optional
 
 
 def export(opath: str, exp_format: str = 'pdf') -> None:
@@ -30,16 +30,18 @@ def get_palette(N: int) -> List[str]:
     return ['hsl('+str(h)+',50%'+',50%)' for h in np.linspace(0, 360, N)]
 
 
-def plot_nuclear_selection(
-        data: pd.DataFrame, ref: str,
-        size_range: stat.Interval, isum_range: stat.Interval,
-        size_fit: Optional[stat.FitResult] = None,
-        isum_fit: Optional[stat.FitResult] = None,
-        npoints: int = 1000) -> go.Figure:
-    assert all([x in data.columns
+def plot_nuclear_selection(raw_data, fit) -> go.Figure:
+    ref = raw_data.loc[0, 'ref']
+    size_range = fit['data']['size']['range']
+    size_fit = fit['data']['size']['fit']
+    isum_range = fit['data']['isum']['range']
+    isum_fit = fit['data']['isum']['fit']
+    npoints: int = 1000
+
+    assert all([x in raw_data.columns
                 for x in ["size", f"isum_{ref}", "pass", "label", "image"]])
-    x_data = data['size'].values
-    y_data = data[f"isum_{ref}"].values
+    x_data = raw_data['size'].values
+    y_data = raw_data[f"isum_{ref}"].values
 
     xdf = gaussian_kde(x_data)
     ydf = gaussian_kde(y_data)
@@ -47,22 +49,22 @@ def plot_nuclear_selection(
     xx_linspace = np.linspace(x_data.min(), x_data.max(), npoints)
     yy_linspace = np.linspace(y_data.min(), y_data.max(), npoints)
 
-    passed = data['pass']
+    passed = raw_data['pass']
     not_passed = np.logical_not(passed)
 
     scatter_selected = go.Scatter(
         name="selected nuclei", x=x_data[passed], y=y_data[passed],
         mode='markers', marker=dict(size=4, opacity=.5, color="#1f78b4"),
         xaxis="x", yaxis="y",
-        customdata=np.dstack((data[passed]['label'],
-                              data[passed]['image']))[0],
+        customdata=np.dstack((raw_data[passed]['label'],
+                              raw_data[passed]['image']))[0],
         hovertemplate='Size=%{x}<br>Intensity sum=%{y}<br>'
                       + 'Label=%{customdata[0]}<br>Image="%{customdata[1]}"')
     scatter_filtered = go.Scatter(
         name="discarded nuclei", x=x_data[not_passed], y=y_data[not_passed],
         mode='markers', marker=dict(size=4, opacity=.5, color="#e31a1c"),
         xaxis="x", yaxis="y", customdata=np.dstack((
-            data[not_passed]['label'], data[not_passed]['image']))[0],
+            raw_data[not_passed]['label'], raw_data[not_passed]['image']))[0],
         hovertemplate='Size=%{x}<br>Intensity sum=%{y}<br>'
                       + 'Label=%{customdata[0]}<br>Image="%{customdata[1]}"')
     contour_y = go.Scatter(
@@ -146,195 +148,275 @@ def plot_nuclear_selection(
     return fig
 
 
+class NuclearFeaturePlotter(object):
+    _obj_data: pd.DataFrame
+    _spx_data: Optional[pd.DataFrame] = None
+    _n_input_cols: int = 3
+    _n_grid_cols: int = 3
+    _root_list: List[str]
+    _pal: List[str]
+    _channel_list: List[str]
+    _n_features: int
+    _n_rows: int
+    _fig: go.Figure
+    _layout: Dict[str, Any]
+
+    def __init__(self, obj_data: pd.DataFrame,
+                 spx_data: Optional[pd.DataFrame]):
+        super(NuclearFeaturePlotter, self).__init__()
+        self._obj_data = obj_data
+        self._spx_data = spx_data
+        assert 'root' in self._obj_data.columns
+        self._root_list = np.unique(obj_data['root'].values).tolist()
+        self._pal = get_palette(len(self._root_list))
+        self._channel_list = self.__get_channel_list()
+        self._n_features = self._obj_data.shape[1] - self.n_input_cols
+        self._n_rows = (self._n_features + len(
+            self._channel_list)) // self.n_grid_cols + 1
+
+    @property
+    def nfeat(self) -> int:
+        return self._n_features
+
+    @property
+    def n_input_cols(self) -> int:
+        return self._n_input_cols
+
+    @n_input_cols.setter
+    def n_input_cols(self, n: int):
+        if n >= 1:
+            self._n_input_cols = n
+
+    @property
+    def n_grid_cols(self) -> int:
+        return self._n_grid_cols
+
+    @n_grid_cols.setter
+    def n_grid_cols(self, n: int):
+        if n >= 1:
+            self._n_grid_cols = n
+
+    def __get_channel_list(self) -> List[str]:
+        channel_list = []
+        if self._spx_data is not None:
+            assert 'channel' in self._spx_data.columns
+            channel_list = np.unique(self._spx_data['channel'].values)
+        return channel_list
+
+    def __add_box(self, ci, root, colname) -> None:
+        self._fig.add_trace(go.Box(
+            name=root, notched=True,
+            y=self._obj_data[self._obj_data['root'] == root][colname].values,
+            marker_color=self._pal[np.argmax(self._root_list == root)]),
+            row=ci//self.n_grid_cols+1,
+            col=ci % self.n_grid_cols+1)
+
+    def __add_precomputed_box(self, spx_channel, ci, root) -> None:
+        spx_root = spx_channel[spx_channel['root'] == root]
+        self._fig.add_trace(
+            go.Box(
+                name=root, notched=False,
+                y=[[spx_root['vmin'].values[0],
+                    spx_root['vmax'].values[0]]],
+                marker_color=self._pal[np.argmax(self._root_list == root)]),
+            row=ci//self.n_grid_cols+1, col=ci % self.n_grid_cols+1)
+        self._fig.update_traces(
+            q1=spx_root['q1'].values, q3=spx_root['q3'].values,
+            median=spx_root['median'].values,
+            lowerfence=spx_root['whisk_low'].values,
+            upperfence=spx_root['whisk_high'].values,
+            row=ci//self.n_grid_cols+1, col=ci % self.n_grid_cols+1)
+
+    def __init_canvas(self) -> None:
+        self._fig = make_subplots(
+            rows=self._n_rows, cols=self.n_grid_cols,
+            horizontal_spacing=.2)
+        self._layout = {}
+
+    def __update_layout(self) -> None:
+        self._fig.update_xaxes(tickangle=45)
+        self._fig.update_xaxes(
+            ticks="outside", tickwidth=1, ticklen=5, automargin=True)
+        self._fig.update_yaxes(
+            ticks="outside", tickwidth=1, ticklen=5, automargin=True)
+        self._fig.update_layout(**self._layout)
+        self._fig.update_layout(
+            height=400*self._n_rows, width=1000, autosize=False)
+        self._fig.update_layout(showlegend=False)
+
+    def __draw_boxes(self) -> None:
+        for ci in range(self.nfeat):
+            colname = self._obj_data.columns[ci+self.n_input_cols]
+            # collab = labels[colname] if colname in labels else colname
+            for root in np.unique(self._obj_data['root'].values.tolist()):
+                self.__add_box(ci, root, colname)
+            # layout["yaxis" if ci == 0 else f"yaxis{ci+1}"
+            #    ] = dict(title=collab)
+
+    def __draw_precomputed_boxes(self) -> None:
+        if self._spx_data is not None:
+            for ci in range(self.nfeat, self.nfeat+len(self._channel_list)):
+                channel = self._channel_list[ci-self.nfeat]
+                spx_channel = self._spx_data[
+                    self._spx_data['channel'] == channel]
+                for root in spx_channel['root'].values.tolist():
+                    self.__add_precomputed_box(spx_channel, ci, root)
+                self._layout[f"yaxis{ci+1}"] = dict(
+                    title=f'"{channel}" single pixel intensity (a.u.)')
+
+    def plot(self) -> go.Figure:
+        self.__init_canvas()
+        self.__draw_boxes()
+        self.__draw_precomputed_boxes()
+        self.__update_layout()
+        return self._fig
+
+
 def plot_nuclear_features(
-        data: pd.DataFrame, spx_data: pd.DataFrame, labels: Dict[str, str],
-        n_id_cols: int = 3, n_plot_grid_col: int = 3) -> go.Figure:
-    root_list = np.unique(data['root'].values)
-    pal = get_palette(root_list.shape[0])
-
-    channel_list = np.unique(spx_data['channel'].values)
-    n_features = data.shape[1]-n_id_cols
-    n_rows = (n_features+len(channel_list))//n_plot_grid_col+1
-    fig = make_subplots(rows=n_rows, cols=n_plot_grid_col,
-                        horizontal_spacing=.2)
-
-    layout = {}
-    for ci in range(n_features):
-        colname = data.columns[ci+n_id_cols]
-        collab = labels[colname] if colname in labels else colname
-
-        for root in np.unique(data['root'].values.tolist()):
-            fig.add_trace(go.Box(
-                name=root,
-                y=data[data['root'] == root][colname].values,
-                notched=True, marker_color=pal[np.argmax(root_list == root)]),
-                row=ci//n_plot_grid_col+1, col=ci % n_plot_grid_col+1)
-
-        layout["yaxis" if ci == 0 else f"yaxis{ci+1}"] = dict(title=collab)
-
-    for ci in range(n_features, n_features+len(channel_list)):
-        channel = channel_list[ci-n_features]
-        spx_channel = spx_data[spx_data['channel'] == channel]
-
-        for root in spx_channel['root'].values.tolist():
-            spx_root = spx_channel[spx_channel['root'] == root]
-            fig.add_trace(
-                go.Box(
-                    name=root, notched=False,
-                    y=[[spx_root['vmin'].values[0],
-                        spx_root['vmax'].values[0]]],
-                    marker_color=pal[np.argmax(root_list == root)]),
-                row=ci//n_plot_grid_col+1, col=ci % n_plot_grid_col+1)
-            fig.update_traces(
-                q1=spx_root['q1'].values, q3=spx_root['q3'].values,
-                median=spx_root['median'].values,
-                lowerfence=spx_root['whisk_low'].values,
-                upperfence=spx_root['whisk_high'].values,
-                row=ci//n_plot_grid_col+1, col=ci % n_plot_grid_col+1)
-
-        layout[f"yaxis{ci+1}"] = dict(
-            title=f'"{channel}" single pixel intensity (a.u.)')
-
-    fig.update_xaxes(tickangle=45)
-    fig.update_xaxes(ticks="outside", tickwidth=1, ticklen=5, automargin=True)
-    fig.update_yaxes(ticks="outside", tickwidth=1, ticklen=5, automargin=True)
-    fig.update_layout(**layout)
-    fig.update_layout(height=400*n_rows, width=1000, autosize=False)
-    fig.update_layout(showlegend=False)
-    return fig
+        obj_data, spx_data,
+        n_input_cols: int = 3, n_grid_cols: int = 3
+        ) -> go.Figure:
+    nfp = NuclearFeaturePlotter(obj_data, spx_data)
+    nfp.n_input_cols = n_input_cols
+    nfp.n_grid_cols = n_grid_cols
+    return nfp.plot()
 
 
-def add_profile_trace(
-        label: str, profile: Polynomial, raw_data: pd.DataFrame,
-        npoints: int = 1000, color: Optional[str] = None) -> List[go.Scatter]:
-    raw_label = f"{label}_raw"
-    assert raw_label in raw_data.columns
-
-    x, y = profile.linspace(npoints)
-    xx, yy = profile.deriv().linspace(npoints)
-    xxx, yyy = profile.deriv().deriv().linspace(npoints)
-
-    return [go.Scatter(
-                name=f"raw_{label}", xaxis="x", yaxis="y",
-                x=raw_data['x'].values, y=raw_data[raw_label].values,
-                mode='markers', legendgroup=label,
-                marker=dict(size=4, opacity=.5, color="#989898")),
-            go.Scatter(
-                name=label, x=x, y=y, xaxis="x", yaxis="y", mode='lines',
-                legendgroup=label, line=dict(color=color)),
-            go.Scatter(
-                name=f"der1_{label}", x=xx, y=yy, xaxis="x", yaxis="y2",
-                mode='lines', line=dict(color=color),
-                legendgroup=label, showlegend=False),
-            go.Scatter(
-                name=f"der2_{label}", x=xxx, y=yyy, xaxis="x", yaxis="y3",
-                mode='lines', line=dict(color=color),
-                legendgroup=label, showlegend=False)]
+def plot_profiles(**data):
+    pass
 
 
-def add_profile_roots(
-        label: str, profile: Polynomial, roots: Tuple[float, float],
-        yranges: Dict[str, Tuple[float, float]], npoints: int = 1000
-        ) -> List[go.Scatter]:
-    data = []
+# def add_profile_trace(
+#         label: str, profile: Polynomial, raw_data: pd.DataFrame,
+#         npoints: int = 1000, color: Optional[str] = None) -> List[go.Scatter]:
+#     raw_label = f"{label}_raw"
+#     assert raw_label in raw_data.columns
 
-    if roots[0] is not None:
-        data.extend([
-            go.Scatter(
-                name=f"root_der1_{label}",
-                x=[roots[0], roots[0]], y=yranges['y'],
-                xaxis="x", yaxis="y", mode="lines",
-                line=dict(color="#969696", dash="dash"), legendgroup=label),
-            go.Scatter(
-                name=f"root_der1_{label}",
-                x=[roots[0], roots[0]], y=yranges['y2'],
-                xaxis="x", yaxis="y2", mode="lines",
-                line=dict(color="#969696", dash="dash"),
-                legendgroup=label, showlegend=False)
-        ])
+#     x, y = profile.linspace(npoints)
+#     xx, yy = profile.deriv().linspace(npoints)
+#     xxx, yyy = profile.deriv().deriv().linspace(npoints)
 
-    if roots[1] is not None:
-        data.extend([
-            go.Scatter(
-                name=f"root_der2_{label}",
-                x=[roots[1], roots[1]], y=yranges['y'],
-                xaxis="x", yaxis="y", mode="lines",
-                line=dict(color="#969696", dash="dot"),
-                legendgroup=label),
-            go.Scatter(
-                name=f"root_der2_{label}",
-                x=[roots[1], roots[1]], y=yranges['y2'],
-                xaxis="x", yaxis="y2", mode="lines",
-                line=dict(color="#969696", dash="dot"),
-                legendgroup=label, showlegend=False),
-            go.Scatter(
-                name=f"root_der2_{label}",
-                x=[roots[1], roots[1]], y=yranges['y3'],
-                xaxis="x", yaxis="y3", mode="lines",
-                line=dict(color="#969696", dash="dot"),
-                legendgroup=label, showlegend=False)
-        ])
-
-    return data
+#     return [go.Scatter(
+#                 name=f"raw_{label}", xaxis="x", yaxis="y",
+#                 x=raw_data['x'].values, y=raw_data[raw_label].values,
+#                 mode='markers', legendgroup=label,
+#                 marker=dict(size=4, opacity=.5, color="#989898")),
+#             go.Scatter(
+#                 name=label, x=x, y=y, xaxis="x", yaxis="y", mode='lines',
+#                 legendgroup=label, line=dict(color=color)),
+#             go.Scatter(
+#                 name=f"der1_{label}", x=xx, y=yy, xaxis="x", yaxis="y2",
+#                 mode='lines', line=dict(color=color),
+#                 legendgroup=label, showlegend=False),
+#             go.Scatter(
+#                 name=f"der2_{label}", x=xxx, y=yyy, xaxis="x", yaxis="y3",
+#                 mode='lines', line=dict(color=color),
+#                 legendgroup=label, showlegend=False)]
 
 
-def plot_profile(
-        dtype: str, profiles: stat.PolyFitResult, raw_data: pd.DataFrame,
-        roots: Dict[str, Tuple[float, float]]) -> go.Figure:
-    pal = get_palette(len(profiles))
-    stat_name_list = list(profiles.keys())
-    npoints = 1000
-    data = []
+# def add_profile_roots(
+#         label: str, profile: Polynomial, roots: Tuple[float, float],
+#         yranges: Dict[str, Tuple[float, float]], npoints: int = 1000
+#         ) -> List[go.Scatter]:
+#     data = []
 
-    for pi in range(len(stat_name_list)):
-        data.extend(add_profile_trace(
-            stat_name_list[pi], profiles[stat_name_list[pi]],
-            raw_data, npoints, pal[pi]))
+#     if roots[0] is not None:
+#         data.extend([
+#             go.Scatter(
+#                 name=f"root_der1_{label}",
+#                 x=[roots[0], roots[0]], y=yranges['y'],
+#                 xaxis="x", yaxis="y", mode="lines",
+#                 line=dict(color="#969696", dash="dash"), legendgroup=label),
+#             go.Scatter(
+#                 name=f"root_der1_{label}",
+#                 x=[roots[0], roots[0]], y=yranges['y2'],
+#                 xaxis="x", yaxis="y2", mode="lines",
+#                 line=dict(color="#969696", dash="dash"),
+#                 legendgroup=label, showlegend=False)
+#         ])
 
-    yranges = dict(
-        y=(np.min([trace['y'].min()
-                   for trace in data if 'y' == trace['yaxis']]),
-            np.max([trace['y'].max()
-                    for trace in data if 'y' == trace['yaxis']])),
-        y2=(np.min([trace['y'].min() for trace in data
-                    if 'y2' == trace['yaxis']]),
-            np.max([trace['y'].max() for trace in data
-                    if 'y2' == trace['yaxis']])),
-        y3=(np.min([trace['y'].min() for trace in data
-                    if 'y3' == trace['yaxis']]),
-            np.max([trace['y'].max() for trace in data
-                    if 'y3' == trace['yaxis']])))
+#     if roots[1] is not None:
+#         data.extend([
+#             go.Scatter(
+#                 name=f"root_der2_{label}",
+#                 x=[roots[1], roots[1]], y=yranges['y'],
+#                 xaxis="x", yaxis="y", mode="lines",
+#                 line=dict(color="#969696", dash="dot"),
+#                 legendgroup=label),
+#             go.Scatter(
+#                 name=f"root_der2_{label}",
+#                 x=[roots[1], roots[1]], y=yranges['y2'],
+#                 xaxis="x", yaxis="y2", mode="lines",
+#                 line=dict(color="#969696", dash="dot"),
+#                 legendgroup=label, showlegend=False),
+#             go.Scatter(
+#                 name=f"root_der2_{label}",
+#                 x=[roots[1], roots[1]], y=yranges['y3'],
+#                 xaxis="x", yaxis="y3", mode="lines",
+#                 line=dict(color="#969696", dash="dot"),
+#                 legendgroup=label, showlegend=False)
+#         ])
 
-    for pi in range(len(stat_name_list)):
-        stat_name = stat_name_list[pi]
-        data.extend(add_profile_roots(
-            stat_name, profiles[stat_name],
-            roots[stat_name], yranges))
+#     return data
 
-    layout = go.Layout(
-        xaxis=dict(title=distance.__distance_labels__[dtype], anchor="y3"),
-        yaxis=dict(domain=[.66, 1], range=yranges['y'],
-                   title="Intensity (a.u.)"),
-        yaxis2=dict(domain=[.33, .63], range=yranges['y2'],
-                    title="1st Derivative Intensity (a.u.)"),
-        yaxis3=dict(domain=[0, .30], range=yranges['y3'],
-                    title="2nd Derivative Intensity (a.u.)"),
-        autosize=False, width=1000, height=1000
-    )
 
-    fig = go.Figure(
-        data=data,
-        layout=layout)
+# def plot_profile(
+#         dtype: str, profiles: stat.PolyFitResult, raw_data: pd.DataFrame,
+#         roots: Dict[str, Tuple[float, float]]) -> go.Figure:
+#     pal = get_palette(len(profiles))
+#     stat_name_list = list(profiles.keys())
+#     npoints = 1000
+#     data = []
 
-    fig.add_shape(go.layout.Shape(
-        type="line", line=dict(dash="dash", color="#969696"),
-        y0=0, x0=0, y1=0, x1=raw_data['x'].values.max(), yref="y2"))
-    fig.add_shape(go.layout.Shape(
-        type="line", line=dict(dash="dash", color="#969696"),
-        y0=0, x0=0, y1=0, x1=raw_data['x'].values.max(), yref="y3"))
+#     for pi in range(len(stat_name_list)):
+#         data.extend(add_profile_trace(
+#             stat_name_list[pi], profiles[stat_name_list[pi]],
+#             raw_data, npoints, pal[pi]))
 
-    fig.update_layout(template="plotly_white")
-    return fig
+#     yranges = dict(
+#         y=(np.min([trace['y'].min()
+#                    for trace in data if 'y' == trace['yaxis']]),
+#             np.max([trace['y'].max()
+#                     for trace in data if 'y' == trace['yaxis']])),
+#         y2=(np.min([trace['y'].min() for trace in data
+#                     if 'y2' == trace['yaxis']]),
+#             np.max([trace['y'].max() for trace in data
+#                     if 'y2' == trace['yaxis']])),
+#         y3=(np.min([trace['y'].min() for trace in data
+#                     if 'y3' == trace['yaxis']]),
+#             np.max([trace['y'].max() for trace in data
+#                     if 'y3' == trace['yaxis']])))
+
+#     for pi in range(len(stat_name_list)):
+#         stat_name = stat_name_list[pi]
+#         data.extend(add_profile_roots(
+#             stat_name, profiles[stat_name],
+#             roots[stat_name], yranges))
+
+#     layout = go.Layout(
+#         xaxis=dict(title=distance.__distance_labels__[dtype], anchor="y3"),
+#         yaxis=dict(domain=[.66, 1], range=yranges['y'],
+#                    title="Intensity (a.u.)"),
+#         yaxis2=dict(domain=[.33, .63], range=yranges['y2'],
+#                     title="1st Derivative Intensity (a.u.)"),
+#         yaxis3=dict(domain=[0, .30], range=yranges['y3'],
+#                     title="2nd Derivative Intensity (a.u.)"),
+#         autosize=False, width=1000, height=1000
+#     )
+
+#     fig = go.Figure(
+#         data=data,
+#         layout=layout)
+
+#     fig.add_shape(go.layout.Shape(
+#         type="line", line=dict(dash="dash", color="#969696"),
+#         y0=0, x0=0, y1=0, x1=raw_data['x'].values.max(), yref="y2"))
+#     fig.add_shape(go.layout.Shape(
+#         type="line", line=dict(dash="dash", color="#969696"),
+#         y0=0, x0=0, y1=0, x1=raw_data['x'].values.max(), yref="y3"))
+
+#     fig.update_layout(template="plotly_white")
+#     return fig
 
 # END =========================================================================
 

@@ -11,6 +11,7 @@ import logging as log
 import numpy as np  # type: ignore
 import os
 import pandas as pd  # type: ignore
+import pickle
 from radiantkit import const
 from radiantkit.image import ImageBinary, ImageLabeled
 from radiantkit.particle import NucleiList, Nucleus
@@ -27,7 +28,8 @@ log.basicConfig(
     + '[P%(process)s:%(module)s:%(funcName)s] %(levelname)s: %(message)s',
     datefmt='%m/%d/%Y %I:%M:%S')
 
-__OUTPUT__ = {"data": "select_nuclei.data.tsv"}
+__OUTPUT__ = {"raw_data": "select_nuclei.data.tsv",
+              "fit": "select_nuclei.fit.pkl"}
 __OUTPUT_CONDITION__ = all
 __LABEL__ = "Nuclei selection"
 
@@ -287,8 +289,13 @@ def run(args: argparse.Namespace) -> None:
     np.set_printoptions(formatter={'float_kind': '{:.2E}'.format})
     log.info(f"intensity sum range: {details['isum']['range']}")
 
-    ndpath = os.path.join(args.input, __OUTPUT__['data'])
-    log.info(f"writing nuclear data to:\n{ndpath}")
-    nuclei_data.to_csv(ndpath, sep="\t", index=False)
+    tsv_path = os.path.join(args.input, __OUTPUT__['raw_data'])
+    log.info(f"writing nuclear data to:\n{tsv_path}")
+    nuclei_data.to_csv(tsv_path, sep="\t", index=False)
+
+    pkl_path = os.path.join(args.input, __OUTPUT__['fit'])
+    log.info(f"writing fit data to:\n{pkl_path}")
+    with open(pkl_path, "wb") as POH:
+        pickle.dump(details, POH)
 
     ra_series.pickle_series_list(args, series_list)
