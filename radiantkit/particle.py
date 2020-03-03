@@ -257,7 +257,7 @@ class NucleiList(object):
 
     def select_G1(
             self, k_sigma: float = 2.5, channel: str = 'unknown'
-            ) -> Tuple[pd.DataFrame, Dict]:
+            ) -> Tuple[pd.DataFrame, Dict[str, Dict[str, Any]]]:
         ndata = self.get_data()
         isum_label = f'isum_{channel}'
 
