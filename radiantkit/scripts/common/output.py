@@ -10,7 +10,7 @@ import pandas as pd  # type: ignore
 import pickle
 import plotly.graph_objects as go  # type: ignore
 from radiantkit import const, path, plot, scripts
-from typing import Any, Dict, List, Optional, Pattern
+from typing import Any, Callable, Dict, List, Optional, Pattern
 
 
 class OutputType(Enum):
@@ -49,12 +49,11 @@ class OutputType(Enum):
         return getattr(scripts, self.value).__LABEL__
 
     def plot(self, **data) -> go.Figure:
-        plot_fun = dict(
+        plot_fun: Dict[str, Callable] = dict(
             select_nuclei=plot.plot_nuclear_selection,
             measure_objects=plot.plot_nuclear_features,
             radial_population=plot.plot_profiles
         )
-        print(list(data.keys()))
         return plot_fun[self.value](**data)
 
     @staticmethod
@@ -147,8 +146,9 @@ class OutputFinder(object):
 
         for f in subfolder_list:
             logging.info(f"looking into subfolder '{f.name}'")
-            output_list.update(
-                OutputFinder.search_recursive(f.path, inreg))
+            current_output = OutputFinder.search_recursive(f.path, inreg)
+            logging.info(f"found output for: {[x.value for x in current_output[f.path]]}")
+            output_list.update(current_output)
 
         return output_list
 

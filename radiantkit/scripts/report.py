@@ -58,8 +58,9 @@ def parse_arguments(args: argparse.Namespace) -> argparse.Namespace:
 
 def run(args: argparse.Namespace) -> None:
     logging.info(f"looking at '{args.input}'")
-
     output_list = output.OutputReader.read_recursive(args.input, args.inreg)
+
+    logging.info("preparing plots")
     plot_data = output.OutputPlotter.plot(output_list)
 
     print(plot_data)

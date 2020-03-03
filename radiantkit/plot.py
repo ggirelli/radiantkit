@@ -12,7 +12,7 @@ import plotly.graph_objects as go  # type: ignore
 from plotly.subplots import make_subplots  # type: ignore
 from radiantkit import distance, path, stat
 from scipy.stats import gaussian_kde  # type: ignore
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, Tuple
 
 
 def export(opath: str, exp_format: str = 'pdf') -> None:
@@ -30,122 +30,197 @@ def get_palette(N: int) -> List[str]:
     return ['hsl('+str(h)+',50%'+',50%)' for h in np.linspace(0, 360, N)]
 
 
-def plot_nuclear_selection(raw_data, fit) -> go.Figure:
-    ref = raw_data.loc[0, 'ref']
-    size_range = fit['data']['size']['range']
-    size_fit = fit['data']['size']['fit']
-    isum_range = fit['data']['isum']['range']
-    isum_fit = fit['data']['isum']['fit']
-    npoints: int = 1000
+class NuclearSelectionPlotter(object):
+    _raw_data: pd.DataFrame
+    __col_req: List[str] = ["size", "ref", "pass", "label", "image"]
+    _fit_data: Dict[str, Dict[str, Any]]
+    _ref: str
+    _npoints: int = 1000
 
-    assert all([x in raw_data.columns
-                for x in ["size", f"isum_{ref}", "pass", "label", "image"]])
-    x_data = raw_data['size'].values
-    y_data = raw_data[f"isum_{ref}"].values
+    def __init__(self, raw_data: pd.DataFrame,
+                 fit_data: Dict[str, Dict[str, Any]]):
+        super(NuclearSelectionPlotter, self).__init__()
+        assert all([x in raw_data.columns for x in self.__col_req])
+        self._raw_data = raw_data
+        self._fit_data = fit_data
+        self._ref = self._raw_data.loc[0, 'ref']
+        assert f"isum_{self._ref}" in self._raw_data.columns
 
-    xdf = gaussian_kde(x_data)
-    ydf = gaussian_kde(y_data)
+    @property
+    def size_range(self):
+        return self._fit_data['data']['size']['range']
 
-    xx_linspace = np.linspace(x_data.min(), x_data.max(), npoints)
-    yy_linspace = np.linspace(y_data.min(), y_data.max(), npoints)
+    @property
+    def isum_range(self):
+        return self._fit_data['data']['isum']['range']
 
-    passed = raw_data['pass']
-    not_passed = np.logical_not(passed)
+    @property
+    def size_fit(self):
+        return self._fit_data['data']['size']['fit']
 
-    scatter_selected = go.Scatter(
-        name="selected nuclei", x=x_data[passed], y=y_data[passed],
-        mode='markers', marker=dict(size=4, opacity=.5, color="#1f78b4"),
-        xaxis="x", yaxis="y",
-        customdata=np.dstack((raw_data[passed]['label'],
-                              raw_data[passed]['image']))[0],
-        hovertemplate='Size=%{x}<br>Intensity sum=%{y}<br>'
-                      + 'Label=%{customdata[0]}<br>Image="%{customdata[1]}"')
-    scatter_filtered = go.Scatter(
-        name="discarded nuclei", x=x_data[not_passed], y=y_data[not_passed],
-        mode='markers', marker=dict(size=4, opacity=.5, color="#e31a1c"),
-        xaxis="x", yaxis="y", customdata=np.dstack((
-            raw_data[not_passed]['label'], raw_data[not_passed]['image']))[0],
-        hovertemplate='Size=%{x}<br>Intensity sum=%{y}<br>'
-                      + 'Label=%{customdata[0]}<br>Image="%{customdata[1]}"')
-    contour_y = go.Scatter(
-        name="intensity sum", x=ydf(yy_linspace), y=yy_linspace,
-        xaxis="x2", yaxis="y", line=dict(color="#33a02c"))
-    contour_x = go.Scatter(
-        name="size", x=xx_linspace, y=xdf(xx_linspace),
-        xaxis="x", yaxis="y3", line=dict(color="#ff7f00"))
+    @property
+    def isum_fit(self):
+        return self._fit_data['data']['isum']['fit']
 
-    data = [scatter_selected, scatter_filtered, contour_x, contour_y]
+    @property
+    def npoints(self):
+        return self._npoints
 
-    if size_fit is not None:
-        data.append(go.Scatter(
-            name="size_gauss1",
-            x=xx_linspace, y=stat.gaussian(xx_linspace, *size_fit[0][:3]),
-            xaxis="x", yaxis="y3", line=dict(color="#323232", dash="dot")))
-        if stat.FitType.SOG == size_fit[1]:
+    @npoints.setter
+    def npoints(self, n: int):
+        assert n > 0
+        self._npoints = n
+
+    def __prepare_data(self) -> None:
+        self._x = self._raw_data['size'].values
+        self._y = self._raw_data[f"isum_{self._ref}"].values
+
+        self._xdf = gaussian_kde(self._x)
+        self._ydf = gaussian_kde(self._y)
+
+        self._x_linsp = np.linspace(self._x.min(), self._x.max(), self.npoints)
+        self._y_linsp = np.linspace(self._y.min(), self._y.max(), self.npoints)
+
+        self._passed = self._raw_data['pass']
+        self._not_passed = np.logical_not(self._passed)
+
+    def __mk_scatters(self) -> Tuple[go.Scatter, go.Scatter]:
+        scatter_selected = go.Scatter(
+            name="selected nuclei",
+            x=self._x[self._passed], y=self._y[self._passed],
+            mode='markers', marker=dict(size=4, opacity=.5, color="#1f78b4"),
+            xaxis="x", yaxis="y",
+            customdata=np.dstack((self._raw_data[self._passed]['label'],
+                                  self._raw_data[self._passed]['image']))[0],
+            hovertemplate='Size=%{x}<br>Intensity sum=%{y}<br>'
+                          + 'Label=%{customdata[0]}<br>'
+                          + 'Image="%{customdata[1]}"')
+        scatter_filtered = go.Scatter(
+            name="discarded nuclei",
+            x=self._x[self._not_passed], y=self._y[self._not_passed],
+            mode='markers', marker=dict(size=4, opacity=.5, color="#e31a1c"),
+            xaxis="x", yaxis="y",
+            customdata=np.dstack((
+                self._raw_data[self._not_passed]['label'],
+                self._raw_data[self._not_passed]['image']))[0],
+            hovertemplate='Size=%{x}<br>Intensity sum=%{y}<br>'
+                          + 'Label=%{customdata[0]}<br>'
+                          + 'Image="%{customdata[1]}"')
+        return (scatter_selected, scatter_filtered)
+
+    def __mk_density_contours(self) -> Tuple[go.Scatter, go.Scatter]:
+        contour_y = go.Scatter(
+            name="intensity sum", x=self._ydf(self._y_linsp), y=self._y_linsp,
+            xaxis="x2", yaxis="y", line=dict(color="#33a02c"))
+        contour_x = go.Scatter(
+            name="size", x=self._x_linsp, y=self._xdf(self._x_linsp),
+            xaxis="x", yaxis="y3", line=dict(color="#ff7f00"))
+        return (contour_x, contour_y)
+
+    def __mk_fit_contours(self) -> List[go.Scatter]:
+        data = []
+        if self.size_fit is not None:
             data.append(go.Scatter(
-                name="size_gauss2",
-                x=xx_linspace, y=stat.gaussian(xx_linspace, *size_fit[0][3:]),
-                xaxis="x", yaxis="y3", line=dict(color="#999999", dash="dot")))
-    if isum_fit is not None:
-        data.append(go.Scatter(
-            name="isum_gauss1",
-            y=yy_linspace, x=stat.gaussian(yy_linspace, *isum_fit[0][:3]),
-            xaxis="x2", yaxis="y", line=dict(color="#323232", dash="dot")))
-        if stat.FitType.SOG == isum_fit[1]:
+                name="size_gauss1",
+                x=self._x_linsp,
+                y=stat.gaussian(self._x_linsp, *self.size_fit[0][:3]),
+                xaxis="x", yaxis="y3",
+                line=dict(color="#323232", dash="dot")))
+            if stat.FitType.SOG == self.size_fit[1]:
+                data.append(go.Scatter(
+                    name="size_gauss2",
+                    x=self._x_linsp,
+                    y=stat.gaussian(self._x_linsp, *self.size_fit[0][3:]),
+                    xaxis="x", yaxis="y3",
+                    line=dict(color="#999999", dash="dot")))
+        if self.isum_fit is not None:
             data.append(go.Scatter(
-                name="isum_gauss2",
-                y=yy_linspace, x=stat.gaussian(yy_linspace, *isum_fit[0][3:]),
-                xaxis="x2", yaxis="y", line=dict(color="#999999", dash="dot")))
+                name="isum_gauss1",
+                y=self._y_linsp,
+                x=stat.gaussian(self._y_linsp, *self.isum_fit[0][:3]),
+                xaxis="x2", yaxis="y",
+                line=dict(color="#323232", dash="dot")))
+            if stat.FitType.SOG == self.isum_fit[1]:
+                data.append(go.Scatter(
+                    name="isum_gauss2",
+                    y=self._y_linsp,
+                    x=stat.gaussian(self._y_linsp, *self.isum_fit[0][3:]),
+                    xaxis="x2", yaxis="y",
+                    ine=dict(color="#999999", dash="dot")))
+        return data
 
-    layout = go.Layout(
-        xaxis=dict(domain=[.19, 1], title="size"),
-        yaxis=dict(domain=[0, .82], anchor="x2", title="intensity sum",),
-        xaxis2=dict(domain=[0, .18], autorange="reversed", title="density"),
-        yaxis2=dict(domain=[0, .82]),
-        xaxis3=dict(domain=[.19, 1]),
-        yaxis3=dict(domain=[.83, 1], title="density"),
-        autosize=False, width=1000, height=1000
-    )
+    def __mk_border_lines(self, fig: go.Figure) -> go.Figure:
+        fig.add_shape(go.layout.Shape(
+            type="line", line=dict(dash="dash", color="#969696"),
+            x0=self.size_range[0], y0=0, x1=self.size_range[0],
+            y1=self._y.max()
+        ))
+        fig.add_shape(go.layout.Shape(
+            type="line", line=dict(dash="dash", color="#969696"),
+            x0=self.size_range[1], y0=0, x1=self.size_range[1],
+            y1=self._y.max()
+        ))
+        fig.add_shape(go.layout.Shape(
+            type="line", line=dict(dash="dash", color="#969696"), yref="y3",
+            x0=self.size_range[0], y0=0, x1=self.size_range[0],
+            y1=self._xdf(self._x).max()
+        ))
+        fig.add_shape(go.layout.Shape(
+            type="line", line=dict(dash="dash", color="#969696"), yref="y3",
+            x0=self.size_range[1], y0=0, x1=self.size_range[1],
+            y1=self._xdf(self._x).max()
+        ))
+        fig.add_shape(go.layout.Shape(
+            type="line", line=dict(dash="dash", color="#969696"),
+            y0=self.isum_range[0], x0=0, y1=self.isum_range[0],
+            x1=self._x.max()
+        ))
+        fig.add_shape(go.layout.Shape(
+            type="line", line=dict(dash="dash", color="#969696"),
+            y0=self.isum_range[1], x0=0, y1=self.isum_range[1],
+            x1=self._x.max()
+        ))
+        fig.add_shape(go.layout.Shape(
+            type="line", line=dict(dash="dash", color="#969696"), xref="x2",
+            y0=self.isum_range[0], x0=0, y1=self.isum_range[0],
+            x1=self._ydf(self._y).max()
+        ))
+        fig.add_shape(go.layout.Shape(
+            type="line", line=dict(dash="dash", color="#969696"), xref="x2",
+            y0=self.isum_range[1], x0=0, y1=self.isum_range[1],
+            x1=self._ydf(self._y).max()
+        ))
+        return fig
 
-    fig = go.Figure(data=data, layout=layout)
+    def _layout(self) -> go.Layout:
+        return go.Layout(
+            xaxis=dict(domain=[.19, 1], title="size"),
+            yaxis=dict(domain=[0, .82], anchor="x2", title="intensity sum",),
+            xaxis2=dict(domain=[0, .18],
+                        autorange="reversed", title="density"),
+            yaxis2=dict(domain=[0, .82]),
+            xaxis3=dict(domain=[.19, 1]),
+            yaxis3=dict(domain=[.83, 1], title="density"),
+            autosize=False, width=1000, height=1000
+        )
 
-    fig.add_shape(go.layout.Shape(
-        type="line", line=dict(dash="dash", color="#969696"),
-        x0=size_range[0], y0=0, x1=size_range[0], y1=y_data.max()
-    ))
-    fig.add_shape(go.layout.Shape(
-        type="line", line=dict(dash="dash", color="#969696"),
-        x0=size_range[1], y0=0, x1=size_range[1], y1=y_data.max()
-    ))
-    fig.add_shape(go.layout.Shape(
-        type="line", line=dict(dash="dash", color="#969696"), yref="y3",
-        x0=size_range[0], y0=0, x1=size_range[0], y1=xdf(x_data).max()
-    ))
-    fig.add_shape(go.layout.Shape(
-        type="line", line=dict(dash="dash", color="#969696"), yref="y3",
-        x0=size_range[1], y0=0, x1=size_range[1], y1=xdf(x_data).max()
-    ))
+    def plot(self) -> go.Figure:
+        self.__prepare_data
+        data = [*self.__mk_scatters(),
+                *self.__mk_density_contours(),
+                *self.__mk_fit_contours()]
+        fig = go.Figure(data=data, layout=self._layout())
+        fig = self.__mk_border_lines(fig)
+        fig.update_layout(template="plotly_white")
+        return fig
 
-    fig.add_shape(go.layout.Shape(
-        type="line", line=dict(dash="dash", color="#969696"),
-        y0=isum_range[0], x0=0, y1=isum_range[0], x1=x_data.max()
-    ))
-    fig.add_shape(go.layout.Shape(
-        type="line", line=dict(dash="dash", color="#969696"),
-        y0=isum_range[1], x0=0, y1=isum_range[1], x1=x_data.max()
-    ))
-    fig.add_shape(go.layout.Shape(
-        type="line", line=dict(dash="dash", color="#969696"), xref="x2",
-        y0=isum_range[0], x0=0, y1=isum_range[0], x1=ydf(y_data).max()
-    ))
-    fig.add_shape(go.layout.Shape(
-        type="line", line=dict(dash="dash", color="#969696"), xref="x2",
-        y0=isum_range[1], x0=0, y1=isum_range[1], x1=ydf(y_data).max()
-    ))
 
-    fig.update_layout(template="plotly_white")
-
-    return fig
+def plot_nuclear_selection(
+        raw_data: pd.DataFrame, fit: Dict[str, Dict[str, Any]],
+        npoints: int = 1000) -> go.Figure:
+    nsp = NuclearSelectionPlotter(raw_data, fit)
+    nsp.npoints = npoints
+    return nsp.plot()
 
 
 class NuclearFeaturePlotter(object):
@@ -273,10 +348,10 @@ class NuclearFeaturePlotter(object):
 
 
 def plot_nuclear_features(
-        obj_data, spx_data,
+        obj_features: pd.DataFrame, spx_features: Optional[pd.DataFrame],
         n_input_cols: int = 3, n_grid_cols: int = 3
         ) -> go.Figure:
-    nfp = NuclearFeaturePlotter(obj_data, spx_data)
+    nfp = NuclearFeaturePlotter(obj_features, spx_features)
     nfp.n_input_cols = n_input_cols
     nfp.n_grid_cols = n_grid_cols
     return nfp.plot()
