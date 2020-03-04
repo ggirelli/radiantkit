@@ -20,10 +20,10 @@ ChannelName = str
 ChannelProfile = Dict[ChannelName, stat.PolyFitResult]
 
 FigureJSON = str
-StatProfilePlots = Dict[stat.ProfileStatType, FigureJSON]
-ChannelProfilePlots = Dict[ChannelName, StatProfilePlots]
+ChannelProfilePlots = Dict[ChannelName, FigureJSON]
 DistanceProfilePlots = Dict[distance.DistanceType, ChannelProfilePlots]
 BaseProfilePlots = Dict[BaseName, DistanceProfilePlots]
+BasePlots = Dict[BaseName, FigureJSON]
 
 
 def export(opath: str, exp_format: str = 'pdf') -> None:
@@ -227,11 +227,14 @@ class NuclearSelectionPlotter(object):
 
 
 def plot_nuclear_selection(
-        raw_data: pd.DataFrame, fit: Dict[str, Dict[str, Any]],
-        npoints: int = const.default_plot_npoints) -> FigureJSON:
-    nsp = NuclearSelectionPlotter(raw_data, fit)
-    nsp.npoints = npoints
-    return nsp.plot()
+        npoints: int = const.default_plot_npoints, **data
+        ) -> BasePlots:
+    plot_dict: BasePlots = {}
+    for dname, odata in data.items():
+        nsp = NuclearSelectionPlotter(odata['raw_data'], odata['fit'])
+        nsp.npoints = npoints
+        plot_dict[dname] = nsp.plot()
+    return plot_dict
 
 
 class NuclearFeaturePlotter(object):
@@ -358,7 +361,10 @@ class NuclearFeaturePlotter(object):
         return self._fig.to_json()
 
 
-def plot_nuclear_features(
+#def plot_nuclear_features(n_input_cols: int = 3, n_grid_cols: int = 3) -> BasePlots
+
+
+def plot_nuclear_features2(
         obj_features: pd.DataFrame, spx_features: Optional[pd.DataFrame],
         n_input_cols: int = 3, n_grid_cols: int = 3
         ) -> FigureJSON:

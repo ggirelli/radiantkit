@@ -147,7 +147,8 @@ class OutputFinder(object):
         for f in subfolder_list:
             logging.info(f"looking into subfolder '{f.name}'")
             current_output = OutputFinder.search_recursive(f.path, inreg)
-            logging.info(f"found output for: {[x.value for x in current_output[f.path]]}")
+            path_list = [x.value for x in current_output[f.path]]
+            logging.info(f"found output for: {path_list}")
             output_list.update(current_output)
 
         return output_list
@@ -252,9 +253,7 @@ class OutputPlotter(object):
         plot_dict: Dict[ScriptStub, Dict[BaseName, go.Figure]] = {}
         for script_stub, script_data in output_list.items():
             plot_dict[script_stub] = {}
-            for dname, odata in script_data.items():
-                logging.info(f"preparing plot for '{script_stub}' data"
-                             + f" from '{dname}'")
-                plot_dict[script_stub][dname] = OutputType(
-                    script_stub).plot(**odata)
+            logging.info(f"preparing plot for '{script_stub}' data")
+            plot_dict[script_stub] = OutputType(
+                script_stub).plot(**script_data)
         return plot_dict
