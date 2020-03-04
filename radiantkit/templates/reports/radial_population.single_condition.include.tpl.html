@@ -79,8 +79,18 @@ function hide_radial_population_canvas() {
 function hide_radial_population_dtype_selectors() {
 	$(".radial_population-dtype-selection-form").css({'display':'none'});
 }
+function set_radial_population_dtype_selectors(v) {
+	$(".radial_population-dtype-selection-form select").each(function() {
+		$(this).val(v);
+	});
+}
 function hide_radial_population_channel_selectors() {
 	$(".radial_population-channel-selection-form").css({'display':'none'});
+}
+function set_radial_population_channel_selectors(v) {
+	$(".radial_population-channel-selection-form select").each(function() {
+		$(this).val(v);
+	});
 }
 function show_radial_population_selection() {
 	dpath = $("#radial_population-dpath").val();
@@ -99,8 +109,19 @@ function radial_population_init_plot() {
 
 $(function() {
 	radial_population_init_plot();
-	$("#radial_population-dpath-selector").change(function(e) { radial_population_init_plot() });
-	$(".radial_population-dtype-selection-form").change(function(e) { radial_population_init_plot() });
-	$(".radial_population-channel-selection-form").change(function(e) { radial_population_init_plot() });
+	$("#radial_population-dpath-selector").change(function(e) {
+		e.preventDefault();
+		radial_population_init_plot();
+	});
+	$(".radial_population-dtype-selection-form").change(function(e) {
+		e.preventDefault();
+		set_radial_population_dtype_selectors($(this).find("select").val());
+		radial_population_init_plot();
+	});
+	$(".radial_population-channel-selection-form").change(function(e) {
+		e.preventDefault();
+		set_radial_population_channel_selectors($(this).find("select").val());
+		radial_population_init_plot();
+	});
 })
 </script>
