@@ -48,7 +48,7 @@ setup(
         'numpy==1.18.1',
         'pandas==1.0.1',
         'plotly==4.5.2',
-        'scikit-image==0.16.2',
+        'scikit-image==0.17.1',
         'scipy==1.4.1',
         'tifffile==2020.2.16',
         'tqdm==4.43.0'
