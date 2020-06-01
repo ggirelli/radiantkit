@@ -46,7 +46,7 @@ setup(
         'matplotlib==3.1.3',
         'nd2reader==3.2.3',
         'numpy==1.18.1',
-        'pandas==1.0.1',
+        'pandas==1.0.4',
         'plotly==4.5.2',
         'scikit-image==0.16.2',
         'scipy==1.4.1',
