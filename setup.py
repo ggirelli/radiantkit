@@ -49,7 +49,7 @@ setup(
         'pandas==1.0.5',
         'plotly==4.9.0',
         'scikit-image==0.16.2',
-        'scipy==1.4.1',
+        'scipy==1.5.1',
         'tifffile==2020.7.4',
         'tqdm==4.47.0'
     ],
