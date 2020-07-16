@@ -41,7 +41,7 @@ setup(
         'argcomplete==1.11.1',
         'czifile==2019.7.2',
         'ggc==0.0.3',
-        'jinja2==2.11.1',
+        'jinja2==2.11.2',
         'joblib==0.16.0',
         'matplotlib==3.1.3',
         'nd2reader==3.2.3',
