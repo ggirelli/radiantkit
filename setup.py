@@ -45,7 +45,7 @@ setup(
         'joblib==0.16.0',
         'matplotlib==3.2.2',
         'nd2reader==3.2.3',
-        'numpy==1.18.1',
+        'numpy==1.19.0',
         'pandas==1.0.5',
         'plotly==4.9.0',
         'scikit-image==0.16.2',
