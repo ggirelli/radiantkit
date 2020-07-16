@@ -43,7 +43,7 @@ setup(
         'ggc==0.0.3',
         'jinja2==2.11.2',
         'joblib==0.16.0',
-        'matplotlib==3.1.3',
+        'matplotlib==3.2.2',
         'nd2reader==3.2.3',
         'numpy==1.18.1',
         'pandas==1.0.5',
