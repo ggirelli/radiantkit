@@ -38,7 +38,7 @@ setup(
     keywords='microscopy image analysis bioimaging biology cell DNA',
     packages=find_packages(),
     install_requires=[
-        'argcomplete==1.11.1',
+        'argcomplete==1.12.0',
         'czifile==2019.7.2',
         'ggc==0.0.3',
         'jinja2==2.11.2',
