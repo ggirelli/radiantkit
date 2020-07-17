@@ -51,7 +51,7 @@ setup(
         'scikit-image==0.17.2',
         'scipy==1.5.1',
         'tifffile==2020.7.4',
-        'tqdm==4.47.0'
+        'tqdm==4.48.0'
     ],
     scripts=[],
     entry_points={'console_scripts': [
