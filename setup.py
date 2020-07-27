@@ -50,7 +50,7 @@ setup(
         'plotly==4.9.0',
         'scikit-image==0.17.2',
         'scipy==1.5.2',
-        'tifffile==2020.7.22',
+        'tifffile==2020.7.24',
         'tqdm==4.48.0'
     ],
     scripts=[],
