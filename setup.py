@@ -47,7 +47,7 @@ setup(
         'nd2reader==3.2.3',
         'numpy==1.19.2',
         'pandas==1.1.2',
-        'plotly==4.9.0',
+        'plotly==4.10.0',
         'scikit-image==0.17.2',
         'scipy==1.5.2',
         'tifffile==2020.9.3',
