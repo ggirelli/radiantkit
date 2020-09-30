@@ -1,0 +1,124 @@
+{% set plt_data = pdata[ks[i]] %}
+{% set out_data = odata[ks[i]] %}
+
+<form id="select_nuclei-selector" class="mb-2">
+	<select name="select_nuclei-dpath" id="select_nuclei-dpath" class="form-control">
+		{% for dpath in plt_data.keys()|sort: %}
+		<option value="{{dpath|basename}}">{{dpath|basename}}</option>
+		{% endfor %}
+	</select>
+</form>
+
+{% for dpath,fig in plt_data.items(): %}
+{% set raw_data = out_data[dpath]['raw_data'] %}
+{% set fit_data = out_data[dpath]['fit']['data'] %}
+<div id="select_nuclei-canvas-{{dpath|basename}}" class="select_nuclei-canvas" style="display: none;">
+	<div class="card">
+		<div class="card-header">
+			<ul class="nav nav-tabs card-header-tabs" role="tablist">
+				<li class="nav-item">
+					<a href="#select_nuclei-{{dpath|basename}}-plot-wrap" class="nav-link active" id="select_nuclei-{{dpath|basename}}-plot-tab" data-toggle="tab" role="tab" aria-controls="select_nuclei-{{dpath|basename}}-plot-wrap" aria-selected="true">Plot</a>
+				</li>
+				<li class="nav-item">
+					<a href="#select_nuclei-{{dpath|basename}}-ranges-wrap" class="nav-link" id="select_nuclei-{{dpath|basename}}-ranges-tab" data-toggle="tab" role="tab" aria-controls="select_nuclei-{{dpath|basename}}-ranges-wrap" aria-selected="false">Ranges</a>
+				</li>
+				<li class="nav-item">
+					<a href="#select_nuclei-{{dpath|basename}}-nuclei-wrap" class="nav-link" id="select_nuclei-{{dpath|basename}}-nuclei-tab" data-toggle="tab" role="tab" aria-controls="select_nuclei-{{dpath|basename}}-nuclei-wrap" aria-selected="false">Nuclei</a>
+				</li>
+			</ul>
+		</div>
+		<div class="card-body tab-content">
+			<div class="tab-pane fade show active" id="select_nuclei-{{dpath|basename}}-plot-wrap" role="tabpanel" aria-labelledby="select_nuclei-{{dpath|basename}}-plot-tab">
+				<div class="plot" id="select_nuclei-plot-{{dpath|basename}}" class="mx-auto" style="width: 1000px"></div>
+				<script>
+					CONTAINER = document.getElementById('select_nuclei-plot-{{dpath|basename}}');
+					PLOT_JSON_selectNuclei_{{dpath|basename}} = {{ fig | safe }};
+					Plotly.newPlot(
+						CONTAINER,
+						PLOT_JSON_selectNuclei_{{dpath|basename}}.data,
+						PLOT_JSON_selectNuclei_{{dpath|basename}}.layout,
+						{"responsive":true, "displayModeBar":true});
+				</script>
+			</div>
+			<div class="tab-pane fade" id="select_nuclei-{{dpath|basename}}-ranges-wrap" role="tabpanel" aria-labelledby="select_nuclei-{{dpath|basename}}-ranges-tab">
+				<p>{{ raw_data['pass'].sum() }} nuclei out of {{ raw_data.shape[0] }} ({{ "%.2f"|format(raw_data['pass'].sum()/raw_data.shape[0]*100|float) }}%) pass the filter</p>
+				<div class="row">
+					{% if fit_data['isum']['fit'] is not none %}
+					<div class="col col-6">
+						<h5>Nuclear integral intensity</h5>
+						Fit type: <code>{{ fit_data['isum']['fit'][1].value }}</code><br/>
+						k1 = {{ fit_data['isum']['fit'][0][0] }}<br/>
+						&mu;1 = {{ fit_data['isum']['fit'][0][1] }}<br/>
+						&sigma;1 = {{ fit_data['isum']['fit'][0][2] }}<br/>
+						{% if "sum_of_gaussians" == fit_data['isum']['fit'][1].value %}
+						k2 = {{ fit_data['isum']['fit'][0][3] }}<br/>
+						&mu;2 = {{ fit_data['isum']['fit'][0][4] }}<br/>
+						&sigma;2 = {{ fit_data['isum']['fit'][0][5] }}<br/>
+						{% endif %}
+					</div>
+					{% endif %}
+					{% if fit_data['size']['fit'] is not none %}
+					<div class="col col-6">
+						<h5>Nuclear size</h5>
+						Fit type: <code>{{ fit_data['size']['fit'][1].value }}</code><br/>
+						k1 = {{ fit_data['size']['fit'][0][0] }}<br/>
+						&mu;1 = {{ fit_data['size']['fit'][0][1] }}<br/>
+						&sigma;1 = {{ fit_data['size']['fit'][0][2] }}<br/>
+						{% if "sum_of_gaussians" == fit_data['size']['fit'][1].value %}
+						k2 = {{ fit_data['size']['fit'][0][3] }}<br/>
+						&mu;2 = {{ fit_data['size']['fit'][0][4] }}<br/>
+						&sigma;2 = {{ fit_data['size']['fit'][0][5] }}<br/>
+						{% endif %}
+					</div>
+					{% endif %}
+				</div>
+			</div>
+			<div class="tab-pane fade" id="select_nuclei-{{dpath|basename}}-nuclei-wrap" role="tabpanel" aria-labelledby="select_nuclei-{{dpath|basename}}-nuclei-tab">
+				<table class="table table-hover text-center">
+					<thead class="thead-dark">
+						<th scope="col">Directory</th>
+						<th scope="col">Mask</th>
+						<th scope="col">Object count</th>
+					</thead>
+					<tbody>
+						{% set series_list = raw_data['image'].values.tolist()|unique %}
+						{% for series in series_list: %}
+						<tr>
+							<td>{{ series|dirname }}</td>
+							<td>{{ series|basename }}</td>
+							<td>{{ (raw_data['image']==series).sum() }}</td>
+						</tr>
+						{% endfor %}
+						<tr>
+							<th scope="row" colspan="2" class="text-right">Total</th>
+							<td>{{ raw_data.shape[0] }}</td>
+						</tr>
+					</tbody>
+				</table>
+			</div>
+		</div>
+	</div>
+</div>
+{% endfor %}
+
+<script type="text/javascript">
+function hide_all_select_nuclei_plots() {
+	$(".select_nuclei-canvas").css({'display':'none'});
+}
+function show_select_nuclei_plot(hook) {
+	$(hook).css({'display':'block'});
+}
+function get_select_nuclei_hook() {
+	dpath = $("#select_nuclei-dpath").val();
+	return "#select_nuclei-canvas-" + dpath;
+}
+function init_select_nuclei_plot() {
+	hide_all_select_nuclei_plots();
+	show_select_nuclei_plot(get_select_nuclei_hook());
+}
+$(function() {
+	init_select_nuclei_plot();
+	$("form#select_nuclei-selector").change(
+		function(e) { init_select_nuclei_plot() });
+});
+</script>

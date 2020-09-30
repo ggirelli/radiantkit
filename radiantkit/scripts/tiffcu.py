@@ -1,7 +1,7 @@
-'''
+"""
 @author: Gabriele Girelli
 @contact: gigi.ga90@gmail.com
-'''
+"""
 
 import argparse
 from ggc.args import check_threads  # type: ignore
@@ -14,55 +14,88 @@ import re
 import sys
 
 logging.basicConfig(
-    level=logging.INFO, format='%(asctime)s '
-    + '[P%(process)s:%(module)s:%(funcName)s] %(levelname)s: %(message)s',
-    datefmt='%m/%d/%Y %I:%M:%S')
+    level=logging.INFO,
+    format="%(asctime)s "
+    + "[P%(process)s:%(module)s:%(funcName)s] %(levelname)s: %(message)s",
+    datefmt="%m/%d/%Y %I:%M:%S",
+)
 
 
-def init_parser(subparsers: argparse._SubParsersAction
-                ) -> argparse.ArgumentParser:
+def init_parser(subparsers: argparse._SubParsersAction) -> argparse.ArgumentParser:
     parser = subparsers.add_parser(
-        __name__.split(".")[-1], description='''
+        __name__.split(".")[-1],
+        description="""
 (Un)compress TIFF images.
 Provide either a single input/output image paths, or input/output folder paths.
 In case of folder input/output, all tiff files in the input folder with file
 name matching the specified pattern are (un)compressed and saved to the output
 folder. When (un)compressing multiple files, the --threads option allows to
 parallelize on multiple threads. Disk read/write operations become the
-bottleneck when parallelizing.''',
+bottleneck when parallelizing.""",
         formatter_class=argparse.RawDescriptionHelpFormatter,
-        help="(Un)compress TIFF images.")
+        help="(Un)compress TIFF images.",
+    )
 
     parser.add_argument(
-        'input', type=str, help='''Path to the TIFF image to (un)compress, or
+        "input",
+        type=str,
+        help="""Path to the TIFF image to (un)compress, or
         to a folder containing multiple TIFF images. In the latter case, the
-        --inreg pattern is used to identify the image file.''')
+        --inreg pattern is used to identify the image file.""",
+    )
     parser.add_argument(
-        'output', type=str, help='''Path to output TIFF image, or output folder
-        if the input is a folder.''')
+        "output",
+        type=str,
+        help="""Path to output TIFF image, or output folder
+        if the input is a folder.""",
+    )
 
     parser.add_argument(
-        '-u', const=True, default=False,
-        action='store_const', dest='doUncompress',
-        help='Uncompress TIFF files.')
+        "-u",
+        const=True,
+        default=False,
+        action="store_const",
+        dest="doUncompress",
+        help="Uncompress TIFF files.",
+    )
     parser.add_argument(
-        '-c', const=True, default=False,
-        action='store_const', dest='doCompress',
-        help='Compress TIFF files.')
+        "-c",
+        const=True,
+        default=False,
+        action="store_const",
+        dest="doCompress",
+        help="Compress TIFF files.",
+    )
 
-    parser.add_argument('--version', action='version',
-                        version='%s %s' % (sys.argv[0], __version__,))
+    parser.add_argument(
+        "--version",
+        action="version",
+        version="%s %s"
+        % (
+            sys.argv[0],
+            __version__,
+        ),
+    )
 
     advanced = parser.add_argument_group("advanced arguments")
-    default_inreg = '^.*\\.tiff?$'
+    default_inreg = "^.*\\.tiff?$"
     advanced.add_argument(
-        '--inreg', type=str, metavar="REGEXP",
+        "--inreg",
+        type=str,
+        metavar="REGEXP",
         help="""Regular expression to identify input TIFF images.
-        Default: '%s'""" % (default_inreg,), default=default_inreg)
+        Default: '%s'"""
+        % (default_inreg,),
+        default=default_inreg,
+    )
     parser.add_argument(
-        '--threads', type=int, default=1, metavar="NUMBER",
+        "--threads",
+        type=int,
+        default=1,
+        metavar="NUMBER",
         help="""Number of threads for parallelization. Used only to
-        (un)compress multiple images (i.e., input is a folder). Default: 1""")
+        (un)compress multiple images (i.e., input is a folder). Default: 1""",
+    )
 
     parser.set_defaults(parse=parse_arguments, run=run)
 
@@ -111,7 +144,7 @@ def export_image(ipath: str, opath: str, compress: bool = None) -> str:
         label = "Compressed"
 
     logging.info(f"{label} '{os.path.join(idir, ipath)}'")
-    return(os.path.join(odir, opath))
+    return os.path.join(odir, opath)
 
 
 def run(args: argparse.Namespace) -> None:
@@ -129,7 +162,9 @@ def run(args: argparse.Namespace) -> None:
             delayed(export_image)(
                 os.path.join(args.input, ipath),
                 os.path.join(args.output, ipath),
-                compress=args.doCompress)
-            for ipath in imglist)
+                compress=args.doCompress,
+            )
+            for ipath in imglist
+        )
     else:
         export_image(args.input, args.output, args.doCompress)

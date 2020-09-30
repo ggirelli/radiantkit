@@ -1,7 +1,7 @@
-'''
+"""
 @author: Gabriele Girelli
 @contact: gigi.ga90@gmail.com
-'''
+"""
 
 import argparse
 from czifile import CziFile  # type: ignore
@@ -19,16 +19,19 @@ class ND2Reader2(ND2Reader):
     def __init__(self, filename):
         super(ND2Reader2, self).__init__(filename)
 
-    def log_details(
-            self, logger: Logger = getLogger()) -> None:
-        logger.info(f"Found {self.field_count()} field(s) of view, "
-                    + f"with {self.channel_count()} channel(s).")
+    def log_details(self, logger: Logger = getLogger()) -> None:
+        logger.info(
+            f"Found {self.field_count()} field(s) of view, "
+            + f"with {self.channel_count()} channel(s)."
+        )
 
         logger.info(f"Channels: {list(self.get_channel_names())}.")
 
         if self.is3D:
-            logger.info(f"XYZ size: {self.sizes['x']} x "
-                        + f"{self.sizes['y']} x {self.sizes['z']}")
+            logger.info(
+                f"XYZ size: {self.sizes['x']} x "
+                + f"{self.sizes['y']} x {self.sizes['z']}"
+            )
             resolutionZ: Set[float] = set()
             for field_id in range(self.field_count()):
                 resolutionZ = resolutionZ.union(self.get_resolutionZ(field_id))
@@ -37,9 +40,9 @@ class ND2Reader2(ND2Reader):
             logger.info(f"XY size: {self.sizes['x']} x {self.sizes['y']}")
 
     def field_count(self) -> int:
-        if 'v' not in self.axes:
+        if "v" not in self.axes:
             return 1
-        return self.sizes['v']
+        return self.sizes["v"]
 
     def isLive(self) -> bool:
         if "t" in self.axes:
@@ -47,7 +50,7 @@ class ND2Reader2(ND2Reader):
         return False
 
     def is3D(self) -> bool:
-        return 'z' in self.axes
+        return "z" in self.axes
 
     def hasMultiChannels(self) -> bool:
         if "c" in self.axes:
@@ -55,16 +58,15 @@ class ND2Reader2(ND2Reader):
         return False
 
     def get_channel_names(self) -> Iterable[str]:
-        for channel in self.metadata['channels']:
+        for channel in self.metadata["channels"]:
             yield channel.lower()
 
     def channel_count(self) -> int:
-        if 'c' not in self.sizes:
+        if "c" not in self.sizes:
             n = 1
         else:
             n = self.sizes["c"]
-        assert len(list(self.get_channel_names())) == n, (
-            "channel count mismatch.")
+        assert len(list(self.get_channel_names())) == n, "channel count mismatch."
         return n
 
     def set_axes_for_bundling(self):
@@ -77,23 +79,26 @@ class ND2Reader2(ND2Reader):
         with open(self.filename, "rb") as ND2H:
             parser = ND2Parser(ND2H)
             Zdata = np.array(parser._raw_metadata.z_data)
-            Zlevels = np.array(parser.metadata['z_levels']).astype('int')
+            Zlevels = np.array(parser.metadata["z_levels"]).astype("int")
             Zlevels = Zlevels + len(Zlevels) * field_id
             Zdata = Zdata[Zlevels]
             return set(np.round(np.diff(Zdata), 3))
 
     def select_channels(self, channels: List[str]) -> List[str]:
-        return [c.lower() for c in channels
-                if c.lower() in list(self.get_channel_names())]
+        return [
+            c.lower() for c in channels if c.lower() in list(self.get_channel_names())
+        ]
 
-    def get_tiff_path(self, template: TNTemplate,
-                      channel_id: int, field_id: int) -> str:
+    def get_tiff_path(
+        self, template: TNTemplate, channel_id: int, field_id: int
+    ) -> str:
         d = dict(
-            channel_name=self.metadata['channels'][channel_id].lower(),
+            channel_name=self.metadata["channels"][channel_id].lower(),
             channel_id=f"{(channel_id+1):03d}",
             series_id=f"{(field_id+1):03d}",
             dimensions=len(self.bundle_axes),
-            axes_order="".join(self.bundle_axes))
+            axes_order="".join(self.bundle_axes),
+        )
         return f"{template.safe_substitute(d)}.tiff"
 
 
@@ -111,10 +116,11 @@ class CziFile2(CziFile):
                 self.__pixels = self.asarray()
         return self.__pixels
 
-    def log_details(self,
-                    logger: Logger = getLogger()) -> None:
-        logger.info(f"Found {self.field_count()} field(s) of view, "
-                    + f"with {self.channel_count()} channel(s).")
+    def log_details(self, logger: Logger = getLogger()) -> None:
+        logger.info(
+            f"Found {self.field_count()} field(s) of view, "
+            + f"with {self.channel_count()} channel(s)."
+        )
         logger.info(f"Channels: {list(self.get_channel_names())}.")
 
         x_size = self.pixels.shape[self.axes.index("X")]
@@ -137,7 +143,7 @@ class CziFile2(CziFile):
         return False
 
     def is3D(self) -> bool:
-        return 'Z' in self.axes
+        return "Z" in self.axes
 
     def hasMultiChannels(self) -> bool:
         if "C" in self.axes:
@@ -156,8 +162,7 @@ class CziFile2(CziFile):
             n = 1
         else:
             n = self.pixels.shape[self.axes.index("C")]
-        assert len(list(self.get_channel_names())) == n, (
-            "channel count mismatch.")
+        assert len(list(self.get_channel_names())) == n, "channel count mismatch."
         return n
 
     def get_axis_resolution(self, axis: str) -> float:
@@ -192,14 +197,16 @@ class CziFile2(CziFile):
         assert len(bundle_axes_list) == len(self.axes)
         assert all([axis in self.axes for axis in bundle_axes_list])
         self.__pixels = np.moveaxis(
-            self.pixels, range(len(self.axes)),
-            [bundle_axes_list.index(axis) for axis in self.axes])
+            self.pixels,
+            range(len(self.axes)),
+            [bundle_axes_list.index(axis) for axis in self.axes],
+        )
         self.shape = self.pixels.shape
         self.axes = "".join(bundle_axes_list)
 
-    def get_channel_pixels(self, args: argparse.Namespace,
-                           field_id: Optional[int] = None
-                           ) -> Iterable[Tuple[np.ndarray, int]]:
+    def get_channel_pixels(
+        self, args: argparse.Namespace, field_id: Optional[int] = None
+    ) -> Iterable[Tuple[np.ndarray, int]]:
         if field_id is not None:
             field = self.pixels[field_id, :]
         else:
@@ -209,15 +216,18 @@ class CziFile2(CziFile):
             yield (field[channel_id], channel_id)
 
     def select_channels(self, channels: List[str]) -> List[str]:
-        return [c.lower() for c in channels
-                if c.lower() in list(self.get_channel_names())]
+        return [
+            c.lower() for c in channels if c.lower() in list(self.get_channel_names())
+        ]
 
-    def get_tiff_path(self, template: TNTemplate,
-                      channel_id: int, field_id: int) -> str:
+    def get_tiff_path(
+        self, template: TNTemplate, channel_id: int, field_id: int
+    ) -> str:
         d = dict(
             channel_name=list(self.get_channel_names())[channel_id],
             channel_id=f"{(channel_id+1):03d}",
             series_id=f"{(field_id+1):03d}",
             dimensions=3,
-            axes_order="ZYX")
+            axes_order="ZYX",
+        )
         return f"{template.safe_substitute(d)}.tiff"

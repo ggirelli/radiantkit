@@ -1,7 +1,7 @@
-'''
+"""
 @author: Gabriele Girelli
 @contact: gigi.ga90@gmail.com
-'''
+"""
 
 import argparse
 import ggc  # type: ignore
@@ -11,27 +11,34 @@ import logging as log
 import numpy as np  # type: ignore
 import os
 import pandas as pd  # type: ignore
+import pickle
 from radiantkit import const
 from radiantkit.image import ImageBinary, ImageLabeled
 from radiantkit.particle import NucleiList, Nucleus
-from radiantkit.scripts import common
+from radiantkit.scripts.common import series as ra_series
 from radiantkit.series import Series, SeriesList
-from radiantkit import io, path, report, string
+from radiantkit import io, path, string
 import re
 import sys
 from tqdm import tqdm  # type: ignore
 from typing import Dict, List, Pattern
 
 log.basicConfig(
-    level=log.INFO, format='%(asctime)s '
-    + '[P%(process)s:%(module)s:%(funcName)s] %(levelname)s: %(message)s',
-    datefmt='%m/%d/%Y %I:%M:%S')
+    level=log.INFO,
+    format="%(asctime)s "
+    + "[P%(process)s:%(module)s:%(funcName)s] %(levelname)s: %(message)s",
+    datefmt="%m/%d/%Y %I:%M:%S",
+)
+
+__OUTPUT__ = {"raw_data": "select_nuclei.data.tsv", "fit": "select_nuclei.fit.pkl"}
+__OUTPUT_CONDITION__ = all
+__LABEL__ = "Nuclei selection"
 
 
-def init_parser(subparsers: argparse._SubParsersAction
-                ) -> argparse.ArgumentParser:
+def init_parser(subparsers: argparse._SubParsersAction) -> argparse.ArgumentParser:
     parser = subparsers.add_parser(
-        __name__.split(".")[-1], description='''
+        __name__.split(".")[-1],
+        description="""
 Select nuclei (objects) from segmented images based on their size (volume in
 3D, area in 2D) and integral of intensity from raw image.
 
@@ -51,89 +58,148 @@ the last scenario, k_sigma is ignored.
 A tabulation-separated table is generated with the nuclear features and whether
 they pass the filter(s). Alongside it, an html report is generated with
 interactive data visualization.
-''', formatter_class=argparse.RawDescriptionHelpFormatter,
-        help="Select G1 nuclei.")
+""",
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+        help="Select G1 nuclei.",
+    )
 
     parser.add_argument(
-        'input', type=str,
-        help='Path to folder containing deconvolved tiff images and masks.')
+        "input",
+        type=str,
+        help="Path to folder containing deconvolved tiff images and masks.",
+    )
     parser.add_argument(
-        'ref_channel', type=str,
-        help='Name of channel with DNA staining intensity.')
+        "ref_channel", type=str, help="Name of channel with DNA staining intensity."
+    )
 
     critical = parser.add_argument_group("critical arguments")
     critical.add_argument(
-        '--k-sigma', type=float, metavar="NUMBER",
+        "--k-sigma",
+        type=float,
+        metavar="NUMBER",
         help="""Suffix for output binarized images name.
-        Default: 2.5""", default=2.5)
+        Default: 2.5""",
+        default=2.5,
+    )
     critical.add_argument(
-        '--mask-prefix', type=str, metavar="TEXT",
+        "--mask-prefix",
+        type=str,
+        metavar="TEXT",
         help="""Prefix for output binarized images name.
-        Default: ''.""", default='')
+        Default: ''.""",
+        default="",
+    )
     critical.add_argument(
-        '--mask-suffix', type=str, metavar="TEXT",
+        "--mask-suffix",
+        type=str,
+        metavar="TEXT",
         help="""Suffix for output binarized images name.
-        Default: 'mask'.""", default='mask')
+        Default: 'mask'.""",
+        default="mask",
+    )
 
-    parser.add_argument('--version', action='version',
-                        version='%s %s' % (sys.argv[0], const.__version__,))
-
-    report = parser.add_argument_group("report arguments")
-    report.add_argument(
-        '--no-report', action='store_const',
-        help="""Do not generate an HTML report.""",
-        dest="mk_report", const=False, default=True)
-    report.add_argument(
-        '--online-report', action='store_const',
-        help="""Make a smaller HTML report by linking remote JS libraries.""",
-        dest="online_report", const=True, default=False)
+    parser.add_argument(
+        "--version",
+        action="version",
+        version="%s %s"
+        % (
+            sys.argv[0],
+            const.__version__,
+        ),
+    )
 
     pickler = parser.add_argument_group("pickle arguments")
     pickler.add_argument(
-        '--pickle-name', type=str, metavar="STRING",
+        "--pickle-name",
+        type=str,
+        metavar="STRING",
         help=f"""Filename for input/output pickle file.
-        Default: '{const.default_pickle}'""", default=const.default_pickle)
+        Default: '{const.default_pickle}'""",
+        default=const.default_pickle,
+    )
     pickler.add_argument(
-        '--export-instance', action='store_const',
-        dest='export_instance', const=True, default=False,
-        help='Export pickled series instance.')
+        "--export-instance",
+        action="store_const",
+        dest="export_instance",
+        const=True,
+        default=False,
+        help="Export pickled series instance.",
+    )
     pickler.add_argument(
-        '--import-instance', action='store_const',
-        dest='import_instance', const=True, default=False,
-        help='Unpickle instance if pickle file is found.')
+        "--import-instance",
+        action="store_const",
+        dest="import_instance",
+        const=True,
+        default=False,
+        help="Unpickle instance if pickle file is found.",
+    )
 
     advanced = parser.add_argument_group("advanced arguments")
     advanced.add_argument(
-        '--block-side', type=int, metavar="NUMBER",
+        "--block-side",
+        type=int,
+        metavar="NUMBER",
         help="""Structural element side for dilation-based background/
-        foreground measurement. Should be odd. Default: 11.""", default=11)
+        foreground measurement. Should be odd. Default: 11.""",
+        default=11,
+    )
     advanced.add_argument(
-        '--use-labels', action='store_const', dest='labeled',
-        const=True, default=False,
-        help='Use labels from masks instead of relabeling.')
+        "--use-labels",
+        action="store_const",
+        dest="labeled",
+        const=True,
+        default=False,
+        help="Use labels from masks instead of relabeling.",
+    )
     advanced.add_argument(
-        '--no-rescaling', action='store_const', dest='do_rescaling',
-        const=False, default=True,
-        help='Do not rescale image even if deconvolved.')
+        "--no-rescaling",
+        action="store_const",
+        dest="do_rescaling",
+        const=False,
+        default=True,
+        help="Do not rescale image even if deconvolved.",
+    )
     advanced.add_argument(
-        '--no-remove', action='store_const', dest='remove_labels',
-        const=False, default=True,
-        help='Do not regenerate masks after removing discarded nuclei labels.')
+        "--no-remove",
+        action="store_const",
+        dest="remove_labels",
+        const=False,
+        default=True,
+        help="Do not export masks after removing discarded nuclei labels.",
+    )
     advanced.add_argument(
-        '--uncompressed', action='store_const', dest='compressed',
-        const=False, default=True,
-        help='Generate uncompressed TIFF binary masks.')
+        "--uncompressed",
+        action="store_const",
+        dest="compressed",
+        const=False,
+        default=True,
+        help="Generate uncompressed TIFF binary masks.",
+    )
     advanced.add_argument(
-        '--inreg', type=str, metavar="REGEXP",
+        "--inreg",
+        type=str,
+        metavar="REGEXP",
         help=f"""Regular expression to identify input TIFF images.
         Must contain 'channel_name' and 'series_id' fields.
-        Default: '{const.default_inreg}'""", default=const.default_inreg)
+        Default: '{const.default_inreg}'""",
+        default=const.default_inreg,
+    )
     advanced.add_argument(
-        '--threads', type=int, metavar="NUMBER", dest="threads", default=1,
-        help="""Number of threads for parallelization. Default: 1""")
+        "--threads",
+        type=int,
+        metavar="NUMBER",
+        dest="threads",
+        default=1,
+        help="""Number of threads for parallelization. Default: 1""",
+    )
     advanced.add_argument(
-        '-y', '--do-all', action='store_const', const=True, default=False,
-        help="""Do not ask for settings confirmation and proceed.""")
+        "-y",
+        "--do-all",
+        action="store_const",
+        const=True,
+        default=False,
+        help="""Do not ask for settings confirmation and proceed.""",
+    )
 
     parser.set_defaults(parse=parse_arguments, run=run)
 
@@ -143,16 +209,18 @@ interactive data visualization.
 def parse_arguments(args: argparse.Namespace) -> argparse.Namespace:
     args.version = const.__version__
 
-    assert '(?P<channel_name>' in args.inreg
-    assert '(?P<series_id>' in args.inreg
+    assert "(?P<channel_name>" in args.inreg
+    assert "(?P<series_id>" in args.inreg
     args.inreg = re.compile(args.inreg)
 
     args.mask_prefix = string.add_trailing_dot(args.mask_prefix)
     args.mask_suffix = string.add_leading_dot(args.mask_suffix)
 
     if not 0 != args.block_side % 2:
-        log.warning("changed ground block side from "
-                    + f"{args.block_side} to {args.block_side+1}")
+        log.warning(
+            "changed ground block side from "
+            + f"{args.block_side} to {args.block_side+1}"
+        )
         args.block_side += 1
 
     args.threads = ggc.args.check_threads(args.threads)
@@ -188,7 +256,7 @@ def print_settings(args: argparse.Namespace, clear: bool = True) -> str:
     if clear:
         print("\033[H\033[J")
     print(s)
-    return(s)
+    return s
 
 
 def confirm_arguments(args: argparse.Namespace) -> None:
@@ -196,43 +264,44 @@ def confirm_arguments(args: argparse.Namespace) -> None:
     if not args.do_all:
         io.ask("Confirm settings and proceed?")
 
-    assert os.path.isdir(args.input), (
-        f"image folder not found: {args.input}")
+    assert os.path.isdir(args.input), f"image folder not found: {args.input}"
 
-    with open(os.path.join(
-            args.input, "select_nuclei.config.txt"), "w+") as OH:
+    with open(os.path.join(args.input, "select_nuclei.config.txt"), "w+") as OH:
         ggc.args.export_settings(OH, settings_string)
 
 
 def extract_passing_nuclei_per_series(
-        ndata: pd.DataFrame, inreg: Pattern) -> Dict[int, List[int]]:
-    passed = ndata.loc[ndata['pass'], ['image', 'label']]
-    passed['series_id'] = np.nan
+    ndata: pd.DataFrame, inreg: Pattern
+) -> Dict[int, List[int]]:
+    passed = ndata.loc[ndata["pass"], ["image", "label"]]
+    passed["series_id"] = np.nan
     for ii in passed.index:
-        image_details = path.get_image_details(passed.loc[ii, 'image'], inreg)
+        image_details = path.get_image_details(passed.loc[ii, "image"], inreg)
         assert image_details is not None
-        passed.loc[ii, 'series_id'] = image_details[0]
-    passed.drop('image', 1, inplace=True)
-    passed = dict([
-        (sid, passed.loc[passed['series_id'] == sid, 'label'].values.tolist())
-        for sid in set(passed['series_id'].values)])
+        passed.loc[ii, "series_id"] = image_details[0]
+    passed.drop("image", 1, inplace=True)
+    passed = dict(
+        [
+            (sid, passed.loc[passed["series_id"] == sid, "label"].values.tolist())
+            for sid in set(passed["series_id"].values)
+        ]
+    )
     return passed
 
 
 def remove_labels_from_series_mask(
-        series: Series, labels: List[int],
-        labeled: bool, compressed: bool) -> Series:
+    series: Series, labels: List[int], labeled: bool, compressed: bool
+) -> Series:
     if series.mask is None:
         return series
 
     series.mask.load_from_local()
-    os.rename(series.mask.path, f"{series.mask.path}.old")
 
     if labeled:
         L = series.mask.pixels
         L[np.logical_not(np.isin(L, labels))] = 0
         L = ImageLabeled(L)
-        L.to_tiff(series.mask.path, compressed)
+        L.to_tiff(path.add_suffix(series.mask.path, "selected"), compressed)
     else:
         if isinstance(series.mask, ImageBinary):
             L = series.mask.label().pixels
@@ -240,52 +309,46 @@ def remove_labels_from_series_mask(
             L = series.mask.pixels
         L[np.logical_not(np.isin(L, labels))] = 0
         M = ImageBinary(L)
-        M.to_tiff(series.mask.path, compressed)
+        M.to_tiff(path.add_suffix(series.mask.path, "selected"), compressed)
 
     series.unload()
     return series
 
 
 def remove_labels_from_series_list_masks(
-        args: argparse.Namespace, series_list: SeriesList,
-        passed: Dict[int, List[int]], nuclei: NucleiList) -> SeriesList:
+    args: argparse.Namespace,
+    series_list: SeriesList,
+    passed: Dict[int, List[int]],
+    nuclei: NucleiList,
+) -> SeriesList:
     series_list.unload()
     if args.remove_labels:
         log.info("removing discarded nuclei labels from masks")
         if 1 == args.threads:
             for s in tqdm(series_list):
                 s = remove_labels_from_series_mask(
-                    s, passed[s.ID], args.labeled, args.compressed)
+                    s, passed[s.ID], args.labeled, args.compressed
+                )
         else:
-            series_list.series = joblib.Parallel(
-                n_jobs=args.threads, verbose=11)(
+            series_list.series = joblib.Parallel(n_jobs=args.threads, verbose=11)(
                 joblib.delayed(remove_labels_from_series_mask)(
-                    s, passed[s.ID], args.labeled, args.compressed)
-                for s in series_list)
-        n_removed = len(nuclei)-len(list(itertools.chain(*passed.values())))
+                    s, passed[s.ID], args.labeled, args.compressed
+                )
+                for s in series_list
+            )
+        n_removed = len(nuclei) - len(list(itertools.chain(*passed.values())))
         log.info(f"removed {n_removed} nuclei labels")
     return series_list
 
 
-def mk_report(args: argparse.Namespace, nuclei_data: pd.DataFrame,
-              details: Dict, series_list: SeriesList) -> None:
-    if args.mk_report:
-        report_path = os.path.join(args.input, "select_nuclei.report.html")
-        log.info(f"writing report to\n{report_path}")
-        report.report_select_nuclei(
-            args, report_path, args.online_report,
-            data=nuclei_data, details=details, series_list=series_list)
-
-
 def run(args: argparse.Namespace) -> None:
     confirm_arguments(args)
-    args, series_list = common.init_series_list(args)
+    args, series_list = ra_series.init_series_list(args)
 
     log.info(f"extracting nuclei")
     series_list.extract_particles(Nucleus, [args.ref_channel], args.threads)
 
-    nuclei = NucleiList(list(itertools.chain(
-        *[s.particles for s in series_list])))
+    nuclei = NucleiList(list(itertools.chain(*[s.particles for s in series_list])))
     log.info(f"extracted {len(nuclei)} nuclei.")
 
     log.info("selecting G1 nuclei.")
@@ -293,21 +356,25 @@ def run(args: argparse.Namespace) -> None:
     passed = extract_passing_nuclei_per_series(nuclei_data, args.inreg)
 
     series_list = remove_labels_from_series_list_masks(
-        args, series_list, passed, nuclei)
+        args, series_list, passed, nuclei
+    )
 
-    np.set_printoptions(formatter={'float_kind': '{:.2E}'.format})
+    np.set_printoptions(formatter={"float_kind": "{:.2E}".format})
     log.info(f"size fit:\n{details['size']['fit']}")
-    np.set_printoptions(formatter={'float_kind': '{:.2E}'.format})
+    np.set_printoptions(formatter={"float_kind": "{:.2E}".format})
     log.info(f"size range: {details['size']['range']}")
-    np.set_printoptions(formatter={'float_kind': '{:.2E}'.format})
+    np.set_printoptions(formatter={"float_kind": "{:.2E}".format})
     log.info(f"intensity sum fit:\n{details['isum']['fit']}")
-    np.set_printoptions(formatter={'float_kind': '{:.2E}'.format})
+    np.set_printoptions(formatter={"float_kind": "{:.2E}".format})
     log.info(f"intensity sum range: {details['isum']['range']}")
 
-    ndpath = os.path.join(args.input, "select_nuclei.data.tsv")
-    log.info(f"writing nuclear data to:\n{ndpath}")
-    nuclei_data.to_csv(ndpath, sep="\t", index=False)
+    tsv_path = os.path.join(args.input, __OUTPUT__["raw_data"])
+    log.info(f"writing nuclear data to:\n{tsv_path}")
+    nuclei_data.to_csv(tsv_path, sep="\t", index=False)
 
-    mk_report(args, nuclei_data, details, series_list)
+    pkl_path = os.path.join(args.input, __OUTPUT__["fit"])
+    log.info(f"writing fit data to:\n{pkl_path}")
+    with open(pkl_path, "wb") as POH:
+        pickle.dump(details, POH)
 
-    common.pickle_series_list(args, series_list)
+    ra_series.pickle_series_list(args, series_list)

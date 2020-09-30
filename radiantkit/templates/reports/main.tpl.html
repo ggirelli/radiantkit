@@ -1,0 +1,35 @@
+{% include "include/dom_start.tpl.html" %}
+<style>{% include "include/css/report.css" %}</style>
+
+<div class="container">
+	<h1 class="mt-5 mb-4">{{title}}</h1>
+	<div class="bg-info p-3">
+		<h6 class="text-light mb-2">Reports:</h6>
+		<ul class="nav nav-pills nav-fill" role="tablist">
+			{% set ks = odata.keys()|list %}
+			{% for i in range(ks|length): %}
+			<li class="nav-item">
+				<a class="nav-link{% if 0 == i: %} active{% endif %}" id="{{ks[i]}}}-tab" data-toggle="tab" href="#wrap-{{ks[i]}}" role="tab" aria-controls="wrap-{{ks[i]}}" aria-selected="true">{{otd[ks[i]]}}</a>
+			</li>
+			{% endfor %}
+		</ul>
+	</div>
+	<br>
+	<div class="tab-content">
+		{% for i in range(ks|length): %}
+		<div class="tab-pane fade{% if 0 == i: %} show active{% endif %}" id="wrap-{{ks[i]}}" role="tabpanel" aria-labelledby="{{ks[i]}}-tab">
+			<div class="card">
+				<div class="card-body">
+					<h5 class="card-title">{{otd[ks[i]]}} <small>({{ks[i]}})</small></h5>
+					{% include "reports/" + ks[i] + ".include.tpl.html" %}
+				</div>
+			</div>
+		</div>
+		{% endfor %}
+	</div>
+	<div class="row p-2">
+		<div class="col">
+			<p><small>Report generated on {{ now }} by <code>radiant report v{{args.version}}</code>.</small></p>
+		</div>
+	</div>
+</div>{% include "include/dom_end.tpl.html" %}

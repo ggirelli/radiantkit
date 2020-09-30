@@ -1,0 +1,48 @@
+# Path to root folder
+# This should contain subfolders with deconvolved images
+root: {{root_folder}}
+
+conditions:
+  labels:
+    #folder: label
+    folder1: F1 condition A
+    folder2: F2 condition B
+    folder3: F3 condition A
+
+images:
+  # The name of the channel to be used as reference
+  reference: dapi
+  other: [cy5]
+  # Structural element radius for background calculation
+  background_radius: 11
+  # ZYX Voxel side aspect (possibly in nm)
+  aspect: [300.0, 130.0, 130.0]
+  # Wheter to rescale deconvolved images
+  rescale_deconvolved: true #or false
+  pattern: "{channel_name}_{series_id}_cmle.tif"
+
+segmentation:
+  # Prefix and suffix of generated masks
+  prefix: ""
+  suffix: ".mask"
+
+nuclear_selection:
+  # Threshold for nuclei selection
+  k_sigma: 2.5
+  threads: 5
+
+measure_objects:
+  measure_single_voxel: false # or true, this step is time consuming
+  threads: 2
+
+export_objects: true # or true
+
+radiality:
+  axes: ZYX # or any subset
+  center_type: QUANTILE # or any of: CENTER_OF_MASS, CENTROID, MAX
+  # You can specify a quantile for the QUANTILE method
+  # Defaults to 0.1**N where N is the number of requested axes
+  # quantile: 0.999
+  bins: 200 # Number of bins for statistics calculation
+  degree: 5 # Degree pf polynomial fit applied to the bin statistics
+  threads: 5

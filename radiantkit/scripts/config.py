@@ -1,7 +1,7 @@
-'''
+"""
 @author: Gabriele Girelli
 @contact: gigi.ga90@gmail.com
-'''
+"""
 
 import argparse
 from ggc.prompt import ask  # type: ignore
@@ -13,36 +13,45 @@ import sys
 AVAILABLE_SHELLS = ("bash", "zsh", "tcsh", "fish")
 
 
-def init_parser(subparsers: argparse._SubParsersAction
-                ) -> argparse.ArgumentParser:
+def init_parser(subparsers: argparse._SubParsersAction) -> argparse.ArgumentParser:
     parser = subparsers.add_parser(
-        __name__.split('.')[-1], description=f'''''',
+        __name__.split(".")[-1],
+        description=f"""""",
         formatter_class=argparse.RawDescriptionHelpFormatter,
-        help="Set config settings for RadIAnTkit.")
+        help="Set config settings for RadIAnTkit.",
+    )
     parser.add_argument(
-        '--version', action='version', version=f'{sys.argv[0]} {__version__}')
+        "--version", action="version", version=f"{sys.argv[0]} {__version__}"
+    )
 
-    nested = parser.add_subparsers(title="Config fields", help='')
+    nested = parser.add_subparsers(title="Config fields", help="")
 
     autocomplete = nested.add_parser(
-        "autocomplete", help="turn on autocompletion for radiant scripts")
+        "autocomplete", help="turn on autocompletion for radiant scripts"
+    )
     required = autocomplete.add_argument_group("required arguments")
     required.add_argument(
-        '--shell-type', metavar="STRING", type=str, help=f'''which shell to
-        turn on autocompletion for. Available shells: {AVAILABLE_SHELLS}''',
-        choices=AVAILABLE_SHELLS, required=True)
+        "--shell-type",
+        metavar="STRING",
+        type=str,
+        help=f"""which shell to
+        turn on autocompletion for. Available shells: {AVAILABLE_SHELLS}""",
+        choices=AVAILABLE_SHELLS,
+        required=True,
+    )
     autocomplete.add_argument(
-        '--version', action='version', version=f'{sys.argv[0]} {__version__}')
+        "--version", action="version", version=f"{sys.argv[0]} {__version__}"
+    )
     autocomplete.set_defaults(parse=parse_arguments, run=run_autocomplete)
 
     autocomplete_global = nested.add_parser(
-        "autocomplete-global",
-        help="turn on global autocompletion for radiant scripts")
+        "autocomplete-global", help="turn on global autocompletion for radiant scripts"
+    )
     required = autocomplete_global.add_argument_group("required arguments")
     autocomplete_global.add_argument(
-        '--version', action='version', version=f'{sys.argv[0]} {__version__}')
-    autocomplete_global.set_defaults(
-        parse=parse_arguments, run=run_autocomplete_global)
+        "--version", action="version", version=f"{sys.argv[0]} {__version__}"
+    )
+    autocomplete_global.set_defaults(parse=parse_arguments, run=run_autocomplete_global)
 
     return parser
 
@@ -52,8 +61,10 @@ def parse_arguments(args: argparse.Namespace) -> argparse.Namespace:
 
 
 def print_argcomplete_disclaimer() -> None:
-    print("""NOTE: autocompeltion requires the 'argcomplete' package to be
-          installed for the current user to properly work.""")
+    print(
+        """NOTE: autocompeltion requires the 'argcomplete' package to be
+          installed for the current user to properly work."""
+    )
 
 
 def run_autocomplete(args: argparse.Namespace) -> None:
@@ -61,7 +72,7 @@ def run_autocomplete(args: argparse.Namespace) -> None:
         CMD = 'eval "$(register-python-argcomplete radiant)"'
         CONFIG = "~/.bashrc"
     elif args.shell_type == "zsh":
-        CMD = 'autoload -U bashcompinit;bashcompinit;'
+        CMD = "autoload -U bashcompinit;bashcompinit;"
         CMD += 'eval "$(register-python-argcomplete radiant)"'
         CONFIG = "~/.zshrc"
     elif args.shell_type == "tcsh":
@@ -73,8 +84,10 @@ def run_autocomplete(args: argparse.Namespace) -> None:
     CONFIG = os.path.expanduser(CONFIG)
 
     print(f"Command: {CMD}")
-    ask("Do you want to automatically add the aforementioned command "
-        + f"to your '{CONFIG}' file?")
+    ask(
+        "Do you want to automatically add the aforementioned command "
+        + f"to your '{CONFIG}' file?"
+    )
     assert os.path.isfile(CONFIG), f"'{CONFIG}' file not found"
 
     with open(CONFIG, "a+") as CH:
