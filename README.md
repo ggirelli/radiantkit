@@ -1,6 +1,6 @@
 # radiantkit
 
-![Python package](https://github.com/ggirelli/radiantkit/workflows/Python%20package/badge.svg?branch=master)
+![Python package](https://github.com/ggirelli/radiantkit/workflows/Python%20package/badge.svg?branch=main)
 
 **Rad**ial **I**mage **An**alysis **T**ool**kit** (RadIAnTkit)j is a Python3.7/3.8 package containing tools for full-stack image analysis - from proprietary format conversion to tiff to cellular nuclei segmentation, from the selection of G1 nuclei to the measurement of radial patterns.
 
@@ -17,7 +17,7 @@ and characterize them (e.g., peaks, inflection points, contrast).
 
 ## Requirements
 
-RadIAnTkit requires Python 3.7 or 3.8. In the [setup.py](https://github.com/ggirelli/radiantkit/blob/master/setup.py) file, you can find a list with all the Python package dependencies.
+RadIAnTkit requires Python 3.7 or 3.8. In the [setup.py](https://github.com/ggirelli/radiantkit/blob/main/setup.py) file, you can find a list with all the Python package dependencies.
 
 (*optional*) The pipeline features require the snakemake package. As these are optional features, the automatic installation process does not install the package. To manually install it on your system, follow [this guide](https://snakemake.readthedocs.io/en/stable/getting_started/installation.html).
 
@@ -54,8 +54,8 @@ usage: radiant [-h] [--version] sub_command ...
 ## Contributing
 
 We welcome any contributions to RadIAnTkit.  
-Please, refer to our [contribution guidelines](https://github.com/ggirelli/radiantkit/blob/master/CONTRIBUTING.md) if this is your first time contributing!  
-Also, check out our [code of conduct](https://github.com/ggirelli/radiantkit/blob/master/CODE_OF_CONDUCT.md).
+Please, refer to our [contribution guidelines](https://github.com/ggirelli/radiantkit/blob/main/CONTRIBUTING.md) if this is your first time contributing!  
+Also, check out our [code of conduct](https://github.com/ggirelli/radiantkit/blob/main/CODE_OF_CONDUCT.md).
 
 ## License
 
