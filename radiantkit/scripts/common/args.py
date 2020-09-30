@@ -1,7 +1,7 @@
-'''
+"""
 @author: Gabriele Girelli
 @contact: gigi.ga90@gmail.com
-'''
+"""
 
 import argparse
 import logging
@@ -20,8 +20,7 @@ def check_output_folder_path(opath: str) -> None:
         os.mkdir(opath)
 
 
-def set_default_args_for_series_init(
-        args: argparse.Namespace) -> argparse.Namespace:
+def set_default_args_for_series_init(args: argparse.Namespace) -> argparse.Namespace:
     if "aspect" not in args:
         args.aspect = None
     if "labeled" not in args:
@@ -32,10 +31,10 @@ def set_default_args_for_series_init(
 
 
 def check_parallelization_and_pickling(
-        args: argparse.Namespace, pickled: bool) -> argparse.Namespace:
+    args: argparse.Namespace, pickled: bool
+) -> argparse.Namespace:
     args.pre_threads = args.threads
     if pickled:
         args.threads = 1
-        logging.warning(
-            "deactivated parallelization when loading pickled instance.")
+        logging.warning("deactivated parallelization when loading pickled instance.")
     return args

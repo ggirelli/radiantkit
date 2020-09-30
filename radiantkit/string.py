@@ -1,7 +1,7 @@
-'''
+"""
 @author: Gabriele Girelli
 @contact: gigi.ga90@gmail.com
-'''
+"""
 
 import re
 from string import Template
@@ -12,7 +12,7 @@ class MultiRange(object):
     __current_item: Tuple[int, int] = (0, 0)
     __string_range: str
     __extremes_list: List[Tuple[int, int]]
-    __reg: Pattern = re.compile(r'^[0-9-, ]+$')
+    __reg: Pattern = re.compile(r"^[0-9-, ]+$")
     __length: Optional[int] = None
     __ready: bool = False
 
@@ -21,7 +21,8 @@ class MultiRange(object):
 
         assert self.__reg.search(s) is not None, (
             "cannot parse range string. It should only contains numbers, "
-            + "commas, dashes, and spaces.")
+            + "commas, dashes, and spaces."
+        )
         self.__string_range = s
 
         string_range_list = [b.strip() for b in self.__string_range.split(",")]
@@ -35,8 +36,7 @@ class MultiRange(object):
             assert extremes[1] >= extremes[0]
             self.__extremes_list.append((extremes[0], extremes[1]))
 
-        self.__extremes_list = sorted(
-            self.__extremes_list, key=lambda x: x[0])
+        self.__extremes_list = sorted(self.__extremes_list, key=lambda x: x[0])
         self.__clean_extremes_list()
 
         assert 0 < self.__extremes_list[0][0], "'page' count starts from 1."
@@ -47,18 +47,18 @@ class MultiRange(object):
         if self.__length is None and self.__ready:
             self.__length = 0
             for a, b in self.__extremes_list:
-                self.__length += b-a+1
+                self.__length += b - a + 1
         return self.__length
 
     def __check_overlap(self, i: int) -> bool:
         A = self.__extremes_list[i]
-        B = self.__extremes_list[i+1]
+        B = self.__extremes_list[i + 1]
         if A[1] >= B[0] and A[1] < B[1]:
             self.__extremes_list[i] = (A[0], B[1])
-            self.__extremes_list.pop(i+1)
+            self.__extremes_list.pop(i + 1)
             return True
         elif A[1] >= B[1]:
-            self.__extremes_list.pop(i+1)
+            self.__extremes_list.pop(i + 1)
             return True
         return False
 
@@ -67,12 +67,12 @@ class MultiRange(object):
         while not is_clean:
             popped = 0
             i = 0
-            while i < len(self.__extremes_list)-1:
+            while i < len(self.__extremes_list) - 1:
                 if self.__check_overlap(i):
                     popped = 1
                     break
                 i += 1
-            if i >= len(self.__extremes_list)-2+popped:
+            if i >= len(self.__extremes_list) - 2 + popped:
                 is_clean = True
 
     def __next__(self) -> int:
@@ -80,11 +80,11 @@ class MultiRange(object):
         if current_range_id >= len(self.__extremes_list):
             raise StopIteration
         current_range = self.__extremes_list[current_range_id]
-        if current_item >= current_range[1]-current_range[0]:
-            self.__current_item = (current_range_id+1, 0)
+        if current_item >= current_range[1] - current_range[0]:
+            self.__current_item = (current_range_id + 1, 0)
         else:
-            self.__current_item = (current_range_id, current_item+1)
-        return current_range[0]+current_item
+            self.__current_item = (current_range_id, current_item + 1)
+        return current_range[0] + current_item
 
     def __iter__(self) -> Iterator[int]:
         self.__current_item = (0, 0)
@@ -106,8 +106,9 @@ class TIFFNameTemplate(Template):
     def __init__(self, s: str):
         super(TIFFNameTemplate, self).__init__(s)
 
-    def can_export_fields(self, n_fields: int,
-                          selected_fields: Optional[List[int]] = None) -> bool:
+    def can_export_fields(
+        self, n_fields: int, selected_fields: Optional[List[int]] = None
+    ) -> bool:
         if 1 < n_fields:
             if TIFFNameTemplateFields.SERIES_ID not in self.template:
                 if selected_fields is not None:
@@ -117,11 +118,18 @@ class TIFFNameTemplate(Template):
                     return False
         return True
 
-    def can_export_channels(self, n_channels: int,
-                            selected_channels: Optional[List[str]]) -> bool:
-        seeds_missing = all([x not in self.template
-                             for x in [TIFFNameTemplateFields.CHANNEL_ID,
-                                       TIFFNameTemplateFields.CHANNEL_NAME]])
+    def can_export_channels(
+        self, n_channels: int, selected_channels: Optional[List[str]]
+    ) -> bool:
+        seeds_missing = all(
+            [
+                x not in self.template
+                for x in [
+                    TIFFNameTemplateFields.CHANNEL_ID,
+                    TIFFNameTemplateFields.CHANNEL_NAME,
+                ]
+            ]
+        )
         if 1 < n_channels and seeds_missing:
             if selected_channels is not None:
                 if 1 < len(selected_channels):

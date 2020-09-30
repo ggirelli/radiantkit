@@ -1,7 +1,7 @@
-'''
+"""
 @author: Gabriele Girelli
 @contact: gigi.ga90@gmail.com
-'''
+"""
 
 import argparse
 import logging
@@ -12,8 +12,9 @@ from radiantkit.scripts.common import args as ra_args
 from typing import Tuple
 
 
-def init_series_list(args: argparse.Namespace
-                     ) -> Tuple[argparse.Namespace, series.SeriesList]:
+def init_series_list(
+    args: argparse.Namespace,
+) -> Tuple[argparse.Namespace, series.SeriesList]:
     pickled = False
     series_list = None
     pickle_path = os.path.join(args.input, args.pickle_name)
@@ -31,21 +32,29 @@ def init_series_list(args: argparse.Namespace
     if series_list is None:
         logging.info(f"parsing series folder")
         series_list = series.SeriesList.from_directory(
-            args.input, args.inreg, args.ref_channel,
+            args.input,
+            args.inreg,
+            args.ref_channel,
             (args.mask_prefix, args.mask_suffix),
-            args.aspect, args.labeled, args.block_side)
+            args.aspect,
+            args.labeled,
+            args.block_side,
+        )
 
-    logging.info(f"parsed {len(series_list)} series with "
-                 + f"{len(series_list.channel_names)} channels each"
-                 + f": {series_list.channel_names}")
+    logging.info(
+        f"parsed {len(series_list)} series with "
+        + f"{len(series_list.channel_names)} channels each"
+        + f": {series_list.channel_names}"
+    )
 
     args = ra_args.check_parallelization_and_pickling(args, pickled)
 
     return args, series_list
 
 
-def pickle_series_list(args: argparse.Namespace,
-                       series_list: series.SeriesList) -> None:
+def pickle_series_list(
+    args: argparse.Namespace, series_list: series.SeriesList
+) -> None:
     if args.export_instance:
         logging.info("Pickling instance")
         series_list.unload()

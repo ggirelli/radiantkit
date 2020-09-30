@@ -1,7 +1,7 @@
-'''
+"""
 @author: Gabriele Girelli
 @contact: gigi.ga90@gmail.com
-'''
+"""
 
 import argparse
 import logging
@@ -11,39 +11,56 @@ from radiantkit.scripts.common import output
 import sys
 
 logging.basicConfig(
-    level=logging.INFO, format='%(asctime)s '
-    + '[P%(process)s:%(module)s:%(funcName)s] %(levelname)s: %(message)s',
-    datefmt='%m/%d/%Y %I:%M:%S')
+    level=logging.INFO,
+    format="%(asctime)s "
+    + "[P%(process)s:%(module)s:%(funcName)s] %(levelname)s: %(message)s",
+    datefmt="%m/%d/%Y %I:%M:%S",
+)
 
 
-def init_parser(subparsers: argparse._SubParsersAction
-                ) -> argparse.ArgumentParser:
+def init_parser(subparsers: argparse._SubParsersAction) -> argparse.ArgumentParser:
     parser = subparsers.add_parser(
-        __name__.split('.')[-1], description=f'''Long description''',
+        __name__.split(".")[-1],
+        description=f"""Long description""",
         formatter_class=argparse.RawDescriptionHelpFormatter,
-        help="Generate radiant report(s).")
+        help="Generate radiant report(s).",
+    )
 
     parser.add_argument(
-        'input', type=str,
-        help='''Path to folder with radiant output.''')
+        "input", type=str, help="""Path to folder with radiant output."""
+    )
 
     advanced = parser.add_argument_group("advanced arguments")
     advanced.add_argument(
-        '--subdir', type=str, metavar="STRING", default='objects',
-        help=f"""Name of subfolder for nested search. Default: 'objects'""")
+        "--subdir",
+        type=str,
+        metavar="STRING",
+        default="objects",
+        help=f"""Name of subfolder for nested search. Default: 'objects'""",
+    )
     advanced.add_argument(
-        '--inreg', type=str, metavar="REGEXP",
+        "--inreg",
+        type=str,
+        metavar="REGEXP",
         help=f"""Regular expression to identify input TIFF images.
         Must contain 'channel_name' and 'series_id' fields.
-        Default: '{const.default_inreg}'""", default=const.default_inreg)
+        Default: '{const.default_inreg}'""",
+        default=const.default_inreg,
+    )
 
     advanced.add_argument(
-        '--offline', action='store_const', dest='online',
-        const=False, default=True, help='''Generate report that does not
-        require a live internet connection to be visualized.''')
+        "--offline",
+        action="store_const",
+        dest="online",
+        const=False,
+        default=True,
+        help="""Generate report that does not
+        require a live internet connection to be visualized.""",
+    )
 
-    parser.add_argument('--version', action='version',
-                        version=f'{sys.argv[0]} {const.__version__}')
+    parser.add_argument(
+        "--version", action="version", version=f"{sys.argv[0]} {const.__version__}"
+    )
 
     parser.set_defaults(parse=parse_arguments, run=run)
 

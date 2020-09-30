@@ -1,7 +1,7 @@
-'''
+"""
 @author: Gabriele Girelli
 @contact: gigi.ga90@gmail.com
-'''
+"""
 
 import argparse
 import configparser as cp
@@ -16,15 +16,17 @@ from tqdm import tqdm  # type: ignore
 from typing import Iterable, Tuple
 
 logging.basicConfig(
-    level=logging.INFO, format='%(asctime)s '
-    + '[P%(process)s:%(module)s:%(funcName)s] %(levelname)s: %(message)s',
-    datefmt='%m/%d/%Y %I:%M:%S')
+    level=logging.INFO,
+    format="%(asctime)s "
+    + "[P%(process)s:%(module)s:%(funcName)s] %(levelname)s: %(message)s",
+    datefmt="%m/%d/%Y %I:%M:%S",
+)
 
 
-def init_parser(subparsers: argparse._SubParsersAction
-                ) -> argparse.ArgumentParser:
+def init_parser(subparsers: argparse._SubParsersAction) -> argparse.ArgumentParser:
     parser = subparsers.add_parser(
-        __name__.split(".")[-1], description='''
+        __name__.split(".")[-1],
+        description="""
 Split a TIFF image in smaller TIFF images of the specified side(s).
 
 If two different sides are provided, the smaller images will be rectangular.
@@ -78,56 +80,91 @@ tiff_split big_image.tif split_out_dir 100 -e -O 10
 tiff_split big_image.tif split_out_dir 100 -e -S 0.9 0.8
 tiff_split big_image.tif split_out_dir 100 -e -S 90 80
 tiff_split big_image.tif split_out_dir 100 -e -O 0.1 0.2
-tiff_split big_image.tif split_out_dir 100 -e -O 10 20''',
+tiff_split big_image.tif split_out_dir 100 -e -O 10 20""",
         formatter_class=argparse.RawDescriptionHelpFormatter,
-        help="Split a TIFF image in smaller images of the specified side(s).")
+        help="Split a TIFF image in smaller images of the specified side(s).",
+    )
+
+    parser.add_argument("input", type=str, help="""Path to the TIFF image to split.""")
+    parser.add_argument(
+        "outdir", type=str, help="""Path to output TIFF folder, created if missing."""
+    )
+    parser.add_argument(
+        "side",
+        type=int,
+        nargs="+",
+        help="""One or two (XY) sides,
+        used to specify the smaller images dimensions.""",
+    )
 
     parser.add_argument(
-        'input', type=str, help='''Path to the TIFF image to split.''')
-    parser.add_argument(
-        'outdir', type=str,
-        help='''Path to output TIFF folder, created if missing.''')
-    parser.add_argument(
-        'side', type=int, nargs='+', help='''One or two (XY) sides,
-        used to specify the smaller images dimensions.''')
-
-    parser.add_argument(
-        '--step', metavar="NUMBER", type=float, nargs='+',
+        "--step",
+        metavar="NUMBER",
+        type=float,
+        nargs="+",
         help="""Step for splitting, defined as a fraction of the
-        specified side(s).""")
+        specified side(s).""",
+    )
     parser.add_argument(
-        '--overlap', metavar="NUMBER", type=float,
+        "--overlap",
+        metavar="NUMBER",
+        type=float,
         help="""Overlap fraction of splitted images, defined as a fraction of
-        the specified side(s).""", nargs='+')
+        the specified side(s).""",
+        nargs="+",
+    )
     parser.add_argument(
-        '--slice', metavar="NUMBER", type=int,
-        help="""ID of slice to be extracted from Z-stacks, 1-indexed.""")
+        "--slice",
+        metavar="NUMBER",
+        type=int,
+        help="""ID of slice to be extracted from Z-stacks, 1-indexed.""",
+    )
 
     parser.add_argument(
-        '--enlarge', action='store_const', dest='enlarge',
-        const=True, default=False, help='Expand to avoid pixel loss.')
+        "--enlarge",
+        action="store_const",
+        dest="enlarge",
+        const=True,
+        default=False,
+        help="Expand to avoid pixel loss.",
+    )
 
     parser.add_argument(
-        '--version', action='version',
-        version='%s %s' % (sys.argv[0], __version__,))
+        "--version",
+        action="version",
+        version="%s %s"
+        % (
+            sys.argv[0],
+            __version__,
+        ),
+    )
 
     advanced = parser.add_argument_group("advanced arguments")
     advanced.add_argument(
-        '--invert', action='store_const', dest='inverted',
-        const=True, default=False,
-        help='''Split top-to-bottom, left-to-right.''')
+        "--invert",
+        action="store_const",
+        dest="inverted",
+        const=True,
+        default=False,
+        help="""Split top-to-bottom, left-to-right.""",
+    )
     advanced.add_argument(
-        '-y', '--do-all', action='store_const',
+        "-y",
+        "--do-all",
+        action="store_const",
         help="""Do not ask for settings confirmation and proceed.""",
-        const=True, default=False)
+        const=True,
+        default=False,
+    )
 
     parser.set_defaults(parse=parse_arguments, run=run)
 
     return parser
 
 
-def update_args_from_step(args: argparse.Namespace, relative_steps: bool
-                          ) -> Tuple[argparse.Namespace, bool]:
+def update_args_from_step(
+    args: argparse.Namespace, relative_steps: bool
+) -> Tuple[argparse.Namespace, bool]:
     assert all([step > 0 for step in args.step])
     step_is_relative = all([step <= 1 for step in args.step])
     step_is_absolute = all([step > 1 for step in args.step])
@@ -135,21 +172,22 @@ def update_args_from_step(args: argparse.Namespace, relative_steps: bool
 
     while len(args.step) < len(args.side):
         args.step.append(args.step[0])
-    args.step = args.step[:len(args.side)]
+    args.step = args.step[: len(args.side)]
 
     if step_is_absolute:
         relative_steps = False
         args.overlap = np.array(
-            [args.side[i] - args.step[i]
-             for i in range(len(args.step))]).astype('int')
+            [args.side[i] - args.step[i] for i in range(len(args.step))]
+        ).astype("int")
     elif step_is_relative:
-        args.overlap = [np.round(1-s, 3) for s in args.step]
+        args.overlap = [np.round(1 - s, 3) for s in args.step]
 
     return args, relative_steps
 
 
-def update_args_from_overlap(args: argparse.Namespace, relative_steps: bool
-                             ) -> Tuple[argparse.Namespace, bool]:
+def update_args_from_overlap(
+    args: argparse.Namespace, relative_steps: bool
+) -> Tuple[argparse.Namespace, bool]:
     assert all([overlap >= 0 for overlap in args.overlap])
     overlap_is_relative = all([overlap < 1 for overlap in args.overlap])
     overlap_is_absolute = all([overlap > 1 for overlap in args.overlap])
@@ -157,15 +195,15 @@ def update_args_from_overlap(args: argparse.Namespace, relative_steps: bool
 
     while len(args.overlap) < len(args.side):
         args.overlap.append(args.overlap[0])
-    args.overlap = args.overlap[:len(args.side)]
+    args.overlap = args.overlap[: len(args.side)]
 
     if overlap_is_absolute:
         relative_steps = False
         args.step = np.array(
-            [args.side[i] - args.overlap[i]
-             for i in range(len(args.overlap))]).astype('int')
+            [args.side[i] - args.overlap[i] for i in range(len(args.overlap))]
+        ).astype("int")
     elif overlap_is_relative:
-        args.overlap = [np.round(1-s, 3) for s in args.overlap]
+        args.overlap = [np.round(1 - s, 3) for s in args.overlap]
 
     return args, relative_steps
 
@@ -180,11 +218,11 @@ def check_step_and_overlap(args: argparse.Namespace) -> argparse.Namespace:
 
     if (args.overlap is not None or args.step is not None) and relative_steps:
         args.step = np.array(
-            [np.round(args.side[i]*args.step[i])
-             for i in range(len(args.step))]).astype('int')
+            [np.round(args.side[i] * args.step[i]) for i in range(len(args.step))]
+        ).astype("int")
         args.overlap = np.array(
-            [np.round(args.side[i]*args.overlap[i])
-             for i in range(len(args.overlap))]).astype('int')
+            [np.round(args.side[i] * args.overlap[i]) for i in range(len(args.overlap))]
+        ).astype("int")
 
     return args
 
@@ -193,8 +231,9 @@ def parse_arguments(args: argparse.Namespace) -> argparse.Namespace:
     args.version = __version__
 
     assert os.path.isfile(args.input), "input file not found: %s" % args.input
-    assert not os.path.isfile(args.outdir), (
-        f"output directory cannot be a file: {args.outdir}")
+    assert not os.path.isfile(
+        args.outdir
+    ), f"output directory cannot be a file: {args.outdir}"
 
     if 1 == len(args.side):
         args.side = (args.side[0], args.side[0])
@@ -203,15 +242,16 @@ def parse_arguments(args: argparse.Namespace) -> argparse.Namespace:
 
     if args.slice is not None:
         assert args.slice > 0
-    assert not (args.step is not None and args.overlap is not None), (
-        "-S and -O are incompatible")
+    assert not (
+        args.step is not None and args.overlap is not None
+    ), "-S and -O are incompatible"
 
     args = check_step_and_overlap(args)
 
     if not os.path.isdir(args.outdir):
         os.mkdir(args.outdir)
 
-    return(args)
+    return args
 
 
 def enlarge_XY_tiff(img: np.ndarray, offset: List[int]) -> np.ndarray:
@@ -220,39 +260,37 @@ def enlarge_XY_tiff(img: np.ndarray, offset: List[int]) -> np.ndarray:
     new_shape[-2] += int(offset[1])
     new_image = img.copy()
     new_image = np.zeros(new_shape)
-    new_image[np.ix_(*[range(img.shape[i])
-              for i in range(len(img.shape))])] = img
-    return(new_image)
+    new_image[np.ix_(*[range(img.shape[i]) for i in range(len(img.shape))])] = img
+    return new_image
 
 
-def get_pixel_loss(img: np.ndarray, side: List[int], step: List[float]
-                   ) -> Tuple[int, ...]:
+def get_pixel_loss(
+    img: np.ndarray, side: List[int], step: List[float]
+) -> Tuple[int, ...]:
     N = len(img.shape)
     assert len(side) <= N
 
     if step is None:
-        missed = [img.shape[-i-1] % side[i] for i in range(len(side))]
+        missed = [img.shape[-i - 1] % side[i] for i in range(len(side))]
     else:
         assert len(side) == len(step)
-        missed = [img.shape[-i-1] % side[i] % step[i]
-                  for i in range(len(side))]
+        missed = [img.shape[-i - 1] % side[i] % step[i] for i in range(len(side))]
 
     lost_parts = []
     for i in range(len(side)):
-        otherd = [img.shape[j] for j in range(N) if not N-i-1 == j]
-        otherd.append(missed[-i-1])
+        otherd = [img.shape[j] for j in range(N) if not N - i - 1 == j]
+        otherd.append(missed[-i - 1])
         lost_parts.append(np.prod(otherd))
-    loss = int(np.sum(lost_parts)-np.prod(img.shape[:-2])*np.prod(missed))
+    loss = int(np.sum(lost_parts) - np.prod(img.shape[:-2]) * np.prod(missed))
 
-    return (*missed, loss, loss/np.prod(img.shape)*100)
+    return (*missed, loss, loss / np.prod(img.shape) * 100)
 
 
-def init_xy(img: np.ndarray, step: List[int], side: List[int],
-            inverted: bool = False) -> Iterable[Tuple[int, int]]:
-    ys = [y for y in range(0, img.shape[-2], step[1])
-          if y+side[1] <= img.shape[-2]]
-    xs = [x for x in range(0, img.shape[-1], step[0])
-          if x+side[0] <= img.shape[-1]]
+def init_xy(
+    img: np.ndarray, step: List[int], side: List[int], inverted: bool = False
+) -> Iterable[Tuple[int, int]]:
+    ys = [y for y in range(0, img.shape[-2], step[1]) if y + side[1] <= img.shape[-2]]
+    xs = [x for x in range(0, img.shape[-1], step[0]) if x + side[0] <= img.shape[-1]]
 
     if inverted:
         logging.info("Image split top-to-bottom, left-to-right.")
@@ -265,19 +303,20 @@ def init_xy(img: np.ndarray, step: List[int], side: List[int],
 
 
 def tsplit3d(img: np.ndarray, x: int, y: int, s: List[int]) -> np.ndarray:
-    return img[:, y:(y+s[1]), x:(x+s[0])]
+    return img[:, y : (y + s[1]), x : (x + s[0])]
 
 
 def tsplit2d(img: np.ndarray, x: int, y: int, s: List[int]) -> np.ndarray:
-    return img[y:(y+s[1]), x:(x+s[0])]
+    return img[y : (y + s[1]), x : (x + s[0])]
 
 
 tsplit_fun = {2: tsplit2d, 3: tsplit3d}
 
 
-def tiff_split(img: np.ndarray, side: List[int], step: List[int],
-               inverted: bool = False) -> np.ndarray:
-    n = (img.shape[-1]//side[0]) * (img.shape[-2]//side[1])
+def tiff_split(
+    img: np.ndarray, side: List[int], step: List[int], inverted: bool = False
+) -> np.ndarray:
+    n = (img.shape[-1] // side[0]) * (img.shape[-2] // side[1])
     logging.info(f"Output {n} images.")
     assert 0 != n
 
@@ -316,16 +355,20 @@ def print_settings(args: argparse.Namespace, clear: bool = True) -> None:
 
 def save_settings(args: argparse.Namespace) -> None:
     config = cp.ConfigParser()
-    config['MAIN'] = dict(input=args.input, outdir=args.outdir)
-    config['ADVANCED'] = dict(
-        x_side=str(args.side[0]), y_side=str(args.side[1]),
-        slice=str(args.slice), enlarge=str(args.enlarge),
-        inverted=str(args.inverted))
+    config["MAIN"] = dict(input=args.input, outdir=args.outdir)
+    config["ADVANCED"] = dict(
+        x_side=str(args.side[0]),
+        y_side=str(args.side[1]),
+        slice=str(args.slice),
+        enlarge=str(args.enlarge),
+        inverted=str(args.inverted),
+    )
     if args.step is not None:
-        config['ADVANCED'].update(
-            dict(x_step=str(args.step[0]), y_step=str(args.step[1])))
+        config["ADVANCED"].update(
+            dict(x_step=str(args.step[0]), y_step=str(args.step[1]))
+        )
 
-    with open(os.path.join(args.outdir, 'config.ini'), 'w') as CF:
+    with open(os.path.join(args.outdir, "config.ini"), "w") as CF:
         config.write(CF)
 
 
@@ -336,20 +379,17 @@ def confirm_arguments(args: argparse.Namespace) -> None:
     save_settings(args)
 
 
-def enlarge_image(args: argparse.Namespace, img: np.ndarray,
-                  umes: str) -> np.ndarray:
+def enlarge_image(args: argparse.Namespace, img: np.ndarray, umes: str) -> np.ndarray:
     x_loss, y_loss, loss, perc_loss = get_pixel_loss(img, args.side, args.step)
 
     if args.enlarge:
-        img = enlarge_XY_tiff(
-            img, np.array(args.side)-np.array((x_loss, y_loss)))
+        img = enlarge_XY_tiff(img, np.array(args.side) - np.array((x_loss, y_loss)))
         logging.info(f"Image enlarged to {img.shape}")
     else:
+        logging.info(f"{x_loss} {umes}s (X) and {y_loss} {umes}s (Y) are lost.")
         logging.info(
-            f"{x_loss} {umes}s (X) and {y_loss} {umes}s (Y) are lost.")
-        logging.info(
-            f"In total, {loss} {umes}s lost ({perc_loss}%). "
-            + "Use -e to avoid loss.")
+            f"In total, {loss} {umes}s lost ({perc_loss}%). " + "Use -e to avoid loss."
+        )
 
     return img
 
@@ -366,7 +406,7 @@ def run(args: argparse.Namespace) -> None:
             logging.info(f"Enforcing 2D split (slice #{args.slice} only).")
             umes = "pixel"
             assert args.slice <= img.shape[0]
-            img = img[args.slice-1, :, :].copy()
+            img = img[args.slice - 1, :, :].copy()
         else:
             umes = "voxel"
     elif 2 == len(img.shape):
@@ -384,6 +424,7 @@ def run(args: argparse.Namespace) -> None:
     image_counter = 1
     for sub_image in tiff_split(img, args.side, args.step, args.inverted):
         opath = os.path.join(args.outdir, f"{prefix}.sub{image_counter}{ext}")
-        imt.save_tiff(opath, sub_image, imt.get_dtype(sub_image.max()),
-                      compressed=False)
+        imt.save_tiff(
+            opath, sub_image, imt.get_dtype(sub_image.max()), compressed=False
+        )
         image_counter += 1

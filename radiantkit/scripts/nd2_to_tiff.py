@@ -1,7 +1,7 @@
-'''
+"""
 @author: Gabriele Girelli
 @contact: gigi.ga90@gmail.com
-'''
+"""
 
 import argparse
 import logging
@@ -19,15 +19,17 @@ from tqdm import tqdm  # type: ignore
 from typing import List, Optional
 
 logging.basicConfig(
-    level=logging.INFO, format='%(asctime)s '
-    + '[P%(process)s:%(module)s:%(funcName)s] %(levelname)s: %(message)s',
-    datefmt='%m/%d/%Y %I:%M:%S')
+    level=logging.INFO,
+    format="%(asctime)s "
+    + "[P%(process)s:%(module)s:%(funcName)s] %(levelname)s: %(message)s",
+    datefmt="%m/%d/%Y %I:%M:%S",
+)
 
 
-def init_parser(subparsers: argparse._SubParsersAction
-                ) -> argparse.ArgumentParser:
+def init_parser(subparsers: argparse._SubParsersAction) -> argparse.ArgumentParser:
     parser = subparsers.add_parser(
-        __name__.split(".")[-1], description=f'''
+        __name__.split(".")[-1],
+        description=f"""
 Convert a nd2 file into single channel tiff images.
 
 In the case of 3+D images, the script also checks for consistent deltaZ
@@ -50,47 +52,77 @@ Hence, when writing the 3rd series of the "a488" channel, the output file name
 would be:"a488_003.tiff".
 
 Please, remember to escape the "$" when running from command line if using
-double quotes, i.e., "\\$". Alternatively, use single quotes, i.e., '$'.''',
+double quotes, i.e., "\\$". Alternatively, use single quotes, i.e., '$'.""",
         formatter_class=argparse.RawDescriptionHelpFormatter,
-        help="Convert a nd2 file into single channel tiff images.")
+        help="Convert a nd2 file into single channel tiff images.",
+    )
+
+    parser.add_argument("input", type=str, help="""Path to the nd2 file to convert.""")
 
     parser.add_argument(
-        'input', type=str, help='''Path to the nd2 file to convert.''')
-
-    parser.add_argument(
-        '--outdir', metavar="DIRPATH", type=str,
+        "--outdir",
+        metavar="DIRPATH",
+        type=str,
         help="""Path to output TIFF folder. Defaults to the input file
-        basename.""", default=None)
+        basename.""",
+        default=None,
+    )
     parser.add_argument(
-        '--fields', metavar="STRING", type=str,
+        "--fields",
+        metavar="STRING",
+        type=str,
         help="""Extract only fields of view specified as when printing a set
-        of pages. E.g., '1-2,5,8-9'.""", default=None)
+        of pages. E.g., '1-2,5,8-9'.""",
+        default=None,
+    )
     parser.add_argument(
-        '--channels', metavar="STRING", type=str,
+        "--channels",
+        metavar="STRING",
+        type=str,
         help="""Extract only specified channels. Specified as space-separated
-        channel names. E.g., 'dapi cy5 a488'.""", default=None, nargs="+")
+        channel names. E.g., 'dapi cy5 a488'.""",
+        default=None,
+        nargs="+",
+    )
 
     parser.add_argument(
-        '--version', action='version', version=f'{sys.argv[0]} {__version__}')
+        "--version", action="version", version=f"{sys.argv[0]} {__version__}"
+    )
 
     advanced = parser.add_argument_group("advanced arguments")
     advanced.add_argument(
-        '--deltaZ', type=float, metavar='FLOAT',
+        "--deltaZ",
+        type=float,
+        metavar="FLOAT",
         help="""If provided (in um), the script does not check delta Z
-        consistency and instead uses the provided one.""", default=None)
+        consistency and instead uses the provided one.""",
+        default=None,
+    )
     advanced.add_argument(
-        '--template', metavar="STRING", type=str,
+        "--template",
+        metavar="STRING",
+        type=str,
         help=f"""Template for output file name. See main description for more
         details. Default: '{TNTFields.CHANNEL_NAME}_{TNTFields.SERIES_ID}'""",
-        default=f"{TNTFields.CHANNEL_NAME}_{TNTFields.SERIES_ID}")
+        default=f"{TNTFields.CHANNEL_NAME}_{TNTFields.SERIES_ID}",
+    )
     advanced.add_argument(
-        '--compressed', action='store_const', dest='doCompress',
-        const=True, default=False,
-        help='Write compressed TIFF as output.')
+        "--compressed",
+        action="store_const",
+        dest="doCompress",
+        const=True,
+        default=False,
+        help="Write compressed TIFF as output.",
+    )
     advanced.add_argument(
-        '-n', '--dry-run', action='store_const', dest='dry',
-        const=True, default=False,
-        help='Describe input data and stop.')
+        "-n",
+        "--dry-run",
+        action="store_const",
+        dest="dry",
+        const=True,
+        default=False,
+        help="Describe input data and stop.",
+    )
 
     parser.set_defaults(parse=parse_arguments, run=run)
 
@@ -104,8 +136,9 @@ def parse_arguments(args: argparse.Namespace) -> argparse.Namespace:
         args.outdir = os.path.join(os.path.dirname(args.input), args.outdir)
 
     assert os.path.isfile(args.input), f"input file not found: {args.input}"
-    assert not os.path.isfile(args.outdir), (
-        f"output directory cannot be a file: {args.outdir}")
+    assert not os.path.isfile(
+        args.outdir
+    ), f"output directory cannot be a file: {args.outdir}"
 
     if args.fields is not None:
         args.fields = MultiRange(args.fields)
@@ -121,78 +154,101 @@ def parse_arguments(args: argparse.Namespace) -> argparse.Namespace:
 
 
 def export_single_channel(
-        args: argparse.Namespace, field_of_view: pims.frame.Frame,
-        opath: str, metadata: dict, resolutionZ: float = None) -> None:
-    resolutionXY = (1/metadata['pixel_microns'], 1/metadata['pixel_microns'])
+    args: argparse.Namespace,
+    field_of_view: pims.frame.Frame,
+    opath: str,
+    metadata: dict,
+    resolutionZ: float = None,
+) -> None:
+    resolutionXY = (1 / metadata["pixel_microns"], 1 / metadata["pixel_microns"])
     imt.save_tiff(
-        os.path.join(args.outdir, opath), field_of_view,
-        imt.get_dtype(field_of_view.max()), args.doCompress,
-        resolution=resolutionXY, inMicrons=True, ResolutionZ=resolutionZ)
+        os.path.join(args.outdir, opath),
+        field_of_view,
+        imt.get_dtype(field_of_view.max()),
+        args.doCompress,
+        resolution=resolutionXY,
+        inMicrons=True,
+        ResolutionZ=resolutionZ,
+    )
 
 
-def get_field_from_2d_nd2(nd2I: ND2Reader2,
-                          field_id: int, channel_id: int) -> np.ndarray:
+def get_field_from_2d_nd2(
+    nd2I: ND2Reader2, field_id: int, channel_id: int
+) -> np.ndarray:
     return nd2I[field_id][:, :, channel_id]
 
 
-def get_field_from_3d_nd2(nd2I: ND2Reader2,
-                          field_id: int, channel_id: int) -> np.ndarray:
+def get_field_from_3d_nd2(
+    nd2I: ND2Reader2, field_id: int, channel_id: int
+) -> np.ndarray:
     return nd2I[field_id][:, :, :, channel_id]
 
 
 get_field_fun = {2: get_field_from_2d_nd2, 3: get_field_from_3d_nd2}
 
 
-def get_resolution_Z(nd2I: ND2Reader2, field_id: int, enforce: float
-                     ) -> Optional[float]:
+def get_resolution_Z(
+    nd2I: ND2Reader2, field_id: int, enforce: float
+) -> Optional[float]:
     if nd2I.is3D():
         if enforce is not None:
             return enforce
         else:
             resolutionZ = nd2I.get_resolutionZ(field_id)
-            assert 1 == len(resolutionZ), (
-                f"Z resolution is not constant: {resolutionZ}")
+            assert 1 == len(resolutionZ), f"Z resolution is not constant: {resolutionZ}"
             return list(resolutionZ)[0]
     return None
 
 
-def export_multiple_channels(nd2I: ND2Reader2, field_id: int,
-                             args: argparse.Namespace,
-                             channels: Optional[List[str]] = None,
-                             resolutionZ: Optional[float] = None
-                             ) -> None:
+def export_multiple_channels(
+    nd2I: ND2Reader2,
+    field_id: int,
+    args: argparse.Namespace,
+    channels: Optional[List[str]] = None,
+    resolutionZ: Optional[float] = None,
+) -> None:
     channels = list(nd2I.get_channel_names()) if channels is None else channels
     get_field = get_field_fun[3] if nd2I.is3D() else get_field_fun[2]
 
     channels = nd2I.select_channels(channels)
     for channel_id in range(nd2I[field_id].shape[3]):
-        channel_name = nd2I.metadata['channels'][channel_id].lower()
+        channel_name = nd2I.metadata["channels"][channel_id].lower()
         if channel_name not in channels:
             continue
         export_single_channel(
-            args, get_field(nd2I, field_id, channel_id),
+            args,
+            get_field(nd2I, field_id, channel_id),
             nd2I.get_tiff_path(args.template, channel_id, field_id),
-            nd2I.metadata, resolutionZ)
+            nd2I.metadata,
+            resolutionZ,
+        )
 
 
 def export_field(
-        args: argparse.Namespace, nd2I: ND2Reader2,
-        field_id: int, channels: Optional[List[str]] = None) -> None:
+    args: argparse.Namespace,
+    nd2I: ND2Reader2,
+    field_id: int,
+    channels: Optional[List[str]] = None,
+) -> None:
     resolutionZ = get_resolution_Z(nd2I, field_id, args.deltaZ)
 
     try:
         if not nd2I.hasMultiChannels():
             export_single_channel(
-                args, nd2I[field_id],
+                args,
+                nd2I[field_id],
                 nd2I.get_tiff_path(args.template, 0, field_id),
-                nd2I.metadata, resolutionZ)
+                nd2I.metadata,
+                resolutionZ,
+            )
         else:
-            export_multiple_channels(
-                nd2I, field_id, args, channels, resolutionZ)
+            export_multiple_channels(nd2I, field_id, args, channels, resolutionZ)
     except ValueError as e:
         if "could not broadcast input array from shape" in e.args[0]:
-            logging.error(f"corrupted file raised {type(e).__name__}. "
-                          + "At least one frame has mismatching shape.")
+            logging.error(
+                f"corrupted file raised {type(e).__name__}. "
+                + "At least one frame has mismatching shape."
+            )
             logging.critical(f"{e.args[0]}")
             sys.exit()
         raise e
@@ -204,33 +260,38 @@ def check_channels(channels: List[str], nd2I: ND2Reader2) -> List[str]:
         if 0 == len(channels):
             logging.error("None of the specified channels was found.")
             sys.exit()
-        logging.info(
-            f"Converting only the following channels: {channels}")
+        logging.info(f"Converting only the following channels: {channels}")
     return channels
 
 
 def check_argument_compatibility(
-        args: argparse.Namespace, nd2I: ND2Reader2) -> argparse.Namespace:
+    args: argparse.Namespace, nd2I: ND2Reader2
+) -> argparse.Namespace:
     if not args.template.can_export_fields(nd2I.field_count(), args.fields):
-        logging.critical("when exporting more than 1 field, the template "
-                         + f"must include the {TNTFields.SERIES_ID} seed. "
-                         + f"Got '{args.template.template}' instead.")
+        logging.critical(
+            "when exporting more than 1 field, the template "
+            + f"must include the {TNTFields.SERIES_ID} seed. "
+            + f"Got '{args.template.template}' instead."
+        )
         sys.exit()
 
     args.channels = check_channels(args.channels, nd2I)
 
-    if not args.template.can_export_channels(
-            nd2I.channel_count(), args.channels):
-        logging.critical("when exporting more than 1 channel, the template "
-                         + f"must include either {TNTFields.CHANNEL_ID} or "
-                         + f"{TNTFields.CHANNEL_NAME} seeds. "
-                         + f"Got '{args.template.template}' instead.")
+    if not args.template.can_export_channels(nd2I.channel_count(), args.channels):
+        logging.critical(
+            "when exporting more than 1 channel, the template "
+            + f"must include either {TNTFields.CHANNEL_ID} or "
+            + f"{TNTFields.CHANNEL_NAME} seeds. "
+            + f"Got '{args.template.template}' instead."
+        )
         sys.exit()
 
     if args.fields is not None:
         if np.min(args.fields) > nd2I.field_count():
-            logging.warning("Skipped all available fields "
-                            + "(not included in specified field range.")
+            logging.warning(
+                "Skipped all available fields "
+                + "(not included in specified field range."
+            )
 
     return args
 
@@ -240,23 +301,26 @@ def convert_to_tiff(args: argparse.Namespace, nd2I: ND2Reader2) -> None:
         nd2I.set_axes_for_bundling()
         export_field(args, nd2I, 0, args.channels)
     else:
-        nd2I.iter_axes = 'v'
+        nd2I.iter_axes = "v"
         nd2I.set_axes_for_bundling()
 
         if args.fields is not None:
             args.fields = list(args.fields)
-            logging.info("Converting only the following fields: "
-                         + f"{[x for x in args.fields]}")
+            logging.info(
+                "Converting only the following fields: " + f"{[x for x in args.fields]}"
+            )
             field_generator = tqdm(args.fields)
         else:
-            field_generator = tqdm(range(1, nd2I.sizes['v']+1))
+            field_generator = tqdm(range(1, nd2I.sizes["v"] + 1))
 
         for field_id in field_generator:
-            if field_id-1 >= nd2I.field_count():
-                logging.warning(f"Skipped field #{field_id}(from specified "
-                                + "field range, not available in nd2 file).")
+            if field_id - 1 >= nd2I.field_count():
+                logging.warning(
+                    f"Skipped field #{field_id}(from specified "
+                    + "field range, not available in nd2 file)."
+                )
             else:
-                export_field(args, nd2I, field_id-1, args.channels)
+                export_field(args, nd2I, field_id - 1, args.channels)
 
 
 def run(args: argparse.Namespace) -> None:

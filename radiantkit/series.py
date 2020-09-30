@@ -1,7 +1,7 @@
-'''
+"""
 @author: Gabriele Girelli
 @contact: gigi.ga90@gmail.com
-'''
+"""
 
 import ggc  # type: ignore
 import itertools
@@ -24,24 +24,28 @@ from typing import Iterator, Optional, Pattern, Type
 
 ChannelName = str
 DistanceType = str
-ChannelRadialProfileData = Dict[
-    DistanceType, Tuple[stat.PolyFitResult, pd.DataFrame]]
+ChannelRadialProfileData = Dict[DistanceType, Tuple[stat.PolyFitResult, pd.DataFrame]]
 RadialProfileData = Dict[ChannelName, ChannelRadialProfileData]
 
 
 class Series(ChannelList):
     _particles: List[Nucleus]
 
-    def __init__(self, ID: int, ground_block_side: Optional[int] = None,
-                 aspect: Optional[np.ndarray] = None):
+    def __init__(
+        self,
+        ID: int,
+        ground_block_side: Optional[int] = None,
+        aspect: Optional[np.ndarray] = None,
+    ):
         super(Series, self).__init__(ID, ground_block_side, aspect)
         self._particles = []
 
     @property
     def particles(self) -> List[Nucleus]:
         if 0 == len(self._particles):
-            logging.warning("particle attribute accessible "
-                            + "after running extract_particles.")
+            logging.warning(
+                "particle attribute accessible " + "after running extract_particles."
+            )
         return self._particles
 
     @property
@@ -59,28 +63,31 @@ class Series(ChannelList):
                 particle.set_aspect(spacing)
 
     def __init_particles_intensity_features(
-            self, channel_names: Optional[List[str]] = None):
+        self, channel_names: Optional[List[str]] = None
+    ):
         if channel_names is not None:
             for name in channel_names:
                 assert name in self
                 for pbody in self._particles:
-                    pbody.init_intensity_features(
-                        self[name][1], name)
+                    pbody.init_intensity_features(self[name][1], name)
             self.unload(name)
 
-    def __run_particle_finder(
-            self, particleClass: Type[Particle] = Particle) -> None:
+    def __run_particle_finder(self, particleClass: Type[Particle] = Particle) -> None:
         if isinstance(self.mask, ImageLabeled):
             self._particles = ParticleFinder.get_particles_from_labeled_image(
-                self.mask, particleClass)
+                self.mask, particleClass
+            )
         elif isinstance(self.mask, ImageBinary):
             self._particles = ParticleFinder.get_particles_from_binary_image(
-                self.mask, particleClass)
+                self.mask, particleClass
+            )
 
-    def init_particles(self,
-                       particleClass: Type[Particle] = Particle,
-                       channel_list: Optional[List[str]] = None,
-                       reInit: bool = False) -> None:
+    def init_particles(
+        self,
+        particleClass: Type[Particle] = Particle,
+        channel_list: Optional[List[str]] = None,
+        reInit: bool = False,
+    ) -> None:
         if 0 != len(self._particles) and not reInit:
             return
 
@@ -96,10 +103,11 @@ class Series(ChannelList):
         self.__init_particles_intensity_features(channel_list)
 
     @staticmethod
-    def extract_particles(series: 'Series',
-                          particleClass: Type[Particle] = Particle,
-                          channel_list: Optional[List[str]] = None
-                          ) -> 'Series':
+    def extract_particles(
+        series: "Series",
+        particleClass: Type[Particle] = Particle,
+        channel_list: Optional[List[str]] = None,
+    ) -> "Series":
         series.init_particles(particleClass, channel_list)
         return series
 
@@ -113,36 +121,38 @@ class Series(ChannelList):
             for nucleus in self.particles:
                 basename = f"series{self.ID:03d}_nucleus{nucleus.label:03d}"
 
-                nucleus.mask.to_tiff(os.path.join(path,
-                                     f"mask_{basename}.tif"), compressed)
+                nucleus.mask.to_tiff(
+                    os.path.join(path, f"mask_{basename}.tif"), compressed
+                )
 
                 if nucleus.has_distances():
                     center_dist, lamina_dist = nucleus.distances
 
                     ImageGrayScale(center_dist).to_tiff(
-                        os.path.join(path, f"centerDist_{basename}.tif"),
-                        compressed)
+                        os.path.join(path, f"centerDist_{basename}.tif"), compressed
+                    )
                     ImageGrayScale(lamina_dist).to_tiff(
-                        os.path.join(path, f"laminaDist_{basename}.tif"),
-                        compressed)
+                        os.path.join(path, f"laminaDist_{basename}.tif"), compressed
+                    )
 
-                ImageGrayScale(nucleus.region_of_interest.apply(
-                    self[channel_name][1])).to_tiff(
-                    os.path.join(path, f"{channel_name}_{basename}.tif"),
-                    compressed)
+                ImageGrayScale(
+                    nucleus.region_of_interest.apply(self[channel_name][1])
+                ).to_tiff(
+                    os.path.join(path, f"{channel_name}_{basename}.tif"), compressed
+                )
             self.unload(channel_name)
 
     @staticmethod
-    def static_export_particles(series: 'Series', path: str,
-                                compressed: bool) -> None:
+    def static_export_particles(series: "Series", path: str, compressed: bool) -> None:
         series.export_particles(path, compressed)
 
     def init_particles_distances(
-            self, rdc: RadialDistanceCalculator, reInit: bool = False
-            ) -> 'Series':
+        self, rdc: RadialDistanceCalculator, reInit: bool = False
+    ) -> "Series":
         C = None
         if self.reference is not None and (
-                rdc.center_type is CenterType.CENTER_OF_MASS):
+            rdc.center_type is CenterType.CENTER_OF_MASS
+        ):
             C = self[self.reference][1]
         for particle in self._particles:
             if not particle.has_distances() or reInit:
@@ -153,35 +163,42 @@ class Series(ChannelList):
 
     @staticmethod
     def static_init_particles_distances(
-            series: 'Series', rdc: RadialDistanceCalculator,
-            reInit: bool = False) -> 'Series':
+        series: "Series", rdc: RadialDistanceCalculator, reInit: bool = False
+    ) -> "Series":
         return series.init_particles_distances(rdc, reInit)
 
-    def get_particles_intensity_at_distance(
-            self, channel_name: str
-            ) -> pd.DataFrame:
+    def get_particles_intensity_at_distance(self, channel_name: str) -> pd.DataFrame:
         assert channel_name in self.names
         assert all([p.has_distances for p in self._particles])
 
         if self.reference is not None and self.reference != channel_name:
-            df = pd.concat([p.get_intensity_at_distance(
-                self[channel_name][1], self[self.reference][1])
-                for p in self._particles])
+            df = pd.concat(
+                [
+                    p.get_intensity_at_distance(
+                        self[channel_name][1], self[self.reference][1]
+                    )
+                    for p in self._particles
+                ]
+            )
             self.unload(self.reference)
         else:
-            df = pd.concat([p.get_intensity_at_distance(self[channel_name][1])
-                            for p in self._particles])
+            df = pd.concat(
+                [
+                    p.get_intensity_at_distance(self[channel_name][1])
+                    for p in self._particles
+                ]
+            )
         self.unload(channel_name)
 
-        df['reference'] = self.reference
-        df['channel'] = channel_name
-        df['series_label'] = self.ID
+        df["reference"] = self.reference
+        df["channel"] = channel_name
+        df["series_label"] = self.ID
         return df
 
     @staticmethod
     def static_get_particles_intensity_at_distance(
-            series: 'Series', channel_name: str
-            ) -> pd.DataFrame:
+        series: "Series", channel_name: str
+    ) -> pd.DataFrame:
         return series.get_particles_intensity_at_distance(channel_name)
 
     def __str__(self):
@@ -212,9 +229,13 @@ class SeriesList(object):
 
     @staticmethod
     def __initialize_channels(
-            dpath: str, series: SeriesDict, channels: List[str],
-            inreg: Pattern, aspect: Optional[np.ndarray] = None,
-            ground_block_side: Optional[int] = None) -> SeriesDict:
+        dpath: str,
+        series: SeriesDict,
+        channels: List[str],
+        inreg: Pattern,
+        aspect: Optional[np.ndarray] = None,
+        ground_block_side: Optional[int] = None,
+    ) -> SeriesDict:
         for path in tqdm(channels, desc="initializing channels"):
             image_details = get_image_details(path, inreg)
             if image_details is None:
@@ -225,21 +246,27 @@ class SeriesList(object):
                 series[sid] = Series(sid, ground_block_side, aspect)
 
             if channel_name in series[sid]:
-                logging.warning("found multiple instances of channel "
-                                + f"{channel_name} in series {sid}. "
-                                + f"Skipping '{path}'.")
+                logging.warning(
+                    "found multiple instances of channel "
+                    + f"{channel_name} in series {sid}. "
+                    + f"Skipping '{path}'."
+                )
                 continue
 
-            series[sid].add_channel_from_tiff(
-                channel_name, os.path.join(dpath, path))
+            series[sid].add_channel_from_tiff(channel_name, os.path.join(dpath, path))
         return series
 
     @staticmethod
     def __initialize_masks(
-            ref: str, dpath: str, series: SeriesDict, masks: List[str],
-            inreg: Pattern, labeled: bool = False,
-            aspect: Optional[np.ndarray] = None,
-            ground_block_side: Optional[int] = None) -> SeriesDict:
+        ref: str,
+        dpath: str,
+        series: SeriesDict,
+        masks: List[str],
+        inreg: Pattern,
+        labeled: bool = False,
+        aspect: Optional[np.ndarray] = None,
+        ground_block_side: Optional[int] = None,
+    ) -> SeriesDict:
         for path in tqdm(masks, desc="initializing masks"):
             image_details = get_image_details(path, inreg)
             if image_details is None:
@@ -250,52 +277,65 @@ class SeriesList(object):
                 series[sid] = Series(sid, ground_block_side, aspect)
 
             if channel_name != ref:
-                logging.warning("skipping mask for channel "
-                                + f"'{channel_name}', "
-                                + f"not reference ({ref}).")
+                logging.warning(
+                    "skipping mask for channel "
+                    + f"'{channel_name}', "
+                    + f"not reference ({ref})."
+                )
                 continue
 
             series[sid].add_mask_from_tiff(
-                channel_name, os.path.join(dpath, path), labeled)
+                channel_name, os.path.join(dpath, path), labeled
+            )
         return series
 
     @staticmethod
     def from_directory(
-            dpath: str, inreg: Pattern, ref: Optional[str] = None,
-            maskfix: Tuple[str, str] = ("", ""),
-            aspect: Optional[np.ndarray] = None, labeled: bool = False,
-            ground_block_side: Optional[int] = None):
+        dpath: str,
+        inreg: Pattern,
+        ref: Optional[str] = None,
+        maskfix: Tuple[str, str] = ("", ""),
+        aspect: Optional[np.ndarray] = None,
+        labeled: bool = False,
+        ground_block_side: Optional[int] = None,
+    ):
 
         masks, channels = select_by_prefix_and_suffix(
-            dpath, find_re(dpath, inreg), *maskfix)
+            dpath, find_re(dpath, inreg), *maskfix
+        )
         series: SeriesDict = {}
 
         series = SeriesList.__initialize_channels(
-            dpath, series, channels, inreg, aspect, ground_block_side)
+            dpath, series, channels, inreg, aspect, ground_block_side
+        )
 
         if ref is not None:
             series = SeriesList.__initialize_masks(
-                ref, dpath, series, masks, inreg,
-                labeled, aspect, ground_block_side)
+                ref, dpath, series, masks, inreg, labeled, aspect, ground_block_side
+            )
 
         clen = len(set([len(s) for s in series.values()]))
-        assert 1 == clen, (
-            f"inconsistent number of channels in '{dpath}' series")
+        assert 1 == clen, f"inconsistent number of channels in '{dpath}' series"
 
         return SeriesList(os.path.basename(dpath), list(series.values()))
 
-    def extract_particles(self, particleClass: Type[Particle],
-                          channel_list: Optional[List[str]] = None,
-                          threads: int = 1) -> None:
+    def extract_particles(
+        self,
+        particleClass: Type[Particle],
+        channel_list: Optional[List[str]] = None,
+        threads: int = 1,
+    ) -> None:
         threads = ggc.args.check_threads(threads)
         if 1 == threads:
-            [series.init_particles(particleClass, channel_list)
-                for series in tqdm(self)]
+            [
+                series.init_particles(particleClass, channel_list)
+                for series in tqdm(self)
+            ]
         else:
             self.series = Parallel(n_jobs=threads, verbose=11)(
-                delayed(Series.extract_particles)(
-                    series, particleClass, channel_list)
-                for series in self)
+                delayed(Series.extract_particles)(series, particleClass, channel_list)
+                for series in self
+            )
 
     def export_particle_features(self, path: str) -> pd.DataFrame:
         fdata = []
@@ -310,7 +350,8 @@ class SeriesList(object):
                     total_size=[nucleus.total_size],
                     volume=[nucleus.volume],
                     surface=[nucleus.surface],
-                    shape=[nucleus.shape()])
+                    shape=[nucleus.shape()],
+                )
 
                 for name in nucleus.channel_names:
                     ndata[f"{name}_isum"] = [nucleus.get_intensity_sum(name)]
@@ -323,12 +364,17 @@ class SeriesList(object):
         return df
 
     def particle_feature_labels(self) -> Dict[str, str]:
-        dfu = dict(total_size='Size (vx)', volume='Volume (nm^3)',
-                   shape='Shape', surface='Surface (nm^2)',
-                   sizeXY='XY size (px)', sizeZ='Z size (px)')
+        dfu = dict(
+            total_size="Size (vx)",
+            volume="Volume (nm^3)",
+            shape="Shape",
+            surface="Surface (nm^2)",
+            sizeXY="XY size (px)",
+            sizeZ="Z size (px)",
+        )
         for channel in self.channel_names:
-            dfu[f'{channel}_isum'] = f'"{channel}" intensity sum (a.u.)'
-            dfu[f'{channel}_imean'] = f'"{channel}" intensity mean (a.u.)'
+            dfu[f"{channel}_isum"] = f'"{channel}" intensity sum (a.u.)'
+            dfu[f"{channel}_imean"] = f'"{channel}" intensity mean (a.u.)'
         return dfu
 
     def particles(self) -> Iterator[Particle]:
@@ -340,45 +386,61 @@ class SeriesList(object):
 
     def get_particle_single_px_stats(self) -> pd.DataFrame:
         box_stats = []
-        for channel_name in tqdm(self.channel_names,
-                                 desc='calculating channel box stats'):
+        for channel_name in tqdm(
+            self.channel_names, desc="calculating channel box stats"
+        ):
             odata = pd.DataFrame.from_dict(dict(value=[0], count=[0]))
-            odata.set_index('value')
+            odata.set_index("value")
             for series in self:
                 if series.particles is None:
                     continue
                 channel = series[channel_name][1]
                 for nucleus in series.particles:
                     odata = odata.add(
-                        fill_value=0,
-                        other=nucleus.get_intensity_value_counts(channel))
+                        fill_value=0, other=nucleus.get_intensity_value_counts(channel)
+                    )
             odata.sort_index(inplace=True)
-            odata['cumsum'] = np.cumsum(odata['count'])
+            odata["cumsum"] = np.cumsum(odata["count"])
 
             q1 = stat.quantile_from_counts(
-                odata['value'].values, odata['cumsum'].values, .25, True)
+                odata["value"].values, odata["cumsum"].values, 0.25, True
+            )
             median = stat.quantile_from_counts(
-                odata['value'].values, odata['cumsum'].values, .5, True)
+                odata["value"].values, odata["cumsum"].values, 0.5, True
+            )
             q3 = stat.quantile_from_counts(
-                odata['value'].values, odata['cumsum'].values, .75, True)
-            iqr = q3-q1
-            whisk_low = max(q1-iqr, odata['value'].min())
-            whisk_high = min(q3+iqr, odata['value'].max())
+                odata["value"].values, odata["cumsum"].values, 0.75, True
+            )
+            iqr = q3 - q1
+            whisk_low = max(q1 - iqr, odata["value"].min())
+            whisk_high = min(q3 + iqr, odata["value"].max())
             outliers = np.append(
-                odata['value'].values[odata['value'].values < whisk_low],
-                odata['value'].values[odata['value'].values > whisk_low])
+                odata["value"].values[odata["value"].values < whisk_low],
+                odata["value"].values[odata["value"].values > whisk_low],
+            )
 
-            box_stats.append(pd.DataFrame.from_dict(dict(
-                root=[self.name], channel=[channel_name],
-                vmin=[odata['value'].min()], vmax=[odata['value'].max()],
-                whisk_low=[whisk_low], whisk_high=[whisk_high],
-                q1=[q1], median=[median], q3=[q3],
-                n_outliers=[len(outliers)], outliers=[outliers]
-            )))
+            box_stats.append(
+                pd.DataFrame.from_dict(
+                    dict(
+                        root=[self.name],
+                        channel=[channel_name],
+                        vmin=[odata["value"].min()],
+                        vmax=[odata["value"].max()],
+                        whisk_low=[whisk_low],
+                        whisk_high=[whisk_high],
+                        q1=[q1],
+                        median=[median],
+                        q3=[q3],
+                        n_outliers=[len(outliers)],
+                        outliers=[outliers],
+                    )
+                )
+            )
         return pd.concat(box_stats)
 
-    def export_particle_tiffs(self, path: str, threads: int = 1,
-                              compressed: bool = False) -> None:
+    def export_particle_tiffs(
+        self, path: str, threads: int = 1, compressed: bool = False
+    ) -> None:
         threads = ggc.args.check_threads(threads)
         assert os.path.isdir(path)
         if 1 == threads:
@@ -386,81 +448,131 @@ class SeriesList(object):
                 series.export_particles(path, compressed)
         else:
             Parallel(n_jobs=threads, verbose=11)(
-                delayed(Series.static_export_particles)(
-                    series, path, compressed) for series in self)
+                delayed(Series.static_export_particles)(series, path, compressed)
+                for series in self
+            )
 
     def __retrieve_channel_intensity_at_distance(
-            self, channel_name: str, rdc: RadialDistanceCalculator,
-            threads: int = 1, reInit: bool = False) -> pd.DataFrame:
+        self,
+        channel_name: str,
+        rdc: RadialDistanceCalculator,
+        threads: int = 1,
+        reInit: bool = False,
+    ) -> pd.DataFrame:
         assert threads > 0
         if 1 == threads:
             channel_idata_dflist = []
             for s in self.series:
                 s.init_particles_distances(rdc, reInit)
                 channel_idata_dflist.append(
-                    s.get_particles_intensity_at_distance(channel_name))
+                    s.get_particles_intensity_at_distance(channel_name)
+                )
             return pd.concat(channel_idata_dflist)
         else:
             self.series = Parallel(n_jobs=threads, verbose=0)(
-                delayed(Series.static_init_particles_distances)(
-                    s, rdc, reInit) for s in self.series)
-            return pd.concat(Parallel(n_jobs=threads, verbose=0)(
-                delayed(Series.static_get_particles_intensity_at_distance)(
-                    s, channel_name) for s in self.series))
+                delayed(Series.static_init_particles_distances)(s, rdc, reInit)
+                for s in self.series
+            )
+            return pd.concat(
+                Parallel(n_jobs=threads, verbose=0)(
+                    delayed(Series.static_get_particles_intensity_at_distance)(
+                        s, channel_name
+                    )
+                    for s in self.series
+                )
+            )
 
     def __prep_single_channel_profile(
-            self, channel_name: ChannelName, rdc: RadialDistanceCalculator,
-            nbins: int = 200, deg: int = 5, threads: int = 1,
-            reInit: bool = False, normOverRef: bool = False
-            ) -> List[Tuple[ChannelName, ChannelRadialProfileData]]:
-        logging.info(f"extracting vx values for channel '{channel_name}'"
-                     + f" [threads:{threads}]")
+        self,
+        channel_name: ChannelName,
+        rdc: RadialDistanceCalculator,
+        nbins: int = 200,
+        deg: int = 5,
+        threads: int = 1,
+        reInit: bool = False,
+        normOverRef: bool = False,
+    ) -> List[Tuple[ChannelName, ChannelRadialProfileData]]:
+        logging.info(
+            f"extracting vx values for channel '{channel_name}'"
+            + f" [threads:{threads}]"
+        )
 
         channel_intensity_data = self.__retrieve_channel_intensity_at_distance(
-            channel_name, rdc, threads, reInit)
+            channel_name, rdc, threads, reInit
+        )
 
         logging.info("fitting polynomial curve")
-        profiles = [(channel_name, dict(
-            lamina_dist=stat.radial_fit(
-                channel_intensity_data['lamina_dist'],
-                channel_intensity_data['ivalue'],
-                nbins, deg),
-            center_dist=stat.radial_fit(
-                channel_intensity_data['center_dist'],
-                channel_intensity_data['ivalue'],
-                nbins, deg),
-            lamina_dist_norm=stat.radial_fit(
-                channel_intensity_data['lamina_dist_norm'],
-                channel_intensity_data['ivalue'],
-                nbins, deg)))]
+        profiles = [
+            (
+                channel_name,
+                dict(
+                    lamina_dist=stat.radial_fit(
+                        channel_intensity_data["lamina_dist"],
+                        channel_intensity_data["ivalue"],
+                        nbins,
+                        deg,
+                    ),
+                    center_dist=stat.radial_fit(
+                        channel_intensity_data["center_dist"],
+                        channel_intensity_data["ivalue"],
+                        nbins,
+                        deg,
+                    ),
+                    lamina_dist_norm=stat.radial_fit(
+                        channel_intensity_data["lamina_dist_norm"],
+                        channel_intensity_data["ivalue"],
+                        nbins,
+                        deg,
+                    ),
+                ),
+            )
+        ]
 
         if "ivalue_norm" in channel_intensity_data.columns:
             logging.info("fitting normalized polynomial curve")
-            profiles.append((f"{channel_name}_over_ref", dict(
-                lamina_dist=stat.radial_fit(
-                    channel_intensity_data['lamina_dist'],
-                    channel_intensity_data['ivalue_norm'],
-                    nbins, deg),
-                center_dist=stat.radial_fit(
-                    channel_intensity_data['center_dist'],
-                    channel_intensity_data['ivalue_norm'],
-                    nbins, deg),
-                lamina_dist_norm=stat.radial_fit(
-                    channel_intensity_data['lamina_dist_norm'],
-                    channel_intensity_data['ivalue_norm'],
-                    nbins, deg))))
+            profiles.append(
+                (
+                    f"{channel_name}_over_ref",
+                    dict(
+                        lamina_dist=stat.radial_fit(
+                            channel_intensity_data["lamina_dist"],
+                            channel_intensity_data["ivalue_norm"],
+                            nbins,
+                            deg,
+                        ),
+                        center_dist=stat.radial_fit(
+                            channel_intensity_data["center_dist"],
+                            channel_intensity_data["ivalue_norm"],
+                            nbins,
+                            deg,
+                        ),
+                        lamina_dist_norm=stat.radial_fit(
+                            channel_intensity_data["lamina_dist_norm"],
+                            channel_intensity_data["ivalue_norm"],
+                            nbins,
+                            deg,
+                        ),
+                    ),
+                )
+            )
 
         return profiles
 
     def get_radial_profiles(
-            self, rdc: RadialDistanceCalculator,
-            nbins: int = 200, deg: int = 5,
-            reInit: bool = False, threads: int = 1
-            ) -> RadialProfileData:
+        self,
+        rdc: RadialDistanceCalculator,
+        nbins: int = 200,
+        deg: int = 5,
+        reInit: bool = False,
+        threads: int = 1,
+    ) -> RadialProfileData:
         profiles: RadialProfileData = {}
         for channel_name in tqdm(self.channel_names, desc="channel"):
-            profiles.update(self.__prep_single_channel_profile(
-                            channel_name, rdc, nbins, deg, threads, reInit))
+            profiles.update(
+                self.__prep_single_channel_profile(
+                    channel_name, rdc, nbins, deg, threads, reInit
+                )
+            )
         return profiles
 
     def to_pickle(self, dpath: str, pickle_name: str = "radiant.pkl") -> None:
@@ -484,7 +596,7 @@ class SeriesList(object):
         if self.__current_series > len(self):
             raise StopIteration
         else:
-            return self[self.__current_series-1]
+            return self[self.__current_series - 1]
 
     def __iter__(self) -> Iterator[Series]:
         self.__current_series = 0

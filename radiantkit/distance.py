@@ -1,7 +1,7 @@
-'''
+"""
 @author: Gabriele Girelli
 @contact: gigi.ga90@gmail.com
-'''
+"""
 
 from enum import Enum
 import numpy as np  # type: ignore
@@ -14,16 +14,16 @@ from typing import Optional, Tuple
 
 
 class DistanceType(Enum):
-    LAMINA = 'lamina_dist'
-    CENTER = 'center_dist'
-    LAMINA_NORM = 'lamina_dist_norm'
+    LAMINA = "lamina_dist"
+    CENTER = "center_dist"
+    LAMINA_NORM = "lamina_dist_norm"
 
     @property
     def label(self) -> str:
         return dict(
             lamina_dist="Distance from lamina (nm)",
             center_dist="Distance from center (nm)",
-            lamina_dist_norm="Normalized distance from lamina (a.u.)"
+            lamina_dist_norm="Normalized distance from lamina (a.u.)",
         )[self.value]
 
 
@@ -32,6 +32,7 @@ class CenterType(Enum):
     CENTROID = "centroid"
     MAX = "max"
     QUANTILE = "quantile"
+
     @staticmethod
     def get_default():
         return CenterType.QUANTILE
@@ -42,9 +43,12 @@ class RadialDistanceCalculator(object):
     _center_type: CenterType
     _quantile: Optional[float] = None
 
-    def __init__(self, bundle_axes: Optional[str] = None,
-                 center_type: CenterType = CenterType.QUANTILE,
-                 q: Optional[float] = None):
+    def __init__(
+        self,
+        bundle_axes: Optional[str] = None,
+        center_type: CenterType = CenterType.QUANTILE,
+        q: Optional[float] = None,
+    ):
         super(RadialDistanceCalculator, self).__init__()
 
         if bundle_axes is not None:
@@ -67,37 +71,37 @@ class RadialDistanceCalculator(object):
 
     def quantile(self, img: Optional[Image] = None) -> float:
         if self._quantile is None:
-            assert img is not None, (
-                "either set a quantile manually or provide an image")
-            return 1-10**(-len(img.axes))
+            assert img is not None, "either set a quantile manually or provide an image"
+            return 1 - 10 ** (-len(img.axes))
         return self._quantile
 
     def __calc_contour_dist(self, B: Image) -> Image:
-        contour_dist = ImageGrayScale(distance_transform_edt(
-            B.offset(1).pixels, B.aspect)).offset(-1)
+        contour_dist = ImageGrayScale(
+            distance_transform_edt(B.offset(1).pixels, B.aspect)
+        ).offset(-1)
         contour_dist.aspect = B.aspect
         return contour_dist
 
-    def __calc_center_of_mass(self, contour_dist: Image,
-                              C: Image) -> Optional[Image]:
-        center_of_mass_coords = center_of_mass(
-            C.pixels[contour_dist.pixels != 0])
+    def __calc_center_of_mass(self, contour_dist: Image, C: Image) -> Optional[Image]:
+        center_of_mass_coords = center_of_mass(C.pixels[contour_dist.pixels != 0])
         center_dist = stat.array_cells_distance_to_point(
-            contour_dist, center_of_mass_coords, aspect=C.aspect)
+            contour_dist, center_of_mass_coords, aspect=C.aspect
+        )
         center_dist[0 == contour_dist.pixels] = np.inf
         return contour_dist.from_this(center_dist)
 
     def __calc_centroid(self, contour_dist: Image) -> Optional[Image]:
         centroid = np.array([c.mean() for c in np.nonzero(contour_dist)])
         center_dist = stat.array_cells_distance_to_point(
-            contour_dist, centroid, aspect=contour_dist.aspect)
+            contour_dist, centroid, aspect=contour_dist.aspect
+        )
         center_dist[0 == contour_dist.pixels] = np.inf
         return contour_dist.from_this(center_dist)
 
     def __calc_max(self, contour_dist: Image) -> Optional[Image]:
         center_dist = distance_transform_edt(
-            contour_dist.pixels != contour_dist.pixels.max(),
-            contour_dist.aspect)
+            contour_dist.pixels != contour_dist.pixels.max(), contour_dist.aspect
+        )
         center_dist[0 == contour_dist.pixels] = np.inf
         return contour_dist.from_this(center_dist)
 
@@ -117,8 +121,7 @@ class RadialDistanceCalculator(object):
         else:
             return img.copy()
 
-    def __unflatten(self, img: Image,
-                    shape: Tuple[int, ...]) -> Image:
+    def __unflatten(self, img: Image, shape: Tuple[int, ...]) -> Image:
         if self._flatten_axes is not None:
             return img.tile_to(shape)
         else:
@@ -126,8 +129,9 @@ class RadialDistanceCalculator(object):
 
     def __calc_center_dist(self, contour_dist, C) -> Optional[Image]:
         if self._center_type is CenterType.CENTER_OF_MASS:
-            assert C is not None, ("'center of mass' center definition "
-                                   + "requires a grayscale image")
+            assert C is not None, (
+                "'center of mass' center definition " + "requires a grayscale image"
+            )
             C2 = self.__flatten(C)
             return self.__calc_center_of_mass(contour_dist, C2)
         else:
@@ -139,8 +143,9 @@ class RadialDistanceCalculator(object):
                 return self.__calc_quantile(contour_dist)
         return None
 
-    def calc(self, B: ImageBinary, C: Optional[Image] = None
-             ) -> Optional[Tuple[np.ndarray, np.ndarray]]:
+    def calc(
+        self, B: ImageBinary, C: Optional[Image] = None
+    ) -> Optional[Tuple[np.ndarray, np.ndarray]]:
         B2 = self.__flatten(B)
 
         contour_dist = self.__calc_contour_dist(B2)

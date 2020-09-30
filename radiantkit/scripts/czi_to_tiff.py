@@ -1,7 +1,7 @@
-'''
+"""
 @author: Gabriele Girelli
 @contact: gigi.ga90@gmail.com
-'''
+"""
 
 import argparse
 import logging
@@ -18,15 +18,17 @@ from tqdm import tqdm  # type: ignore
 from typing import Iterable, List, Tuple
 
 logging.basicConfig(
-    level=logging.INFO, format='%(asctime)s '
-    + '[P%(process)s:%(module)s:%(funcName)s] %(levelname)s: %(message)s',
-    datefmt='%m/%d/%Y %I:%M:%S')
+    level=logging.INFO,
+    format="%(asctime)s "
+    + "[P%(process)s:%(module)s:%(funcName)s] %(levelname)s: %(message)s",
+    datefmt="%m/%d/%Y %I:%M:%S",
+)
 
 
-def init_parser(subparsers: argparse._SubParsersAction
-                ) -> argparse.ArgumentParser:
+def init_parser(subparsers: argparse._SubParsersAction) -> argparse.ArgumentParser:
     parser = subparsers.add_parser(
-        __name__.split('.')[-1], description=f'''
+        __name__.split(".")[-1],
+        description=f"""
 Convert a czi file into single channel tiff images.
 
 The output tiff file names follow the specified template (-T). A template is a
@@ -44,43 +46,69 @@ Hence, when writing the 3rd series of the "a488" channel, the output file name
 would be:"a488_003.tiff".
 
 Please, remember to escape the "$" when running from command line if using
-double quotes, i.e., "\\$". Alternatively, use single quotes, i.e., '$'.''',
+double quotes, i.e., "\\$". Alternatively, use single quotes, i.e., '$'.""",
         formatter_class=argparse.RawDescriptionHelpFormatter,
-        help="Convert a czi file into single channel tiff images.")
+        help="Convert a czi file into single channel tiff images.",
+    )
 
-    parser.add_argument('input', type=str,
-                        help='''Path to the czi file to convert.''')
+    parser.add_argument("input", type=str, help="""Path to the czi file to convert.""")
 
     parser.add_argument(
-        '--outdir', metavar="DIRPATH", type=str,
+        "--outdir",
+        metavar="DIRPATH",
+        type=str,
         help="""Path to output TIFF folder. Defaults to the input file
-        basename.""", default=None)
+        basename.""",
+        default=None,
+    )
     parser.add_argument(
-        '--fields', metavar="STRING", type=str,
+        "--fields",
+        metavar="STRING",
+        type=str,
         help="""Extract only fields of view specified as when printing a set
-        of pages. E.g., '1-2,5,8-9'.""", default=None)
+        of pages. E.g., '1-2,5,8-9'.""",
+        default=None,
+    )
     parser.add_argument(
-        '--channels', metavar="STRING", type=str,
+        "--channels",
+        metavar="STRING",
+        type=str,
         help="""Extract only specified channels. Specified as space-separated
-        channel names. E.g., 'dapi cy5 a488'.""", default=None, nargs="+")
+        channel names. E.g., 'dapi cy5 a488'.""",
+        default=None,
+        nargs="+",
+    )
 
     parser.add_argument(
-        '--version', action='version', version=f'{sys.argv[0]} {__version__}')
+        "--version", action="version", version=f"{sys.argv[0]} {__version__}"
+    )
 
     advanced = parser.add_argument_group("advanced arguments")
     advanced.add_argument(
-        '--template', metavar="STRING", type=str,
+        "--template",
+        metavar="STRING",
+        type=str,
         help="""Template for output file name. See main description for more
         details. Default: '{TNTFields.CHANNEL_NAME}_{TNTFields.SERIES_ID}'""",
-        default=f"{TNTFields.CHANNEL_NAME}_{TNTFields.SERIES_ID}")
+        default=f"{TNTFields.CHANNEL_NAME}_{TNTFields.SERIES_ID}",
+    )
     advanced.add_argument(
-        '--compressed', action='store_const', dest='doCompress',
-        const=True, default=False,
-        help='Write compressed TIFF as output.')
+        "--compressed",
+        action="store_const",
+        dest="doCompress",
+        const=True,
+        default=False,
+        help="Write compressed TIFF as output.",
+    )
     advanced.add_argument(
-        '-n', '--dry-run', action='store_const', dest='dry',
-        const=True, default=False,
-        help='Describe input data and stop.')
+        "-n",
+        "--dry-run",
+        action="store_const",
+        dest="dry",
+        const=True,
+        default=False,
+        help="Describe input data and stop.",
+    )
 
     parser.set_defaults(parse=parse_arguments, run=run)
 
@@ -93,8 +121,9 @@ def parse_arguments(args: argparse.Namespace) -> argparse.Namespace:
         args.outdir = os.path.join(os.path.dirname(args.input), args.outdir)
 
     assert os.path.isfile(args.input), f"input file not found: {args.input}"
-    assert not os.path.isfile(args.outdir), (
-        f"output directory cannot be a file: {args.outdir}")
+    assert not os.path.isfile(
+        args.outdir
+    ), f"output directory cannot be a file: {args.outdir}"
 
     if args.fields is not None:
         args.fields = MultiRange(args.fields)
@@ -117,27 +146,30 @@ def check_channels(channels: List[str], CZI: CziFile2) -> List[str]:
         if 0 == len(channels):
             logging.error("None of the specified channels was found.")
             sys.exit()
-        logging.info(
-            f"Converting only the following channels: {channels}")
+        logging.info(f"Converting only the following channels: {channels}")
     return channels
 
 
 def check_argument_compatibility(
-        args: argparse.Namespace, CZI: CziFile2) -> argparse.Namespace:
+    args: argparse.Namespace, CZI: CziFile2
+) -> argparse.Namespace:
     if not args.template.can_export_fields(CZI.field_count(), args.fields):
-        logging.critical("when exporting more than 1 field, the template "
-                         + f"must include the {TNTFields.SERIES_ID} seed. "
-                         + f"Got '{args.template.template}' instead.")
+        logging.critical(
+            "when exporting more than 1 field, the template "
+            + f"must include the {TNTFields.SERIES_ID} seed. "
+            + f"Got '{args.template.template}' instead."
+        )
         sys.exit()
 
     args.channels = check_channels(args.channels, CZI)
 
-    if not args.template.can_export_channels(
-            CZI.channel_count(), args.channels):
-        logging.critical("when exporting more than 1 channel, the template "
-                         + f"must include either {TNTFields.CHANNEL_ID} or "
-                         + f"{TNTFields.CHANNEL_NAME} seeds. "
-                         + f"Got '{args.template.template}' instead.")
+    if not args.template.can_export_channels(CZI.channel_count(), args.channels):
+        logging.critical(
+            "when exporting more than 1 channel, the template "
+            + f"must include either {TNTFields.CHANNEL_ID} or "
+            + f"{TNTFields.CHANNEL_NAME} seeds. "
+            + f"Got '{args.template.template}' instead."
+        )
         sys.exit()
 
     if args.fields is None:
@@ -146,39 +178,50 @@ def check_argument_compatibility(
     return args
 
 
-def field_generator(args: argparse.Namespace, CZI: CziFile2
-                    ) -> Iterable[Tuple[np.ndarray, str]]:
+def field_generator(
+    args: argparse.Namespace, CZI: CziFile2
+) -> Iterable[Tuple[np.ndarray, str]]:
     for field_id in args.fields:
-        if field_id-1 >= CZI.field_count():
-            logging.warning(f"Skipped field #{field_id} "
-                            + "(from specified field range, "
-                            + "not available in czi file).")
+        if field_id - 1 >= CZI.field_count():
+            logging.warning(
+                f"Skipped field #{field_id} "
+                + "(from specified field range, "
+                + "not available in czi file)."
+            )
             continue
-        for yieldedValue in CZI.get_channel_pixels(args, field_id-1):
+        for yieldedValue in CZI.get_channel_pixels(args, field_id - 1):
             channel_pixels, channel_id = yieldedValue
             if not list(CZI.get_channel_names())[channel_id] in args.channels:
                 continue
-            yield (channel_pixels, CZI.get_tiff_path(
-                args.template, channel_id, field_id-1))
+            yield (
+                channel_pixels,
+                CZI.get_tiff_path(args.template, channel_id, field_id - 1),
+            )
 
 
 def convert_to_tiff(args: argparse.Namespace, CZI: CziFile2) -> None:
-    export_total = float('inf')
+    export_total = float("inf")
     if args.fields is not None and args.channels is not None:
-        export_total = len(args.fields)*len(args.channels)
+        export_total = len(args.fields) * len(args.channels)
     elif args.fields is not None:
         export_total = len(args.fields)
     elif args.channels is not None:
         export_total = len(args.channels)
-    export_total = min(CZI.field_count()*CZI.channel_count(), export_total)
-    for (OI, opath) in tqdm(field_generator(args, CZI),
-                            total=export_total):
+    export_total = min(CZI.field_count() * CZI.channel_count(), export_total)
+    for (OI, opath) in tqdm(field_generator(args, CZI), total=export_total):
         imt.save_tiff(
-            os.path.join(args.outdir, opath), OI, imt.get_dtype(OI.max()),
-            args.doCompress, bundle_axes="TZYX",
-            resolution=(1e-6/CZI.get_axis_resolution("X"),
-                        1e-6/CZI.get_axis_resolution("Y")),
-            inMicrons=True, ResolutionZ=CZI.get_axis_resolution("Z")*1e6)
+            os.path.join(args.outdir, opath),
+            OI,
+            imt.get_dtype(OI.max()),
+            args.doCompress,
+            bundle_axes="TZYX",
+            resolution=(
+                1e-6 / CZI.get_axis_resolution("X"),
+                1e-6 / CZI.get_axis_resolution("Y"),
+            ),
+            inMicrons=True,
+            ResolutionZ=CZI.get_axis_resolution("Z") * 1e6,
+        )
 
 
 def run(args: argparse.Namespace) -> None:
@@ -200,7 +243,8 @@ def run(args: argparse.Namespace) -> None:
 
     if args.fields is not None:
         args.fields = list(args.fields)
-        logging.info("Converting only the following fields: "
-                     + f"{[x for x in args.fields]}")
+        logging.info(
+            "Converting only the following fields: " + f"{[x for x in args.fields]}"
+        )
 
     convert_to_tiff(args, CZI)

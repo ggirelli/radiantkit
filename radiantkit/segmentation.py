@@ -1,7 +1,7 @@
-'''
+"""
 @author: Gabriele Girelli
 @contact: gigi.ga90@gmail.com
-'''
+"""
 
 import logging
 from logging import Logger
@@ -13,14 +13,13 @@ from typing import Optional, Union
 
 
 class BinarizerSettings(object):
-    segmentation_type: const.SegmentationType = (
-        const.SegmentationType.get_default())
+    segmentation_type: const.SegmentationType = const.SegmentationType.get_default()
     do_global: bool = True
     global_closing: bool = True
     do_local: bool = True
     _local_side: int = 101
-    local_method: str = 'gaussian'
-    local_mode: str = 'constant'
+    local_method: str = "gaussian"
+    local_mode: str = "constant"
     local_closing: bool = True
     do_clear_XY_borders: bool = True
     do_clear_Z_borders: bool = False
@@ -57,19 +56,21 @@ class Binarizer(BinarizerSettings):
         return gmask
 
     def __do_local_threshold(self, img: ImageGrayScale) -> ImageBinary:
-        self.logger.info("applying adaptive threshold to neighbourhood "
-                         + f"with side of {self.local_side} px. "
-                         + f"({self.local_method}, {self.local_mode})")
+        self.logger.info(
+            "applying adaptive threshold to neighbourhood "
+            + f"with side of {self.local_side} px. "
+            + f"({self.local_method}, {self.local_mode})"
+        )
         local_mask = img.threshold_adaptive(
-            self.local_side, self.local_method, self.local_mode)
+            self.local_side, self.local_method, self.local_mode
+        )
 
         if self.local_closing:
             local_mask.close()
 
         return local_mask
 
-    def __combine_global_and_local_thresholds(
-            self, img: ImageGrayScale) -> ImageBinary:
+    def __combine_global_and_local_thresholds(self, img: ImageGrayScale) -> ImageBinary:
         mask_list = []
 
         if self.do_global:
@@ -84,9 +85,9 @@ class Binarizer(BinarizerSettings):
 
         return mask_list[0]
 
-    def __combine_with_2d_mask(self, M: ImageBinary,
-                               M2: Optional[Union[ImageBinary, ImageLabeled]]
-                               ) -> ImageBinary:
+    def __combine_with_2d_mask(
+        self, M: ImageBinary, M2: Optional[Union[ImageBinary, ImageLabeled]]
+    ) -> ImageBinary:
         if M2 is not None:
             logging.info("combining with 2D mask")
             M.logical_and(ImageBinary(M2.pixels))
@@ -105,15 +106,19 @@ class Binarizer(BinarizerSettings):
 
         return ImageBinary(L.pixels)
 
-    def run(self, img: ImageGrayScale,
-            mask2d: Optional[Union[ImageBinary, ImageLabeled]] = None
-            ) -> Union[ImageGrayScale, ImageBinary]:
+    def run(
+        self,
+        img: ImageGrayScale,
+        mask2d: Optional[Union[ImageBinary, ImageLabeled]] = None,
+    ) -> Union[ImageGrayScale, ImageBinary]:
         if not self.do_global and not self.do_local:
             self.logger.warning("no threshold applied.")
             return img
 
-        if self.segmentation_type in (const.SegmentationType.SUM_PROJECTION,
-                                      const.SegmentationType.MAX_PROJECTION):
+        if self.segmentation_type in (
+            const.SegmentationType.SUM_PROJECTION,
+            const.SegmentationType.MAX_PROJECTION,
+        ):
             self.logger.info(f"projecting over Z [{self.segmentation_type}].")
             img.z_project(const.ProjectionType(self.segmentation_type))
 

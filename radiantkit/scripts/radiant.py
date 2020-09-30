@@ -1,9 +1,9 @@
 # PYTHON_ARGCOMPLETE_OK
 
-'''
+"""
 @author: Gabriele Girelli
 @contact: gigi.ga90@gmail.com
-'''
+"""
 
 import argcomplete  # type: ignore
 import argparse
@@ -19,7 +19,7 @@ def default_parser(*args) -> None:
 
 def main():
     parser = argparse.ArgumentParser(
-        description=f'''
+        description=f"""
 Version:    {__version__}
 Author:     Gabriele Girelli
 Docs:       http://ggirelli.github.io/radiantkit
@@ -27,15 +27,18 @@ Code:       http://github.com/ggirelli/radiantkit
 
 Radial Image Analisys Toolkit (RadIAnTkit) is a Python3.6+ package containing
 tools for radial analysis of microscopy image.
-''',
-        formatter_class=argparse.RawDescriptionHelpFormatter)
+""",
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+    )
     parser.set_defaults(parse=default_parser)
-    parser.add_argument('--version', action='version',
-                        version=f'{sys.argv[0]} {__version__}')
+    parser.add_argument(
+        "--version", action="version", version=f"{sys.argv[0]} {__version__}"
+    )
 
     subparsers = parser.add_subparsers(
         title="sub-commands",
-        help='Access the help page for a sub-command with: sub-command -h')
+        help="Access the help page for a sub-command with: sub-command -h",
+    )
 
     scripts.config.init_parser(subparsers)
     scripts.czi_to_tiff.init_parser(subparsers)
