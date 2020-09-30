@@ -221,7 +221,10 @@ class NucleiList(object):
 
     @staticmethod
     def from_multiple_fields_of_view(
-        masklist: List[Tuple[str, str]], ipath: str, doRescale: bool = True, threads: int = 1
+        masklist: List[Tuple[str, str]],
+        ipath: str,
+        doRescale: bool = True,
+        threads: int = 1,
     ) -> "NucleiList":
         if 1 == threads:
             nuclei = []
