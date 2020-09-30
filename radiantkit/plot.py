@@ -460,9 +460,11 @@ class NuclearFeaturePlotter(object):
 
 
 def plot_nuclear_features(
-        obj_features: pd.DataFrame, spx_features: Optional[pd.DataFrame],
-        n_input_cols: int = 3, n_grid_cols: int = 3
-        ) -> FigureJSON:
+    obj_features: pd.DataFrame,
+    spx_features: Optional[pd.DataFrame],
+    n_input_cols: int = 3,
+    n_grid_cols: int = 3,
+) -> FigureJSON:
     nfp = NuclearFeaturePlotter(obj_features, spx_features)
     nfp.n_input_cols = n_input_cols
     nfp.n_grid_cols = n_grid_cols
