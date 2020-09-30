@@ -1,10 +1,15 @@
 # radiantkit
 
-![Python package](https://github.com/ggirelli/radiantkit/workflows/Python%20package/badge.svg?branch=main)
+![](https://img.shields.io/librariesio/github/ggirelli/radiantkit.svg?style=flat) ![](https://img.shields.io/github/license/ggirelli/radiantkit.svg?style=flat)  
+![](https://github.com/ggirelli/radiantkit/workflows/Python%20package/badge.svg?branch=main&event=push) ![PyPI - Python Version](https://img.shields.io/pypi/pyversions/radiantkit) ![PyPI - Format](https://img.shields.io/pypi/format/radiantkit) ![PyPI - Status](https://img.shields.io/pypi/status/radiantkit)  
+![](https://img.shields.io/github/release/ggirelli/radiantkit.svg?style=flat) ![](https://img.shields.io/github/release-date/ggirelli/radiantkit.svg?style=flat) ![](https://img.shields.io/github/languages/code-size/ggirelli/radiantkit.svg?style=flat)  
+![](https://img.shields.io/github/watchers/ggirelli/radiantkit.svg?label=Watch&style=social) ![](https://img.shields.io/github/stars/ggirelli/radiantkit.svg?style=social)
+
+[PyPi](https://pypi.org/project/radiantkit/) | [docs](https://ggirelli.github.io/radiantkit/)
 
 **Rad**ial **I**mage **An**alysis **T**ool**kit** (RadIAnTkit)j is a Python3.7/3.8 package containing tools for full-stack image analysis - from proprietary format conversion to tiff to cellular nuclei segmentation, from the selection of G1 nuclei to the measurement of radial patterns.
 
-## Features
+## Features (in short)
 
 * **Convert** proprietary microscope formats CZI (Zeiss) and ND2 (Nikon) to open-source TIFF format.
 * **Segment** cellular nuclei or other objects, in 2D or 3D, in an unsupervised manner.  
@@ -15,37 +20,23 @@ Then use the automatic segmentation to **estimate background** and foreground in
 and characterize them (e.g., peaks, inflection points, contrast).
 * Generate **snakemake-based workflows** for seamless integration into fully reproducible streamlined analysis pipelines.
 
+For more available features, check out our [docs](https://ggirelli.github.io/radiantkit/)!
+
 ## Requirements
 
-RadIAnTkit requires Python 3.7 or 3.8. In the [setup.py](https://github.com/ggirelli/radiantkit/blob/main/setup.py) file, you can find a list with all the Python package dependencies.
+`radiantkit` has been tested with Python 3.7, and 3.8. We recommend installing it using `pipx` (see [below](https://github.com/ggirelli/radiantkit#install)) to avoid dependency conflicts with other packages. The packages it depends on are listed in our [dependency graph](https://github.com/ggirelli/radiantkit/network/dependencies). We use [`poetry`](https://github.com/python-poetry/poetry) to handle our dependencies.
 
-(*optional*) The pipeline features require the snakemake package. As these are optional features, the automatic installation process does not install the package. To manually install it on your system, follow [this guide](https://snakemake.readthedocs.io/en/stable/getting_started/installation.html).
+## Install
 
-## Installation
+We recommend installing `radiantkit` using [`pipx`](https://github.com/pipxproject/pipx). Check how to install `pipx` [here](https://github.com/pipxproject/pipx#install-pipx) if you don't have it yet!
 
-We recommend using a python environment manager (our favorite one being conda) to install the package. Why is that? For each dependency, RadIAnTkit requires a specific version to avoid breaks due to non-retro compatible dependency upgrades. Requiring specific dependency versions can cause conflicts with other packages installed in the same environment. The easiest way to avoid such issues is to have a separate environment for the RadIAnTkit package, which can be easily achieved by following the steps below.
-
-### Setup using conda
-
-First, install conda if it is not already available on your system.  
-A full installation guide is available [here](https://docs.conda.io/projects/conda/en/latest/user-guide/install/#regular-installation), follow the instructions to install miniconda.
-
-Then, the setup requires only three steps:
-
-1) create an environment with Python3.6+,
-2) install pip in the environment,
-3) install the package with pip.
-
-```bash
-conda create --name radiantkit
-conda install pip
-pip install radiantkit
-```
+Once you have `pipx` ready on your system, install the latest stable release of `radiantkit` by running: `pipx install radiantkit`. If you see the stars (✨ 🌟 ✨), then the installation went well!
 
 ## Usage
 
-All RadIAnTkit tools are accessible from the terminal using the radiant keyword.  
-We are planning to add a pyQT5-based GUI.
+Run:
+
+All RadIAnTkit tools are accessible from the terminal using the `radiant` keyword.  
 
 ```bash
 usage: radiant [-h] [--version] sub_command ...
@@ -53,11 +44,8 @@ usage: radiant [-h] [--version] sub_command ...
 
 ## Contributing
 
-We welcome any contributions to RadIAnTkit.  
-Please, refer to our [contribution guidelines](https://github.com/ggirelli/radiantkit/blob/main/CONTRIBUTING.md) if this is your first time contributing!  
-Also, check out our [code of conduct](https://github.com/ggirelli/radiantkit/blob/main/CODE_OF_CONDUCT.md).
+We welcome any contributions to `radiantkit`. In short, we use [`black`](https://github.com/psf/black) to standardize code format. Any code change also needs to pass `mypy` checks. For more details, please refer to our [contribution guidelines](https://github.com/ggirelli/radiantkit/blob/main/CONTRIBUTING.md) if this is your first time contributing! Also, check out our [code of conduct](https://github.com/ggirelli/radiantkit/blob/main/CODE_OF_CONDUCT.md).
 
 ## License
 
-MIT License
-Copyright (c) 2020 Gabriele Girelli
+`MIT License - Copyright (c) 2020 Gabriele Girelli`
