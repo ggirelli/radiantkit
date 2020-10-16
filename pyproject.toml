@@ -40,4 +40,4 @@ requires = ["poetry>=0.12"]
 build-backend = "poetry.masonry.api"
 
 [tool.poetry.scripts]
-"radiant" = "fastx_barber.scripts.radiant:main"
+"radiant" = "radiantkit.scripts.radiant:main"
