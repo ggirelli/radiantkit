@@ -24,7 +24,7 @@ argcomplete = "^1.12.1"
 czifile = "^2019.7.2"
 ggc = "^0.0.3"
 jinja2 = "^2.11.2"
-joblib = "^0.16.0"
+joblib = ">=0.16,<0.18"
 matplotlib = "^3.3.2"
 nd2reader = "^3.2.3"
 numpy = "^1.19.2"
@@ -40,4 +40,4 @@ requires = ["poetry>=0.12"]
 build-backend = "poetry.masonry.api"
 
 [tool.poetry.scripts]
-"radiant" = "fastx_barber.scripts.radiant:main"
+"radiant" = "radiantkit.scripts.radiant:main"
