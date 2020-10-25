@@ -523,7 +523,7 @@ def save_tiff(
     img: np.ndarray,
     dtype: str,
     compressed: bool,
-    bundle_axes: str = "CTZYX",
+    bundle_axes: str = "ZYX",
     inMicrons: bool = False,
     ResolutionZ: Optional[float] = None,
     forImageJ: bool = False,
