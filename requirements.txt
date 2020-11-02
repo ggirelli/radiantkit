@@ -22,7 +22,7 @@ pims==0.5
 plotly==4.10.0
 pyparsing==2.4.7
 python-dateutil==2.8.1
-pytz==2020.1
+pytz==2020.4
 pywavelets==1.1.1
 retrying==1.3.3
 scikit-image==0.17.2
