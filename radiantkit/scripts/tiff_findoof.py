@@ -47,8 +47,7 @@ definition.
         "--range",
         type=float,
         metavar="NUMBER",
-        help="""Fraction of stack (middle-centered) for an in-focus field of
-        view. Default: .5""",
+        help="""Fraction of stack (middle-centered) for an in-focus field of view. Default: .5""",
         default=0.5,
     )
 

@@ -20,6 +20,8 @@ class ND2Reader2(ND2Reader):
         super(ND2Reader2, self).__init__(filename)
 
     def log_details(self, logger: Logger = getLogger()) -> None:
+        logger.info(f"Input: {self.filename}")
+
         logger.info(
             f"Found {self.field_count()} field(s) of view, "
             + f"with {self.channel_count()} channel(s)."
@@ -32,9 +34,7 @@ class ND2Reader2(ND2Reader):
                 f"XYZ size: {self.sizes['x']} x "
                 + f"{self.sizes['y']} x {self.sizes['z']}"
             )
-            resolutionZ: Set[float] = set()
-            for field_id in range(self.field_count()):
-                resolutionZ = resolutionZ.union(self.get_resolutionZ(field_id))
+            resolutionZ = self.get_resolutionZ()
             logger.info(f"Delta Z value(s): {set(resolutionZ)}")
         else:
             logger.info(f"XY size: {self.sizes['x']} x {self.sizes['y']}")
@@ -75,7 +75,13 @@ class ND2Reader2(ND2Reader):
         else:
             self.bundle_axes = "yxc" if "c" in self.axes else "yx"
 
-    def get_resolutionZ(self, field_id: int) -> Set[float]:
+    def get_resolutionZ(self) -> Set[float]:
+        resolution_z: Set[float] = set()
+        for field_id in range(self.field_count()):
+            resolution_z = resolution_z.union(self.get_field_resolutionZ(field_id))
+        return resolution_z
+
+    def get_field_resolutionZ(self, field_id: int) -> Set[float]:
         with open(self.filename, "rb") as ND2H:
             parser = ND2Parser(ND2H)
             Zdata = np.array(parser._raw_metadata.z_data)

@@ -10,15 +10,16 @@ import os
 import pims  # type: ignore
 from radiantkit.const import __version__
 from radiantkit.conversion import ND2Reader2
+from radiantkit.exception import enable_rich_assert
 import radiantkit.image as imt
 from radiantkit.string import MultiRange
 from radiantkit.string import TIFFNameTemplateFields as TNTFields
 from radiantkit.string import TIFFNameTemplate as TNTemplate
+from rich.console import Console
 from rich.logging import RichHandler  # type: ignore
 from rich.progress import track  # type: ignore
 import sys
-from tqdm import tqdm  # type: ignore
-from typing import List, Optional
+from typing import List, Optional, Tuple
 
 logging.basicConfig(
     level=logging.INFO,
@@ -27,6 +28,7 @@ logging.basicConfig(
 )
 
 
+@enable_rich_assert
 def init_parser(subparsers: argparse._SubParsersAction) -> argparse.ArgumentParser:
     parser = subparsers.add_parser(
         __name__.split(".")[-1],
@@ -130,8 +132,8 @@ def init_parser(subparsers: argparse._SubParsersAction) -> argparse.ArgumentPars
     return parser
 
 
+@enable_rich_assert
 def parse_arguments(args: argparse.Namespace) -> argparse.Namespace:
-
     if args.outdir is None:
         args.outdir = os.path.splitext(os.path.basename(args.input))[0]
         args.outdir = os.path.join(os.path.dirname(args.input), args.outdir)
@@ -154,23 +156,18 @@ def parse_arguments(args: argparse.Namespace) -> argparse.Namespace:
     return args
 
 
-def export_single_channel(
-    args: argparse.Namespace,
-    field_of_view: pims.frame.Frame,
-    opath: str,
-    metadata: dict,
-    resolutionZ: float = None,
-) -> None:
-    resolutionXY = (1 / metadata["pixel_microns"], 1 / metadata["pixel_microns"])
-    imt.save_tiff(
-        os.path.join(args.outdir, opath),
-        field_of_view,
-        imt.get_dtype(field_of_view.max()),
-        args.doCompress,
-        resolution=resolutionXY,
-        inMicrons=True,
-        ResolutionZ=resolutionZ,
-    )
+def get_resolution_Z(nd2_image: ND2Reader2, field_id: int, enforce: float) -> float:
+    if not nd2_image.is3D():
+        return 0.0
+
+    if enforce is not None:
+        return enforce
+
+    resolutionZ = nd2_image.get_field_resolutionZ(field_id)
+    assert 1 == len(
+        resolutionZ
+    ), f"Z resolution is not constant {resolutionZ} in field {field_id}."
+    return list(resolutionZ)[0]
 
 
 def get_field_from_2d_nd2(
@@ -188,17 +185,21 @@ def get_field_from_3d_nd2(
 get_field_fun = {2: get_field_from_2d_nd2, 3: get_field_from_3d_nd2}
 
 
-def get_resolution_Z(
-    nd2_image: ND2Reader2, field_id: int, enforce: float
-) -> Optional[float]:
-    if nd2_image.is3D():
-        if enforce is not None:
-            return enforce
-        else:
-            resolutionZ = nd2_image.get_resolutionZ(field_id)
-            assert 1 == len(resolutionZ), f"Z resolution is not constant: {resolutionZ}"
-            return list(resolutionZ)[0]
-    return None
+def export_single_channel(
+    field_of_view: pims.frame.Frame,
+    opath: str,
+    resolution: Tuple[Tuple[float, float], float] = ((0.0, 0.0), 0.0),
+    compress: bool = False,
+) -> None:
+    imt.save_tiff(
+        opath,
+        field_of_view,
+        imt.get_dtype(field_of_view.max()),
+        compress,
+        resolution=resolution[0],
+        inMicrons=True,
+        ResolutionZ=resolution[1],
+    )
 
 
 def export_multiple_channels(
@@ -206,44 +207,40 @@ def export_multiple_channels(
     field_id: int,
     args: argparse.Namespace,
     channels: Optional[List[str]] = None,
-    resolutionZ: Optional[float] = None,
+    resolutionZ: float = 0.0,
 ) -> None:
     channels = list(nd2_image.get_channel_names()) if channels is None else channels
     get_field = get_field_fun[3] if nd2_image.is3D() else get_field_fun[2]
-
     channels = nd2_image.select_channels(channels)
     for channel_id in range(nd2_image[field_id].shape[3]):
         channel_name = nd2_image.metadata["channels"][channel_id].lower()
-        if channel_name not in channels:
-            continue
-        export_single_channel(
-            args,
-            get_field(nd2_image, field_id, channel_id),
-            nd2_image.get_tiff_path(args.template, channel_id, field_id),
-            nd2_image.metadata,
-            resolutionZ,
-        )
+        if channel_name in channels:
+            export_single_channel(
+                get_field(nd2_image, field_id, channel_id),
+                os.path.join(
+                    args.outdir,
+                    nd2_image.get_tiff_path(args.template, channel_id, field_id),
+                ),
+                (
+                    (
+                        1 / float(nd2_image.metadata["pixel_microns"]),
+                        1 / float(nd2_image.metadata["pixel_microns"]),
+                    ),
+                    resolutionZ,
+                ),
+                args.doCompress,
+            )
 
 
 def export_field(
-    args: argparse.Namespace,
     nd2_image: ND2Reader2,
     field_id: int,
+    args: argparse.Namespace,
     channels: Optional[List[str]] = None,
 ) -> None:
     resolutionZ = get_resolution_Z(nd2_image, field_id, args.deltaZ)
-
     try:
-        if not nd2_image.hasMultiChannels():
-            export_single_channel(
-                args,
-                nd2_image[field_id],
-                nd2_image.get_tiff_path(args.template, 0, field_id),
-                nd2_image.metadata,
-                resolutionZ,
-            )
-        else:
-            export_multiple_channels(nd2_image, field_id, args, channels, resolutionZ)
+        export_multiple_channels(nd2_image, field_id, args, channels, resolutionZ)
     except ValueError as e:
         if "could not broadcast input array from shape" in e.args[0]:
             logging.error(
@@ -256,54 +253,27 @@ def export_field(
 
 
 def convert_to_tiff(args: argparse.Namespace, nd2_image: ND2Reader2) -> None:
-    if 1 == nd2_image.field_count():
-        nd2_image.set_axes_for_bundling()
-        export_field(args, nd2_image, 0, args.channels)
-    else:
-        nd2_image.iter_axes = "v"
-        nd2_image.set_axes_for_bundling()
+    nd2_image.iter_axes = "v"
+    nd2_image.set_axes_for_bundling()
 
-        if args.fields is not None:
-            args.fields = list(args.fields)
-            logging.info(
-                "Converting only the following fields: " + f"{[x for x in args.fields]}"
-            )
-            field_generator = tqdm(args.fields)
-        else:
-            field_generator = tqdm(range(1, nd2_image.sizes["v"] + 1))
-
-        for field_id in field_generator:
-            if field_id - 1 >= nd2_image.field_count():
-                logging.warning(
-                    f"Skipped field #{field_id}(from specified "
-                    + "field range, not available in nd2 file)."
-                )
-            else:
-                export_field(args, nd2_image, field_id - 1, args.channels)
-
-
-def check_Z_resolution(args: argparse.Namespace, nd2_image: ND2Reader2) -> None:
-    if 1 == nd2_image.field_count():
-        nd2_image.set_axes_for_bundling()
-        get_resolution_Z(nd2_image, 0, args.deltaZ)
-    else:
-        nd2_image.iter_axes = "v"
-        nd2_image.set_axes_for_bundling()
-
-        field_list = (
-            args.fields
-            if args.fields is not None
-            else range(1, nd2_image.sizes["v"] + 1)
+    if args.fields is not None:
+        args.fields = list(args.fields)
+        logging.info(
+            "Converting only the following fields: " + f"{[x for x in args.fields]}"
         )
-        field_generator = track(field_list, description="Checking deltaZ")
-        for field_id in field_generator:
-            if field_id - 1 >= nd2_image.field_count():
-                logging.warning(
-                    f"Skipped field #{field_id}(from specified "
-                    + "field range, not available in nd2 file)."
-                )
-            else:
-                get_resolution_Z(nd2_image, field_id, args.deltaZ)
+        field_list = args.fields
+    else:
+        field_list = range(1, nd2_image.sizes["v"] + 1)
+    field_generator = track(field_list, description="Converting field")
+
+    for field_id in field_generator:
+        if field_id - 1 >= nd2_image.field_count():
+            logging.warning(
+                f"Skipped field #{field_id}(from specified "
+                + "field range, not available in nd2 file)."
+            )
+        else:
+            export_field(nd2_image, field_id - 1, args, args.channels)
 
 
 def check_argument_compatibility(
@@ -320,7 +290,6 @@ def check_argument_compatibility(
     if args.channels is not None:
         channels = nd2_image.select_channels(args.channels)
         assert 0 != len(channels), "none of the specified channels was found."
-        logging.info(f"Converting only the following channels: {channels}")
 
     assert args.template.can_export_channels(
         nd2_image.channel_count(), args.channels
@@ -340,22 +309,49 @@ def check_argument_compatibility(
 
     if args.deltaZ is not None:
         logging.info(f"Enforcing a deltaZ of {args.deltaZ:.3f} um.")
-    check_Z_resolution(args, nd2_image)
+    else:
+        resolutionZ = nd2_image.get_resolutionZ()
+        assert 1 == len(resolutionZ), f"Z resolution is not constant {resolutionZ}."
 
     return args
 
 
+def add_log_file_handler(path: str, logger_name: str = "") -> None:
+    """Adds log file handler to logger.
+
+    By defaults, adds the handler to the root logger.
+
+    Arguments:
+        path {str} -- path to output log file
+
+    Keyword Arguments:
+        logger_name {str} -- logger name (default: {""})
+    """
+    assert not os.path.isdir(path)
+    log_dir = os.path.dirname(path)
+    assert os.path.isdir(log_dir) or "" == log_dir
+    fh = RichHandler(console=Console(file=open(path, mode="w+")), markup=True)
+    fh.setLevel(logging.INFO)
+    logging.getLogger(logger_name).addHandler(fh)
+    logging.info(f"[green]Log to[/]\t\t{path}")
+
+
+@enable_rich_assert
 def run(args: argparse.Namespace) -> None:
     nd2_image = ND2Reader2(args.input)
-    nd2_image.log_details()
-
     if args.dry:
+        nd2_image.log_details()
         sys.exit()
 
+    if not os.path.isdir(args.outdir):
+        os.mkdir(args.outdir)
+    add_log_file_handler(os.path.join(args.outdir, "nd2_to_tiff.log"))
+
+    nd2_image.log_details()
     args = check_argument_compatibility(args, nd2_image)
 
     logging.info(f"Output directory: '{args.outdir}'")
-    if not os.path.isdir(args.outdir):
-        os.mkdir(args.outdir)
 
     convert_to_tiff(args, nd2_image)
+
+    logging.info("Done. :thumbs_up: :smiley:")
