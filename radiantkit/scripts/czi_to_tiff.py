@@ -13,15 +13,15 @@ import radiantkit.image as imt
 from radiantkit.string import MultiRange
 from radiantkit.string import TIFFNameTemplateFields as TNTFields
 from radiantkit.string import TIFFNameTemplate as TNTemplate
+from rich.logging import RichHandler  # type: ignore
 import sys
 from tqdm import tqdm  # type: ignore
 from typing import Iterable, List, Tuple
 
 logging.basicConfig(
     level=logging.INFO,
-    format="%(asctime)s "
-    + "[P%(process)s:%(module)s:%(funcName)s] %(levelname)s: %(message)s",
-    datefmt="%m/%d/%Y %I:%M:%S",
+    format="%(message)s",
+    handlers=[RichHandler(markup=True, rich_tracebacks=True)],
 )
 
 

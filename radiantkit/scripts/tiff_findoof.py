@@ -14,6 +14,7 @@ import os
 import pandas as pd  # type: ignore
 from radiantkit.const import __version__
 from radiantkit import channel, path, plot, stat
+from rich.logging import RichHandler  # type: ignore
 import sys
 from tqdm import tqdm  # type: ignore
 from typing import List
@@ -22,9 +23,8 @@ mplt.use("ps")
 
 logging.basicConfig(
     level=logging.INFO,
-    format="%(asctime)s "
-    + "[P%(process)s:%(module)s:%(funcName)s] %(levelname)s: %(message)s",
-    datefmt="%m/%d/%Y %I:%M:%S",
+    format="%(message)s",
+    handlers=[RichHandler(markup=True, rich_tracebacks=True)],
 )
 
 

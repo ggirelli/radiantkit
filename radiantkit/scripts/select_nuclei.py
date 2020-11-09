@@ -7,7 +7,7 @@ import argparse
 import ggc  # type: ignore
 import joblib  # type: ignore
 import itertools
-import logging as log
+import logging
 import numpy as np  # type: ignore
 import os
 import pandas as pd  # type: ignore
@@ -19,15 +19,15 @@ from radiantkit.scripts.common import series as ra_series
 from radiantkit.series import Series, SeriesList
 from radiantkit import io, path, string
 import re
+from rich.logging import RichHandler  # type: ignore
 import sys
 from tqdm import tqdm  # type: ignore
 from typing import Dict, List, Pattern
 
-log.basicConfig(
-    level=log.INFO,
-    format="%(asctime)s "
-    + "[P%(process)s:%(module)s:%(funcName)s] %(levelname)s: %(message)s",
-    datefmt="%m/%d/%Y %I:%M:%S",
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(message)s",
+    handlers=[RichHandler(markup=True, rich_tracebacks=True)],
 )
 
 __OUTPUT__ = {"raw_data": "select_nuclei.data.tsv", "fit": "select_nuclei.fit.pkl"}
@@ -217,7 +217,7 @@ def parse_arguments(args: argparse.Namespace) -> argparse.Namespace:
     args.mask_suffix = string.add_leading_dot(args.mask_suffix)
 
     if not 0 != args.block_side % 2:
-        log.warning(
+        logging.warning(
             "changed ground block side from "
             + f"{args.block_side} to {args.block_side+1}"
         )
@@ -323,7 +323,7 @@ def remove_labels_from_series_list_masks(
 ) -> SeriesList:
     series_list.unload()
     if args.remove_labels:
-        log.info("removing discarded nuclei labels from masks")
+        logging.info("removing discarded nuclei labels from masks")
         if 1 == args.threads:
             for s in tqdm(series_list):
                 s = remove_labels_from_series_mask(
@@ -337,7 +337,7 @@ def remove_labels_from_series_list_masks(
                 for s in series_list
             )
         n_removed = len(nuclei) - len(list(itertools.chain(*passed.values())))
-        log.info(f"removed {n_removed} nuclei labels")
+        logging.info(f"removed {n_removed} nuclei labels")
     return series_list
 
 
@@ -345,13 +345,13 @@ def run(args: argparse.Namespace) -> None:
     confirm_arguments(args)
     args, series_list = ra_series.init_series_list(args)
 
-    log.info(f"extracting nuclei")
+    logging.info(f"extracting nuclei")
     series_list.extract_particles(Nucleus, [args.ref_channel], args.threads)
 
     nuclei = NucleiList(list(itertools.chain(*[s.particles for s in series_list])))
-    log.info(f"extracted {len(nuclei)} nuclei.")
+    logging.info(f"extracted {len(nuclei)} nuclei.")
 
-    log.info("selecting G1 nuclei.")
+    logging.info("selecting G1 nuclei.")
     nuclei_data, details = nuclei.select_G1(args.k_sigma, args.ref_channel)
     passed = extract_passing_nuclei_per_series(nuclei_data, args.inreg)
 
@@ -360,20 +360,20 @@ def run(args: argparse.Namespace) -> None:
     )
 
     np.set_printoptions(formatter={"float_kind": "{:.2E}".format})
-    log.info(f"size fit:\n{details['size']['fit']}")
+    logging.info(f"size fit:\n{details['size']['fit']}")
     np.set_printoptions(formatter={"float_kind": "{:.2E}".format})
-    log.info(f"size range: {details['size']['range']}")
+    logging.info(f"size range: {details['size']['range']}")
     np.set_printoptions(formatter={"float_kind": "{:.2E}".format})
-    log.info(f"intensity sum fit:\n{details['isum']['fit']}")
+    logging.info(f"intensity sum fit:\n{details['isum']['fit']}")
     np.set_printoptions(formatter={"float_kind": "{:.2E}".format})
-    log.info(f"intensity sum range: {details['isum']['range']}")
+    logging.info(f"intensity sum range: {details['isum']['range']}")
 
     tsv_path = os.path.join(args.input, __OUTPUT__["raw_data"])
-    log.info(f"writing nuclear data to:\n{tsv_path}")
+    logging.info(f"writing nuclear data to:\n{tsv_path}")
     nuclei_data.to_csv(tsv_path, sep="\t", index=False)
 
     pkl_path = os.path.join(args.input, __OUTPUT__["fit"])
-    log.info(f"writing fit data to:\n{pkl_path}")
+    logging.info(f"writing fit data to:\n{pkl_path}")
     with open(pkl_path, "wb") as POH:
         pickle.dump(details, POH)
 

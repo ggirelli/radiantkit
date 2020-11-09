@@ -8,13 +8,13 @@ import logging
 import os
 from radiantkit.const import __version__
 from radiantkit.pipeline import setup_workflow
+from rich.logging import RichHandler  # type: ignore
 import sys
 
 logging.basicConfig(
     level=logging.INFO,
-    format="%(asctime)s "
-    + "[P%(process)s:%(module)s:%(funcName)s] %(levelname)s: %(message)s",
-    datefmt="%m/%d/%Y %I:%M:%S",
+    format="%(message)s",
+    handlers=[RichHandler(markup=True, rich_tracebacks=True)],
 )
 
 
