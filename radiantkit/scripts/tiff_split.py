@@ -10,16 +10,15 @@ import numpy as np  # type: ignore
 import os
 from radiantkit.const import __version__
 from radiantkit import image as imt, io
-from typing import List
+from rich.logging import RichHandler  # type: ignore
 import sys
 from tqdm import tqdm  # type: ignore
-from typing import Iterable, Tuple
+from typing import Iterable, List, Tuple
 
 logging.basicConfig(
     level=logging.INFO,
-    format="%(asctime)s "
-    + "[P%(process)s:%(module)s:%(funcName)s] %(levelname)s: %(message)s",
-    datefmt="%m/%d/%Y %I:%M:%S",
+    format="%(message)s",
+    handlers=[RichHandler(markup=True, rich_tracebacks=True)],
 )
 
 
@@ -425,6 +424,6 @@ def run(args: argparse.Namespace) -> None:
     for sub_image in tiff_split(img, args.side, args.step, args.inverted):
         opath = os.path.join(args.outdir, f"{prefix}.sub{image_counter}{ext}")
         imt.save_tiff(
-            opath, sub_image, imt.get_dtype(sub_image.max()), compressed=False
+            opath, sub_image, compressed=False, dtype=imt.get_dtype(sub_image.max())
         )
         image_counter += 1

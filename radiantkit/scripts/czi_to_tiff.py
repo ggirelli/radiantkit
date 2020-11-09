@@ -13,15 +13,15 @@ import radiantkit.image as imt
 from radiantkit.string import MultiRange
 from radiantkit.string import TIFFNameTemplateFields as TNTFields
 from radiantkit.string import TIFFNameTemplate as TNTemplate
+from rich.logging import RichHandler  # type: ignore
 import sys
 from tqdm import tqdm  # type: ignore
 from typing import Iterable, List, Tuple
 
 logging.basicConfig(
     level=logging.INFO,
-    format="%(asctime)s "
-    + "[P%(process)s:%(module)s:%(funcName)s] %(levelname)s: %(message)s",
-    datefmt="%m/%d/%Y %I:%M:%S",
+    format="%(message)s",
+    handlers=[RichHandler(markup=True, rich_tracebacks=True)],
 )
 
 
@@ -212,8 +212,8 @@ def convert_to_tiff(args: argparse.Namespace, CZI: CziFile2) -> None:
         imt.save_tiff(
             os.path.join(args.outdir, opath),
             OI,
-            imt.get_dtype(OI.max()),
             args.doCompress,
+            dtype=imt.get_dtype(OI.max()),
             bundle_axes="TZYX",
             resolution=(
                 1e-6 / CZI.get_axis_resolution("X"),

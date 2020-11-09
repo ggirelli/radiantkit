@@ -12,13 +12,13 @@ from radiantkit import particle, series
 from radiantkit import io, string
 from radiantkit.scripts.common import series as ra_series
 import re
+from rich.logging import RichHandler  # type: ignore
 import sys
 
 logging.basicConfig(
     level=logging.INFO,
-    format="%(asctime)s "
-    + "[P%(process)s:%(module)s:%(funcName)s] %(levelname)s: %(message)s",
-    datefmt="%m/%d/%Y %I:%M:%S",
+    format="%(message)s",
+    handlers=[RichHandler(markup=True, rich_tracebacks=True)],
 )
 
 __OUTPUT__ = {

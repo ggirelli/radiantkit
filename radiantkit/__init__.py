@@ -4,7 +4,7 @@
 """
 
 from radiantkit.const import __version__
-from radiantkit import const, scripts
+from radiantkit import const, exception, scripts
 from radiantkit import conversion, segmentation
 from radiantkit import image, particle, series
 from radiantkit import path, plot, stat, string
@@ -13,6 +13,7 @@ from radiantkit import report, pipeline
 __all__ = [
     "__version__",
     "const",
+    "exception",
     "scripts",
     "conversion",
     "segmentation",
