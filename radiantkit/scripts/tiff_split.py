@@ -424,6 +424,6 @@ def run(args: argparse.Namespace) -> None:
     for sub_image in tiff_split(img, args.side, args.step, args.inverted):
         opath = os.path.join(args.outdir, f"{prefix}.sub{image_counter}{ext}")
         imt.save_tiff(
-            opath, sub_image, imt.get_dtype(sub_image.max()), compressed=False
+            opath, sub_image, compressed=False, dtype=imt.get_dtype(sub_image.max())
         )
         image_counter += 1

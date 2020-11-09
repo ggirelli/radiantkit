@@ -190,15 +190,16 @@ def export_single_channel(
     opath: str,
     resolution: Tuple[Tuple[float, float], float] = ((0.0, 0.0), 0.0),
     compress: bool = False,
+    pixel_type: int = 4,
 ) -> None:
     imt.save_tiff(
         opath,
         field_of_view,
-        imt.get_dtype(field_of_view.max()),
         compress,
         resolution=resolution[0],
         inMicrons=True,
         ResolutionZ=resolution[1],
+        extratags=[(339, "i", 1, pixel_type, True)],
     )
 
 
@@ -229,6 +230,7 @@ def export_multiple_channels(
                     resolutionZ,
                 ),
                 args.doCompress,
+                args.pixel_type,
             )
 
 
@@ -351,6 +353,7 @@ def run(args: argparse.Namespace) -> None:
     args = check_argument_compatibility(args, nd2_image)
 
     logging.info(f"Output directory: '{args.outdir}'")
+    args.pixel_type = nd2_image.pixel_type_tag
 
     convert_to_tiff(args, nd2_image)
 

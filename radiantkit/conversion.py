@@ -10,6 +10,7 @@ from nd2reader import ND2Reader  # type: ignore
 from nd2reader.parser import Parser as ND2Parser  # type: ignore
 import numpy as np  # type: ignore
 from radiantkit.string import TIFFNameTemplate as TNTemplate
+import six
 from typing import Iterable, List, Optional, Set, Tuple
 import warnings
 import xml.etree.ElementTree as ET
@@ -38,6 +39,12 @@ class ND2Reader2(ND2Reader):
             logger.info(f"Delta Z value(s): {set(resolutionZ)}")
         else:
             logger.info(f"XY size: {self.sizes['x']} x {self.sizes['y']}")
+
+    @property
+    def pixel_type_tag(self):
+        return self.parser._raw_metadata.image_attributes[six.b("SLxImageAttributes")][
+            six.b("ePixelType")
+        ]
 
     def field_count(self) -> int:
         if "v" not in self.axes:
