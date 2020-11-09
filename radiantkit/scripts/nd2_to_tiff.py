@@ -15,7 +15,7 @@ import radiantkit.image as imt
 from radiantkit.string import MultiRange
 from radiantkit.string import TIFFNameTemplateFields as TNTFields
 from radiantkit.string import TIFFNameTemplate as TNTemplate
-from rich.console import Console
+from rich.console import Console  # type: ignore
 from rich.logging import RichHandler  # type: ignore
 from rich.progress import track  # type: ignore
 import sys
