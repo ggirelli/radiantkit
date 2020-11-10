@@ -12,6 +12,8 @@ import os
 import pandas as pd  # type: ignore
 from radiantkit.const import __version__
 from radiantkit import channel, path, stat
+from radiantkit.exception import enable_rich_assert
+from radiantkit.io import add_log_file_handler
 from rich.logging import RichHandler  # type: ignore
 from rich.progress import track  # type: ignore
 import sys
@@ -24,6 +26,7 @@ logging.basicConfig(
 )
 
 
+@enable_rich_assert
 def init_parser(subparsers: argparse._SubParsersAction) -> argparse.ArgumentParser:
     parser = subparsers.add_parser(
         __name__.split(".")[-1],
@@ -40,11 +43,14 @@ definition.
     parser.add_argument("output", type=str, help="Path to output tsv file.")
 
     parser.add_argument(
-        "--range",
+        "--output",
+        type=str,
+        help="Path to output tsv file. Default: oof.tsv in input folder.",
+    )
+    parser.add_argument(
+        "--fraction",
         type=float,
-        metavar="NUMBER",
-        help="Fraction of stack (middle-centered) "
-        + "for an in-focus field of view. Default: .5",
+        help="Fraction of stack (middle-centered) for in-focus fields. Default: .5",
         default=0.5,
     )
 
@@ -98,60 +104,18 @@ definition.
         default=False,
         help="""Rename out-of-focus images by adding the '.old' suffix.""",
     )
-    advanced.add_argument(
-        "--silent",
-        action="store_const",
-        const=True,
-        default=False,
-        help="""Silent run.""",
-    )
 
     parser.set_defaults(parse=parse_arguments, run=run)
 
     return parser
 
 
+@enable_rich_assert
 def parse_arguments(args: argparse.Namespace) -> argparse.Namespace:
+    if args.output is None:
+        args.output = os.path.join(args.input, "oof.tsv")
     args.threads = cpu_count() if args.threads > cpu_count() else args.threads
     return args
-
-
-# def plot_profile(
-#     args: argparse.Namespace, series_data: pd.DataFrame, path: str
-# ) -> None:
-#     mplt.pyplot.figure(figsize=[12, 8])
-
-#     xmax = []
-#     ymax = []
-#     image_names = []
-#     for profile_data in series_data:
-#         image_names.append(os.path.basename(profile_data["path"].values[0]))
-#         xmax.append(max(profile_data["x"]))
-#         ymax.append(max(profile_data["y"]))
-#         mplt.pyplot.plot(profile_data["x"], profile_data["y"], linewidth=0.5)
-#     xmax = max(xmax)
-#     ymax = max(ymax)
-
-#     mplt.pyplot.xlabel("Z-slice index")
-#     if args.intensity_sum:
-#         mplt.pyplot.ylabel("Intensity sum [a.u.]")
-#     else:
-#         mplt.pyplot.ylabel("Gradient magnitude [a.u.]")
-#     mplt.pyplot.title("Focus analysis")
-
-#     mplt.pyplot.legend(
-#         image_names, bbox_to_anchor=(1.04, 1), loc="upper left", prop={"size": 6}
-#     )
-#     mplt.pyplot.subplots_adjust(right=0.75)
-
-#     mplt.pyplot.gca().axvline(
-#         x=xmax * args.range / 2, ymax=ymax, linestyle="--", color="k"
-#     )
-#     mplt.pyplot.gca().axvline(
-#         x=xmax - xmax * args.range / 2, ymax=ymax, linestyle="--", color="k"
-#     )
-
-#     plot.export(path)
 
 
 def describe_slices(
@@ -168,9 +132,7 @@ def describe_slices(
     return slice_descriptors
 
 
-def is_OOF(
-    args: argparse.Namespace, ipath: str, logger: logging.Logger
-) -> pd.DataFrame:
+def is_OOF(args: argparse.Namespace, ipath: str) -> pd.DataFrame:
     img = channel.ImageGrayScale.from_tiff(os.path.join(args.input, ipath))
 
     slice_descriptors = describe_slices(args, img)
@@ -184,14 +146,14 @@ def is_OOF(
     )
 
     max_slice_id = slice_descriptors.index(max(slice_descriptors))
-    halfrange = img.shape[0] * args.range / 2.0
+    halfrange = img.shape[0] * args.fraction / 2.0
     halfstack = img.shape[0] / 2.0
 
     response = "out-of-focus"
     if max_slice_id >= (halfstack - halfrange):
         if max_slice_id <= (halfstack + halfrange):
             response = "in-focus"
-    logger.info(f"{ipath} is {response}.")
+    logging.info(f"{ipath} is {response}.")
     profile_data["response"] = response
 
     if "out-of-focus" == response and args.rename:
@@ -200,34 +162,28 @@ def is_OOF(
     return profile_data
 
 
+@enable_rich_assert
 def run(args: argparse.Namespace) -> None:
-    logger = logging.getLogger()
-    if 1 == args.threads:
-        FH = logging.FileHandler(
-            filename=f"{os.path.splitext(args.output)[0]}.log", mode="w+"
-        )
-        FH.setLevel(logging.INFO)
-        logger.addHandler(FH)
-
-    if not os.path.isdir(args.input):
-        logger.error(f"image directory not found: '{args.input}'")
-        sys.exit()
-
-    imlist = path.find_re(args.input, args.inreg)
-
-    if 1 == args.threads:
-        t = (
-            imlist
-            if args.silent
-            else track(imlist, description=os.path.dirname(args.input))
-        )
-        series_data = [is_OOF(args, impath, logger) for impath in t]
+    assert os.path.isdir(args.input), f"image directory not found: '{args.input}'"
+    add_log_file_handler(os.path.join(args.input, "oof.log"))
+    logging.info(f"Input:\t{args.input}")
+    logging.info(f"Output:\t{args.output}")
+    logging.info(f"Fraction:\t{args.fraction}")
+    logging.info(f"Rename:\t{args.rename}")
+    if args.intensity_sum:
+        logging.info("Mode:\tintensity_sum")
     else:
-        verbosity = 11 if not args.silent else 0
-        series_data = Parallel(n_jobs=args.threads, verbose=verbosity)(
-            delayed(is_OOF)(args, impath, logger) for impath in imlist
-        )
+        logging.info("Mode:\tgradient_of_magnitude")
+    logging.info(f"Regexp:\t{args.inreg}")
+    logging.info(f"Threads:\t{args.threads}")
+
+    series_data = Parallel(n_jobs=args.threads)(
+        delayed(is_OOF)(args, impath)
+        for impath in track(path.find_re(args.input, args.inreg))
+    )
 
     pd.concat(series_data).to_csv(args.output, "\t", index=False)
     # if args.plot:
     #     plot_profile(args, series_data, f"{os.path.splitext(args.output)[0]}.pdf")
+
+    logging.info("Done. :thumbs_up: :smiley:")
