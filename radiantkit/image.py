@@ -511,7 +511,7 @@ class ImageGrayScale(Image):
 
     @staticmethod
     def from_tiff(
-        path: str, axes: Optional[str] = None, do_rescaling: bool = True
+        path: str, axes: Optional[str] = None, do_rescaling: bool = False
     ) -> "ImageGrayScale":
         img = ImageGrayScale(read_tiff(path), path, axes, do_rescaling)
         return img
