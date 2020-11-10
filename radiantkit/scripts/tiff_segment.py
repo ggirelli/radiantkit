@@ -306,7 +306,7 @@ def read_mask_2d(
     return mask2d
 
 
-def run_segmentation(
+def segment(
     args: argparse.Namespace, imgpath: str, imgdir: str, loglevel: str = "INFO"
 ) -> None:
     logging.getLogger().setLevel(loglevel)
@@ -394,9 +394,9 @@ def run(args: argparse.Namespace) -> None:
     logging.info(f"found {len(imglist)} image(s) to segment.")
     if 1 == args.threads:
         for imgpath in track(imglist):
-            run_segmentation(args, imgpath, args.input)
+            segment(args, imgpath, args.input)
     else:
         Parallel(n_jobs=args.threads, verbose=11)(
-            delayed(run_segmentation)(args, imgpath, args.input, logLevel)
+            delayed(segment)(args, imgpath, args.input, logLevel)
             for imgpath in imglist
         )
