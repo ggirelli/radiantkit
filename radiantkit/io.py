@@ -9,9 +9,10 @@ import os
 import logging
 from rich.console import Console  # type: ignore
 from rich.logging import RichHandler  # type: ignore
+from typing import Optional
 
 
-def add_log_file_handler(path: str, logger_name: str = "") -> None:
+def add_log_file_handler(path: str, logger_name: Optional[str] = None) -> None:
     """Adds log file handler to logger.
 
     By defaults, adds the handler to the root logger.
