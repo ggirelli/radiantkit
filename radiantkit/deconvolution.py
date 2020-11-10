@@ -49,8 +49,7 @@ def get_huygens_rescaling_factor(path: str) -> float:
 
 
 def get_deconwolf_rescaling_factor(path: str) -> float:
-    basename, ext = tuple(os.path.splitext(os.path.basename(path)))
-    path = os.path.join(os.path.dirname(path), f"{basename}.log.txt")
+    path = os.path.join(os.path.dirname(path), f"{os.path.basename(path)}.log.txt")
     if not os.path.exists(path):
         logging.debug(f"no deconwolf log found: '{path}'")
         return 1
