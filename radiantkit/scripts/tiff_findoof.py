@@ -39,7 +39,6 @@ definition.
     )
 
     parser.add_argument("input", type=str, help="Path to folder with tiff images.")
-    parser.add_argument("output", type=str, help="Path to output tsv file.")
 
     parser.add_argument(
         "--output",
