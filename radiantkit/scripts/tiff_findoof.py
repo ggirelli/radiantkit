@@ -166,20 +166,20 @@ def is_OOF(args: argparse.Namespace, ipath: str) -> pd.DataFrame:
 def run(args: argparse.Namespace) -> None:
     assert os.path.isdir(args.input), f"image directory not found: '{args.input}'"
     add_log_file_handler(os.path.join(args.input, "oof.log"))
-    logging.info(f"Input:\t{args.input}")
-    logging.info(f"Output:\t{args.output}")
+    logging.info(f"Input:\t\t{args.input}")
+    logging.info(f"Output:\t\t{args.output}")
     logging.info(f"Fraction:\t{args.fraction}")
-    logging.info(f"Rename:\t{args.rename}")
+    logging.info(f"Rename:\t\t{args.rename}")
     if args.intensity_sum:
-        logging.info("Mode:\tintensity_sum")
+        logging.info("Mode:\t\tintensity_sum")
     else:
-        logging.info("Mode:\tgradient_of_magnitude")
-    logging.info(f"Regexp:\t{args.inreg}")
+        logging.info("Mode:\t\tgradient_of_magnitude")
+    logging.info(f"Regexp:\t\t{args.inreg}")
     logging.info(f"Threads:\t{args.threads}")
 
-    series_data = Parallel(n_jobs=args.threads)(
+    series_data = Parallel(n_jobs=args.threads, verbose=11)(
         delayed(is_OOF)(args, impath)
-        for impath in track(path.find_re(args.input, args.inreg))
+        for impath in path.find_re(args.input, args.inreg)
     )
 
     pd.concat(series_data).to_csv(args.output, "\t", index=False)
