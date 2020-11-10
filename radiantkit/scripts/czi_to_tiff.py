@@ -236,7 +236,7 @@ def run(args: argparse.Namespace) -> None:
 
     if not os.path.isdir(args.outdir):
         os.mkdir(args.outdir)
-    add_log_file_handler(os.path.join(args.outdir, "nd2_to_tiff.log"))
+    add_log_file_handler(os.path.join(args.outdir, "nd2_to_tiff.log.txt"))
 
     czi_image.log_details()
     args = check_argument_compatibility(args, czi_image)

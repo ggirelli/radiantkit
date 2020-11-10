@@ -163,7 +163,7 @@ def is_OOF(args: argparse.Namespace, ipath: str) -> pd.DataFrame:
 @enable_rich_assert
 def run(args: argparse.Namespace) -> None:
     assert os.path.isdir(args.input), f"image directory not found: '{args.input}'"
-    add_log_file_handler(os.path.join(args.input, "oof.log"))
+    add_log_file_handler(os.path.join(args.input, "oof.log.txt"))
     logging.info(f"Input:\t\t{args.input}")
     logging.info(f"Output:\t\t{args.output}")
     logging.info(f"Fraction:\t{args.fraction}")
