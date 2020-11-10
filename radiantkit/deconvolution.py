@@ -43,9 +43,9 @@ def get_huygens_rescaling_factor(path: str) -> float:
     if 0 == len(factor):
         return 1
     elif 1 == len(factor):
-        return float(factor[0].strip().split(" ")[-1])
+        return 1 / float(factor[0].strip().split(" ")[-1])
     else:
-        return np.prod([float(f.strip().split(" ")[-1]) for f in factor])
+        return 1 / np.prod([float(f.strip().split(" ")[-1]) for f in factor])
 
 
 def get_deconwolf_rescaling_factor(path: str) -> float:
