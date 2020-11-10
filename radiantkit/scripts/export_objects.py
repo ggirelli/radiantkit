@@ -114,6 +114,14 @@ def init_parser(subparsers: argparse._SubParsersAction) -> argparse.ArgumentPars
         help="Use labels from masks instead of relabeling.",
     )
     advanced.add_argument(
+        "--no-rescaling",
+        action="store_const",
+        dest="do_rescaling",
+        const=False,
+        default=True,
+        help="Do not rescale image even if deconvolved.",
+    )
+    advanced.add_argument(
         "--uncompressed",
         action="store_const",
         dest="compressed",
