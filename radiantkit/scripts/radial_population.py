@@ -10,12 +10,13 @@ import os
 import pandas as pd  # type: ignore
 import pickle
 from radiantkit import const
-from radiantkit import distance, io, string
+from radiantkit import distance, string
 from radiantkit import particle, series
 from radiantkit.scripts.common import series as ra_series
 from radiantkit.scripts.common import args as ra_args
 import re
 from rich.logging import RichHandler  # type: ignore
+from rich.prompt import Confirm  # type: ignore
 import sys
 
 logging.basicConfig(
@@ -314,7 +315,7 @@ def confirm_arguments(args: argparse.Namespace) -> None:
     # settings_string =
     print_settings(args)
     if not args.do_all:
-        io.ask("Confirm settings and proceed?")
+        assert Confirm.ask("Confirm settings and proceed?")
 
     assert os.path.isdir(args.input), f"input folder not found: {args.input}"
 

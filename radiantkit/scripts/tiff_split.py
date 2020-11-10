@@ -9,9 +9,10 @@ import logging
 import numpy as np  # type: ignore
 import os
 from radiantkit.const import __version__
-from radiantkit import image as imt, io
+from radiantkit import image as imt
 from rich.logging import RichHandler  # type: ignore
 from rich.progress import track  # type: ignore
+from rich.prompt import Confirm  # type: ignore
 import sys
 from typing import Iterable, List, Tuple
 
@@ -373,7 +374,7 @@ def save_settings(args: argparse.Namespace) -> None:
 def confirm_arguments(args: argparse.Namespace) -> None:
     print_settings(args)
     if not args.do_all:
-        io.ask("Confirm settings and proceed?")
+        assert Confirm.ask("Confirm settings and proceed?")
     save_settings(args)
 
 

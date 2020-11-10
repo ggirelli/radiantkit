@@ -10,10 +10,11 @@ import numpy as np  # type: ignore
 import os
 from radiantkit.const import __version__
 from radiantkit import const, path, stat, string
-from radiantkit import channel, image, io, segmentation
+from radiantkit import channel, image, segmentation
 import re
 from rich.logging import RichHandler  # type: ignore
 from rich.progress import track  # type: ignore
+from rich.prompt import Confirm  # type: ignore
 import sys
 from typing import Optional
 
@@ -276,7 +277,7 @@ def confirm_arguments(args: argparse.Namespace) -> None:
     # settings_string =
     print_settings(args)
     if not args.do_all:
-        io.ask("Confirm settings and proceed?")
+        assert Confirm.ask("Confirm settings and proceed?")
 
     if not os.path.isfile(args.input):
         assert os.path.isdir(args.input), f"image folder not found: {args.input}"

@@ -16,10 +16,11 @@ from radiantkit.image import ImageBinary, ImageLabeled
 from radiantkit.particle import NucleiList, Nucleus
 from radiantkit.scripts.common import series as ra_series
 from radiantkit.series import Series, SeriesList
-from radiantkit import io, path, string
+from radiantkit import path, string
 import re
 from rich.logging import RichHandler  # type: ignore
 from rich.progress import track  # type: ignore
+from rich.prompt import Confirm  # type: ignore
 import sys
 from typing import Dict, List, Pattern
 
@@ -262,7 +263,7 @@ def confirm_arguments(args: argparse.Namespace) -> None:
     # settings_string =
     print_settings(args)
     if not args.do_all:
-        io.ask("Confirm settings and proceed?")
+        assert Confirm.ask("Confirm settings and proceed?")
 
     assert os.path.isdir(args.input), f"image folder not found: {args.input}"
 

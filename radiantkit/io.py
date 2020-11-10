@@ -9,22 +9,6 @@ import os
 import logging
 from rich.console import Console  # type: ignore
 from rich.logging import RichHandler  # type: ignore
-import sys
-
-
-def ask(q: str, elseAbort: bool = True) -> bool:
-    answer = ""
-    while not answer.lower() in ["y", "n"]:
-        print(f"{q} (y/n)")
-        answer = sys.stdin.readline().strip()
-        if "n" == answer.lower():
-            if elseAbort:
-                sys.exit("Aborted.\n")
-            else:
-                return False
-        elif "y" != answer.lower():
-            print("Please, answer 'y' or 'n'.\n")
-    return True
 
 
 def add_log_file_handler(path: str, logger_name: str = "") -> None:

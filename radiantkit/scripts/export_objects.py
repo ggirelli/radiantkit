@@ -9,10 +9,11 @@ import logging
 import os
 from radiantkit import const
 from radiantkit import particle, series
-from radiantkit import io, string
+from radiantkit import string
 from radiantkit.scripts.common import series as ra_series
 import re
 from rich.logging import RichHandler  # type: ignore
+from rich.prompt import Confirm  # type: ignore
 import sys
 
 logging.basicConfig(
@@ -204,7 +205,7 @@ def confirm_arguments(args: argparse.Namespace) -> None:
     # settings_string =
     print_settings(args)
     if not args.do_all:
-        io.ask("Confirm settings and proceed?")
+        assert Confirm.ask("Confirm settings and proceed?")
 
     assert os.path.isdir(args.input), f"image folder not found: {args.input}"
 
