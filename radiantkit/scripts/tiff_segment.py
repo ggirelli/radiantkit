@@ -5,8 +5,7 @@
 
 import logging
 import argparse
-from ggc.args import check_threads, export_settings  # type: ignore
-from joblib import delayed, Parallel  # type: ignore
+from joblib import cpu_count, delayed, Parallel  # type: ignore
 import numpy as np  # type: ignore
 import os
 from radiantkit.const import __version__
@@ -14,8 +13,8 @@ from radiantkit import const, path, stat, string
 from radiantkit import channel, image, io, segmentation
 import re
 from rich.logging import RichHandler  # type: ignore
+from rich.progress import track  # type: ignore
 import sys
-from tqdm import tqdm  # type: ignore
 from typing import Optional
 
 logging.basicConfig(
@@ -232,7 +231,7 @@ def parse_arguments(args: argparse.Namespace) -> argparse.Namespace:
             args.mask_2d
         ), f"2D mask folder not found, '{args.mask_2d}'"
 
-    args.threads = check_threads(args.threads)
+    args.threads = cpu_count() if args.threads > cpu_count() else args.threads
 
     loglvl = 20
     loglvl = logging.DEBUG if args.debug_mode else 20
@@ -274,7 +273,8 @@ def print_settings(args: argparse.Namespace, clear: bool = True) -> str:
 
 
 def confirm_arguments(args: argparse.Namespace) -> None:
-    settings_string = print_settings(args)
+    # settings_string =
+    print_settings(args)
     if not args.do_all:
         io.ask("Confirm settings and proceed?")
 
@@ -283,8 +283,8 @@ def confirm_arguments(args: argparse.Namespace) -> None:
     if not os.path.isdir(args.output):
         os.mkdir(args.output)
 
-    with open(os.path.join(args.output, "tiff_segment.config.txt"), "w+") as OH:
-        export_settings(OH, settings_string)
+    # with open(os.path.join(args.output, "tiff_segment.config.txt"), "w+") as OH:
+    #     export_settings(OH, settings_string)
 
 
 def read_mask_2d(
@@ -385,7 +385,7 @@ def run(args: argparse.Namespace) -> None:
 
     logging.info(f"found {len(imglist)} image(s) to segment.")
     if 1 == args.threads:
-        for imgpath in tqdm(imglist):
+        for imgpath in track(imglist):
             run_segmentation(args, imgpath, args.input)
     else:
         Parallel(n_jobs=args.threads, verbose=11)(

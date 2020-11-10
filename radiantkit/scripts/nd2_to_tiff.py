@@ -145,7 +145,6 @@ def parse_arguments(args: argparse.Namespace) -> argparse.Namespace:
 
     if args.fields is not None:
         args.fields = MultiRange(args.fields)
-        args.fields.zero_indexed = True
 
     if args.channels is not None:
         args.channels = [c.lower() for c in args.channels]

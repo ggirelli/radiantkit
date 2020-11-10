@@ -3,9 +3,8 @@
 @contact: gigi.ga90@gmail.com
 """
 
-import ggc  # type: ignore
 import itertools
-from joblib import delayed, Parallel  # type: ignore
+from joblib import cpu_count, delayed, Parallel  # type: ignore
 import logging
 import numpy as np  # type: ignore
 import os
@@ -18,7 +17,7 @@ from radiantkit.path import find_re, get_image_details
 from radiantkit.path import select_by_prefix_and_suffix
 from radiantkit.particle import Nucleus, Particle, ParticleFinder
 from radiantkit import stat
-from tqdm import tqdm  # type: ignore
+from rich.progress import track  # type: ignore
 from typing import Dict, List, Tuple
 from typing import Iterator, Optional, Pattern, Type
 
@@ -236,7 +235,7 @@ class SeriesList(object):
         aspect: Optional[np.ndarray] = None,
         ground_block_side: Optional[int] = None,
     ) -> SeriesDict:
-        for path in tqdm(channels, desc="initializing channels"):
+        for path in track(channels, description="initializing channels"):
             image_details = get_image_details(path, inreg)
             if image_details is None:
                 continue
@@ -267,7 +266,7 @@ class SeriesList(object):
         aspect: Optional[np.ndarray] = None,
         ground_block_side: Optional[int] = None,
     ) -> SeriesDict:
-        for path in tqdm(masks, desc="initializing masks"):
+        for path in track(masks, description="initializing masks"):
             image_details = get_image_details(path, inreg)
             if image_details is None:
                 continue
@@ -325,12 +324,10 @@ class SeriesList(object):
         channel_list: Optional[List[str]] = None,
         threads: int = 1,
     ) -> None:
-        threads = ggc.args.check_threads(threads)
+        threads = cpu_count() if threads > cpu_count() else threads
         if 1 == threads:
-            [
+            for series in track(self):
                 series.init_particles(particleClass, channel_list)
-                for series in tqdm(self)
-            ]
         else:
             self.series = Parallel(n_jobs=threads, verbose=11)(
                 delayed(Series.extract_particles)(series, particleClass, channel_list)
@@ -386,8 +383,8 @@ class SeriesList(object):
 
     def get_particle_single_px_stats(self) -> pd.DataFrame:
         box_stats = []
-        for channel_name in tqdm(
-            self.channel_names, desc="calculating channel box stats"
+        for channel_name in track(
+            self.channel_names, description="calculating channel box stats"
         ):
             odata = pd.DataFrame.from_dict(dict(value=[0], count=[0]))
             odata.set_index("value")
@@ -441,10 +438,10 @@ class SeriesList(object):
     def export_particle_tiffs(
         self, path: str, threads: int = 1, compressed: bool = False
     ) -> None:
-        threads = ggc.args.check_threads(threads)
+        threads = cpu_count() if threads > cpu_count() else threads
         assert os.path.isdir(path)
         if 1 == threads:
-            for series in tqdm(self, desc="series"):
+            for series in track(self, description="series"):
                 series.export_particles(path, compressed)
         else:
             Parallel(n_jobs=threads, verbose=11)(
@@ -490,7 +487,6 @@ class SeriesList(object):
         deg: int = 5,
         threads: int = 1,
         reInit: bool = False,
-        normOverRef: bool = False,
     ) -> List[Tuple[ChannelName, ChannelRadialProfileData]]:
         logging.info(
             f"extracting vx values for channel '{channel_name}'"
@@ -567,7 +563,7 @@ class SeriesList(object):
         threads: int = 1,
     ) -> RadialProfileData:
         profiles: RadialProfileData = {}
-        for channel_name in tqdm(self.channel_names, desc="channel"):
+        for channel_name in track(self.channel_names, description="channel"):
             profiles.update(
                 self.__prep_single_channel_profile(
                     channel_name, rdc, nbins, deg, threads, reInit

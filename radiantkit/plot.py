@@ -3,14 +3,14 @@
 @contact: gigi.ga90@gmail.com
 """
 
-from matplotlib.backends.backend_pdf import PdfPages  # type: ignore
-import matplotlib.pyplot as plt  # type: ignore
+# from matplotlib.backends.backend_pdf import PdfPages  # type: ignore
+# import matplotlib.pyplot as plt  # type: ignore
 import numpy as np  # type: ignore
 from numpy.polynomial.polynomial import Polynomial  # type: ignore
 import pandas as pd  # type: ignore
 import plotly.graph_objects as go  # type: ignore
 from plotly.subplots import make_subplots  # type: ignore
-from radiantkit import const, distance, path, stat
+from radiantkit import const, distance, stat
 from scipy.stats import gaussian_kde  # type: ignore
 from typing import Any, Dict, List, Optional, Set, Tuple
 
@@ -26,15 +26,15 @@ BaseProfilePlots = Dict[BaseName, DistanceProfilePlots]
 BasePlots = Dict[BaseName, FigureJSON]
 
 
-def export(opath: str, exp_format: str = "pdf") -> None:
-    assert exp_format in ["pdf", "png", "jpg"]
-    opath = path.add_extension(opath, f".{exp_format}")
-    if exp_format == "pdf":
-        pp = PdfPages(opath)
-        plt.savefig(pp, format=exp_format)
-        pp.close()
-    else:
-        plt.savefig(opath, format=exp_format)
+# def export(opath: str, exp_format: str = "pdf") -> None:
+#     assert exp_format in ["pdf", "png", "jpg"]
+#     opath = path.add_extension(opath, f".{exp_format}")
+#     if exp_format == "pdf":
+#         pp = PdfPages(opath)
+#         plt.savefig(pp, format=exp_format)
+#         pp.close()
+#     else:
+#         plt.savefig(opath, format=exp_format)
 
 
 def get_palette(N: int) -> List[str]:

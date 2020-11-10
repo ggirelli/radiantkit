@@ -4,8 +4,7 @@
 """
 
 import argparse
-from ggc.args import check_threads  # type: ignore
-from joblib import Parallel, delayed  # type: ignore
+from joblib import cpu_count, delayed, Parallel  # type: ignore
 import logging
 import os
 from radiantkit.const import __version__
@@ -111,8 +110,7 @@ def parse_arguments(args: argparse.Namespace) -> argparse.Namespace:
     if args.doCompress and args.doUncompress:
         logging.error("please, use either -c (compress) or -u (uncompress).")
         sys.exit()
-    args.threads = check_threads(args.threads)
-
+    args.threads = cpu_count() if args.threads > cpu_count() else args.threads
     args.process_multiple_files = False
     if os.path.isdir(args.input):
         args.process_multiple_files = True

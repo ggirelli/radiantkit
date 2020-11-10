@@ -16,8 +16,8 @@ from radiantkit.string import MultiRange
 from radiantkit.string import TIFFNameTemplateFields as TNTFields
 from radiantkit.string import TIFFNameTemplate as TNTemplate
 from rich.logging import RichHandler  # type: ignore
+from rich.progress import track  # type: ignore
 import sys
-from tqdm import tqdm  # type: ignore
 from typing import Iterable, List, Tuple
 
 logging.basicConfig(
@@ -131,7 +131,6 @@ def parse_arguments(args: argparse.Namespace) -> argparse.Namespace:
 
     if args.fields is not None:
         args.fields = MultiRange(args.fields)
-        args.fields.zero_indexed = True
 
     if args.channels is not None:
         args.channels = [c.lower() for c in args.channels]
@@ -186,7 +185,7 @@ def convert_to_tiff(args: argparse.Namespace, czi_image: CziFile2) -> None:
     export_total = min(
         czi_image.field_count() * czi_image.channel_count(), export_total
     )
-    for (OI, opath) in tqdm(field_generator(args, czi_image), total=export_total):
+    for (OI, opath) in track(field_generator(args, czi_image), total=int(export_total)):
         imt.save_tiff(
             os.path.join(args.outdir, opath),
             OI,

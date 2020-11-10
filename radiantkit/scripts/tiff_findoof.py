@@ -5,21 +5,17 @@
 
 
 import argparse
-from ggc.args import check_threads  # type: ignore
-from joblib import delayed, Parallel  # type: ignore
+from joblib import cpu_count, delayed, Parallel  # type: ignore
 import logging
-import matplotlib as mplt  # type: ignore
 import numpy as np  # type: ignore
 import os
 import pandas as pd  # type: ignore
 from radiantkit.const import __version__
-from radiantkit import channel, path, plot, stat
+from radiantkit import channel, path, stat
 from rich.logging import RichHandler  # type: ignore
+from rich.progress import track  # type: ignore
 import sys
-from tqdm import tqdm  # type: ignore
 from typing import List
-
-mplt.use("ps")
 
 logging.basicConfig(
     level=logging.INFO,
@@ -47,17 +43,18 @@ definition.
         "--range",
         type=float,
         metavar="NUMBER",
-        help="""Fraction of stack (middle-centered) for an in-focus field of view. Default: .5""",
+        help="Fraction of stack (middle-centered) "
+        + "for an in-focus field of view. Default: .5",
         default=0.5,
     )
 
-    parser.add_argument(
-        "--plot",
-        action="store_const",
-        const=True,
-        default=False,
-        help="""Generate pdf plot of intensity sum per Z-slice.""",
-    )
+    # parser.add_argument(
+    #     "--plot",
+    #     action="store_const",
+    #     const=True,
+    #     default=False,
+    #     help="""Generate pdf plot of intensity sum per Z-slice.""",
+    # )
 
     parser.add_argument(
         "--version",
@@ -115,46 +112,46 @@ definition.
 
 
 def parse_arguments(args: argparse.Namespace) -> argparse.Namespace:
-    args.threads = check_threads(args.threads)
+    args.threads = cpu_count() if args.threads > cpu_count() else args.threads
     return args
 
 
-def plot_profile(
-    args: argparse.Namespace, series_data: pd.DataFrame, path: str
-) -> None:
-    mplt.pyplot.figure(figsize=[12, 8])
+# def plot_profile(
+#     args: argparse.Namespace, series_data: pd.DataFrame, path: str
+# ) -> None:
+#     mplt.pyplot.figure(figsize=[12, 8])
 
-    xmax = []
-    ymax = []
-    image_names = []
-    for profile_data in series_data:
-        image_names.append(os.path.basename(profile_data["path"].values[0]))
-        xmax.append(max(profile_data["x"]))
-        ymax.append(max(profile_data["y"]))
-        mplt.pyplot.plot(profile_data["x"], profile_data["y"], linewidth=0.5)
-    xmax = max(xmax)
-    ymax = max(ymax)
+#     xmax = []
+#     ymax = []
+#     image_names = []
+#     for profile_data in series_data:
+#         image_names.append(os.path.basename(profile_data["path"].values[0]))
+#         xmax.append(max(profile_data["x"]))
+#         ymax.append(max(profile_data["y"]))
+#         mplt.pyplot.plot(profile_data["x"], profile_data["y"], linewidth=0.5)
+#     xmax = max(xmax)
+#     ymax = max(ymax)
 
-    mplt.pyplot.xlabel("Z-slice index")
-    if args.intensity_sum:
-        mplt.pyplot.ylabel("Intensity sum [a.u.]")
-    else:
-        mplt.pyplot.ylabel("Gradient magnitude [a.u.]")
-    mplt.pyplot.title("Focus analysis")
+#     mplt.pyplot.xlabel("Z-slice index")
+#     if args.intensity_sum:
+#         mplt.pyplot.ylabel("Intensity sum [a.u.]")
+#     else:
+#         mplt.pyplot.ylabel("Gradient magnitude [a.u.]")
+#     mplt.pyplot.title("Focus analysis")
 
-    mplt.pyplot.legend(
-        image_names, bbox_to_anchor=(1.04, 1), loc="upper left", prop={"size": 6}
-    )
-    mplt.pyplot.subplots_adjust(right=0.75)
+#     mplt.pyplot.legend(
+#         image_names, bbox_to_anchor=(1.04, 1), loc="upper left", prop={"size": 6}
+#     )
+#     mplt.pyplot.subplots_adjust(right=0.75)
 
-    mplt.pyplot.gca().axvline(
-        x=xmax * args.range / 2, ymax=ymax, linestyle="--", color="k"
-    )
-    mplt.pyplot.gca().axvline(
-        x=xmax - xmax * args.range / 2, ymax=ymax, linestyle="--", color="k"
-    )
+#     mplt.pyplot.gca().axvline(
+#         x=xmax * args.range / 2, ymax=ymax, linestyle="--", color="k"
+#     )
+#     mplt.pyplot.gca().axvline(
+#         x=xmax - xmax * args.range / 2, ymax=ymax, linestyle="--", color="k"
+#     )
 
-    plot.export(path)
+#     plot.export(path)
 
 
 def describe_slices(
@@ -219,7 +216,11 @@ def run(args: argparse.Namespace) -> None:
     imlist = path.find_re(args.input, args.inreg)
 
     if 1 == args.threads:
-        t = imlist if args.silent else tqdm(imlist, desc=os.path.dirname(args.input))
+        t = (
+            imlist
+            if args.silent
+            else track(imlist, description=os.path.dirname(args.input))
+        )
         series_data = [is_OOF(args, impath, logger) for impath in t]
     else:
         verbosity = 11 if not args.silent else 0
@@ -228,5 +229,5 @@ def run(args: argparse.Namespace) -> None:
         )
 
     pd.concat(series_data).to_csv(args.output, "\t", index=False)
-    if args.plot:
-        plot_profile(args, series_data, f"{os.path.splitext(args.output)[0]}.pdf")
+    # if args.plot:
+    #     plot_profile(args, series_data, f"{os.path.splitext(args.output)[0]}.pdf")

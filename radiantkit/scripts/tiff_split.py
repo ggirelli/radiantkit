@@ -11,8 +11,8 @@ import os
 from radiantkit.const import __version__
 from radiantkit import image as imt, io
 from rich.logging import RichHandler  # type: ignore
+from rich.progress import track  # type: ignore
 import sys
-from tqdm import tqdm  # type: ignore
 from typing import Iterable, List, Tuple
 
 logging.basicConfig(
@@ -325,10 +325,9 @@ def tiff_split(
         logging.error("cannot split images with more than 3 dimensions.")
         raise ValueError
 
-    with tqdm(range(n)) as pbar:
-        for (x_start, y_start) in xy_gen:
-            yield tsplit_fun[len(img.shape)](img, x_start, y_start, side)
-            pbar.update(1)
+    for (x_start, y_start) in track(xy_gen):
+        yield tsplit_fun[len(img.shape)](img, x_start, y_start, side)
+
     return
 
 

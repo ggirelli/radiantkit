@@ -1,12 +1,10 @@
 argcomplete==1.12.1
-biopython==1.78
 certifi==2020.11.8
 colorama==0.4.4
 commonmark==0.9.1
 cycler==0.10.0
 czifile==2019.7.2
 decorator==4.4.2
-ggc==0.0.3
 imagecodecs==2020.5.30; platform_system == "Windows"
 imageio==2.9.0
 importlib-metadata==2.0.0; python_version == "3.7"
@@ -34,7 +32,6 @@ scipy==1.5.4
 six==1.15.0
 slicerator==1.0.0
 tifffile==2020.10.1
-tqdm==4.51.0
 typing-extensions==3.7.4.3
 xmltodict==0.12.0
 zipp==3.4.0; python_version == "3.7"

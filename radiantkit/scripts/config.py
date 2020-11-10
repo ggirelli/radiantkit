@@ -4,9 +4,9 @@
 """
 
 import argparse
-from ggc.prompt import ask  # type: ignore
 import os
 from radiantkit.const import __version__
+from rich.prompt import Confirm  # type: ignore
 import sys
 
 
@@ -16,7 +16,7 @@ AVAILABLE_SHELLS = ("bash", "zsh", "tcsh", "fish")
 def init_parser(subparsers: argparse._SubParsersAction) -> argparse.ArgumentParser:
     parser = subparsers.add_parser(
         __name__.split(".")[-1],
-        description=f"""""",
+        description="",
         formatter_class=argparse.RawDescriptionHelpFormatter,
         help="Set config settings for RadIAnTkit.",
     )
@@ -84,7 +84,7 @@ def run_autocomplete(args: argparse.Namespace) -> None:
     CONFIG = os.path.expanduser(CONFIG)
 
     print(f"Command: {CMD}")
-    ask(
+    assert Confirm.ask(
         "Do you want to automatically add the aforementioned command "
         + f"to your '{CONFIG}' file?"
     )
@@ -101,7 +101,7 @@ def run_autocomplete(args: argparse.Namespace) -> None:
 
 
 def run_autocomplete_global(args: argparse.Namespace) -> None:
-    ask("This will turn on autocompletion for the curren use. Confirm?")
+    assert Confirm.ask("This will turn on autocompletion for the curren use. Confirm?")
     CMD = "activate-global-python-argcomplete --user"
     print(f"Executing: {CMD}")
     os.system(CMD)
