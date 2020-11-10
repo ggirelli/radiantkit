@@ -28,6 +28,8 @@ If you would like to see a new feature implemented in `radiantkit`, or to have a
 
 # Style your contributions
 
-We like to have `radiantkit` code styled according to the following style guides:
+We like to have `radiantkit` code styled with [`black`](https://github.com/psf/black) and checked with `mypy`. `mypy`, `flake8`, and `black` conforming checks are automatically ran on all pull requests through GitHub Actions.
 
-* **Python**: [PEP8](https://www.python.org/dev/peps/pep-0008/#a-foolish-consistency-is-the-hobgoblin-of-little-minds). *Please, note that `radiantkit` is implemented for Python3.6+. Some style guidelines changed from previous versions.*
+# Changing dependencies
+
+If your code changes `radiantkit` dependencies, we recommend to change them in the `pyproject.toml` file. See [poetry](https://github.com/python-poetry/poetry)'s documentation for more details on the format of the `pyproject.toml` file.
