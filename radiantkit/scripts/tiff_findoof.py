@@ -15,7 +15,6 @@ from radiantkit import channel, path, stat
 from radiantkit.exception import enable_rich_assert
 from radiantkit.io import add_log_file_handler
 from rich.logging import RichHandler  # type: ignore
-from rich.progress import track  # type: ignore
 import sys
 from typing import List
 
