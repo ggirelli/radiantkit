@@ -59,7 +59,7 @@ class ImageBase(object):
 
 class Image(ImageBase):
     _path_to_local: Optional[str] = None
-    _pixels: np.ndarray = np.array()
+    _pixels: np.ndarray
     _shape: Tuple[int]
 
     def __init__(
@@ -479,10 +479,10 @@ class ImageGrayScale(Image):
         pixels: np.ndarray,
         path: Optional[str] = None,
         axes: Optional[str] = None,
-        do_rescaling: bool = False,
+        do_rescale: bool = False,
     ):
         super(ImageGrayScale, self).__init__(pixels, path, axes)
-        if do_rescaling:
+        if do_rescale:
             self._rescale_factor = self.get_deconvolution_rescaling_factor()
 
     @property
@@ -511,9 +511,9 @@ class ImageGrayScale(Image):
 
     @staticmethod
     def from_tiff(
-        path: str, axes: Optional[str] = None, do_rescaling: bool = False
+        path: str, axes: Optional[str] = None, do_rescale: bool = False
     ) -> "ImageGrayScale":
-        img = ImageGrayScale(read_tiff(path), path, axes, do_rescaling)
+        img = ImageGrayScale(read_tiff(path), path, axes, do_rescale)
         return img
 
     def get_deconvolution_rescaling_factor(self) -> float:

@@ -23,7 +23,7 @@ class ChannelList(object):
     _shape: Optional[Tuple[int]] = None
     _ground_block_side: int = 11
     __current_channel: int = 0
-    _do_rescaling: bool = False
+    _do_rescale: bool = False
 
     def __init__(
         self,
@@ -98,12 +98,12 @@ class ChannelList(object):
         return self._mask
 
     @property
-    def do_rescaling(self) -> bool:
-        return self._do_rescaling
+    def do_rescale(self) -> bool:
+        return self._do_rescale
 
-    @do_rescaling.setter
-    def do_rescaling(self, do_rescaling: bool):
-        self._do_rescaling = do_rescaling
+    @do_rescale.setter
+    def do_rescale(self, do_rescale: bool):
+        self._do_rescale = do_rescale
 
     @staticmethod
     def from_dict(ID: int, channel_paths: Dict[str, str]) -> "ChannelList":
@@ -181,7 +181,7 @@ class ChannelList(object):
         self, name: str, path: str, replace: bool = False
     ) -> None:
         assert os.path.isfile(path)
-        img = ImageGrayScale.from_tiff(path, do_rescaling=self.do_rescaling)
+        img = ImageGrayScale.from_tiff(path, do_rescale=self.do_rescale)
         if self.aspect is not None:
             img.aspect = self.aspect
         img.unload()

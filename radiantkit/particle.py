@@ -206,9 +206,9 @@ class NucleiList(object):
 
     @staticmethod
     def from_field_of_view(
-        maskpath: str, rawpath: str, doRescale: bool = True
+        maskpath: str, rawpath: str, do_rescale: bool = True
     ) -> "NucleiList":
-        img = ImageGrayScale.from_tiff(rawpath, doRescale=doRescale)
+        img = ImageGrayScale.from_tiff(rawpath, do_rescale=do_rescale)
         mask = ImageBinary.from_tiff(maskpath)
         assert img.shape == mask.shape
 
@@ -223,7 +223,7 @@ class NucleiList(object):
     def from_multiple_fields_of_view(
         masklist: List[Tuple[str, str]],
         ipath: str,
-        doRescale: bool = True,
+        do_rescale: bool = True,
         threads: int = 1,
     ) -> "NucleiList":
         if 1 == threads:
@@ -233,7 +233,7 @@ class NucleiList(object):
                     NucleiList.from_field_of_view(
                         os.path.join(ipath, maskpath),
                         os.path.join(ipath, rawpath),
-                        doRescale,
+                        do_rescale,
                     )
                 )
         else:
@@ -241,7 +241,7 @@ class NucleiList(object):
                 joblib.delayed(NucleiList.from_field_of_view)(
                     os.path.join(ipath, maskpath),
                     os.path.join(ipath, rawpath),
-                    doRescale,
+                    do_rescale,
                 )
                 for rawpath, maskpath in masklist
             )

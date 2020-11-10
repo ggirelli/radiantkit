@@ -234,7 +234,7 @@ class SeriesList(object):
         inreg: Pattern,
         aspect: Optional[np.ndarray] = None,
         ground_block_side: Optional[int] = None,
-        do_rescaling: bool = False,
+        do_rescale: bool = False,
     ) -> SeriesDict:
         for path in track(channels, description="initializing channels"):
             image_details = get_image_details(path, inreg)
@@ -244,7 +244,7 @@ class SeriesList(object):
 
             if sid not in series:
                 series[sid] = Series(sid, ground_block_side, aspect)
-            series[sid].do_rescaling = do_rescaling
+            series[sid].do_rescale = do_rescale
 
             if channel_name in series[sid]:
                 logging.warning(
@@ -299,7 +299,7 @@ class SeriesList(object):
         aspect: Optional[np.ndarray] = None,
         labeled: bool = False,
         ground_block_side: Optional[int] = None,
-        do_rescaling: bool = False,
+        do_rescale: bool = False,
     ):
 
         masks, channels = select_by_prefix_and_suffix(
@@ -308,7 +308,7 @@ class SeriesList(object):
         series: SeriesDict = {}
 
         series = SeriesList.__initialize_channels(
-            dpath, series, channels, inreg, aspect, ground_block_side, do_rescaling
+            dpath, series, channels, inreg, aspect, ground_block_side, do_rescale
         )
 
         if ref is not None:

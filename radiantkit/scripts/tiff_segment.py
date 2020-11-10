@@ -309,7 +309,7 @@ def run_segmentation(
     logging.info(f"Segmenting image '{imgpath}'")
 
     img = channel.ImageGrayScale.from_tiff(
-        os.path.join(imgdir, imgpath), doRescale=args.do_rescaling
+        os.path.join(imgdir, imgpath), do_rescale=args.do_rescaling
     )
     logging.info(f"image axes: {img.axes}")
     logging.info(f"image shape: {img.shape}")
