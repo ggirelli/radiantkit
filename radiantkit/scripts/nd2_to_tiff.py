@@ -12,10 +12,10 @@ from radiantkit.const import __version__
 from radiantkit.conversion import ND2Reader2
 from radiantkit.exception import enable_rich_assert
 import radiantkit.image as imt
+from radiantkit.io import add_log_file_handler
 from radiantkit.string import MultiRange
 from radiantkit.string import TIFFNameTemplateFields as TNTFields
 from radiantkit.string import TIFFNameTemplate as TNTemplate
-from rich.console import Console  # type: ignore
 from rich.logging import RichHandler  # type: ignore
 from rich.progress import track  # type: ignore
 import sys
@@ -316,26 +316,6 @@ def check_argument_compatibility(
         assert 1 == len(resolutionZ), f"Z resolution is not constant {resolutionZ}."
 
     return args
-
-
-def add_log_file_handler(path: str, logger_name: str = "") -> None:
-    """Adds log file handler to logger.
-
-    By defaults, adds the handler to the root logger.
-
-    Arguments:
-        path {str} -- path to output log file
-
-    Keyword Arguments:
-        logger_name {str} -- logger name (default: {""})
-    """
-    assert not os.path.isdir(path)
-    log_dir = os.path.dirname(path)
-    assert os.path.isdir(log_dir) or "" == log_dir
-    fh = RichHandler(console=Console(file=open(path, mode="w+")), markup=True)
-    fh.setLevel(logging.INFO)
-    logging.getLogger(logger_name).addHandler(fh)
-    logging.info(f"[green]Log to[/]\t\t{path}")
 
 
 @enable_rich_assert

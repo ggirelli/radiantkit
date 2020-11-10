@@ -9,7 +9,9 @@ import numpy as np  # type: ignore
 import os
 from radiantkit.const import __version__
 from radiantkit.conversion import CziFile2
+from radiantkit.exception import enable_rich_assert
 import radiantkit.image as imt
+from radiantkit.io import add_log_file_handler
 from radiantkit.string import MultiRange
 from radiantkit.string import TIFFNameTemplateFields as TNTFields
 from radiantkit.string import TIFFNameTemplate as TNTemplate
@@ -25,6 +27,7 @@ logging.basicConfig(
 )
 
 
+@enable_rich_assert
 def init_parser(subparsers: argparse._SubParsersAction) -> argparse.ArgumentParser:
     parser = subparsers.add_parser(
         __name__.split(".")[-1],
@@ -115,6 +118,7 @@ double quotes, i.e., "\\$". Alternatively, use single quotes, i.e., '$'.""",
     return parser
 
 
+@enable_rich_assert
 def parse_arguments(args: argparse.Namespace) -> argparse.Namespace:
     if args.outdir is None:
         args.outdir = os.path.splitext(os.path.basename(args.input))[0]
@@ -138,11 +142,11 @@ def parse_arguments(args: argparse.Namespace) -> argparse.Namespace:
     return args
 
 
-def check_channels(channels: List[str], CZI: CziFile2) -> List[str]:
+def check_channels(channels: List[str], czi_image: CziFile2) -> List[str]:
     if channels is None:
-        channels = list(CZI.get_channel_names())
+        channels = list(czi_image.get_channel_names())
     else:
-        channels = CZI.select_channels(channels)
+        channels = czi_image.select_channels(channels)
         if 0 == len(channels):
             logging.error("None of the specified channels was found.")
             sys.exit()
@@ -150,56 +154,28 @@ def check_channels(channels: List[str], CZI: CziFile2) -> List[str]:
     return channels
 
 
-def check_argument_compatibility(
-    args: argparse.Namespace, CZI: CziFile2
-) -> argparse.Namespace:
-    if not args.template.can_export_fields(CZI.field_count(), args.fields):
-        logging.critical(
-            "when exporting more than 1 field, the template "
-            + f"must include the {TNTFields.SERIES_ID} seed. "
-            + f"Got '{args.template.template}' instead."
-        )
-        sys.exit()
-
-    args.channels = check_channels(args.channels, CZI)
-
-    if not args.template.can_export_channels(CZI.channel_count(), args.channels):
-        logging.critical(
-            "when exporting more than 1 channel, the template "
-            + f"must include either {TNTFields.CHANNEL_ID} or "
-            + f"{TNTFields.CHANNEL_NAME} seeds. "
-            + f"Got '{args.template.template}' instead."
-        )
-        sys.exit()
-
-    if args.fields is None:
-        args.fields = range(CZI.field_count())
-
-    return args
-
-
 def field_generator(
-    args: argparse.Namespace, CZI: CziFile2
+    args: argparse.Namespace, czi_image: CziFile2
 ) -> Iterable[Tuple[np.ndarray, str]]:
     for field_id in args.fields:
-        if field_id - 1 >= CZI.field_count():
+        if field_id - 1 >= czi_image.field_count():
             logging.warning(
                 f"Skipped field #{field_id} "
                 + "(from specified field range, "
                 + "not available in czi file)."
             )
             continue
-        for yieldedValue in CZI.get_channel_pixels(args, field_id - 1):
+        for yieldedValue in czi_image.get_channel_pixels(args, field_id - 1):
             channel_pixels, channel_id = yieldedValue
-            if not list(CZI.get_channel_names())[channel_id] in args.channels:
+            if not list(czi_image.get_channel_names())[channel_id] in args.channels:
                 continue
             yield (
                 channel_pixels,
-                CZI.get_tiff_path(args.template, channel_id, field_id - 1),
+                czi_image.get_tiff_path(args.template, channel_id, field_id - 1),
             )
 
 
-def convert_to_tiff(args: argparse.Namespace, CZI: CziFile2) -> None:
+def convert_to_tiff(args: argparse.Namespace, czi_image: CziFile2) -> None:
     export_total = float("inf")
     if args.fields is not None and args.channels is not None:
         export_total = len(args.fields) * len(args.channels)
@@ -207,8 +183,10 @@ def convert_to_tiff(args: argparse.Namespace, CZI: CziFile2) -> None:
         export_total = len(args.fields)
     elif args.channels is not None:
         export_total = len(args.channels)
-    export_total = min(CZI.field_count() * CZI.channel_count(), export_total)
-    for (OI, opath) in tqdm(field_generator(args, CZI), total=export_total):
+    export_total = min(
+        czi_image.field_count() * czi_image.channel_count(), export_total
+    )
+    for (OI, opath) in tqdm(field_generator(args, czi_image), total=export_total):
         imt.save_tiff(
             os.path.join(args.outdir, opath),
             OI,
@@ -216,30 +194,59 @@ def convert_to_tiff(args: argparse.Namespace, CZI: CziFile2) -> None:
             dtype=imt.get_dtype(OI.max()),
             bundle_axes="TZYX",
             resolution=(
-                1e-6 / CZI.get_axis_resolution("X"),
-                1e-6 / CZI.get_axis_resolution("Y"),
+                1e-6 / czi_image.get_axis_resolution("X"),
+                1e-6 / czi_image.get_axis_resolution("Y"),
             ),
             inMicrons=True,
-            ResolutionZ=CZI.get_axis_resolution("Z") * 1e6,
+            ResolutionZ=czi_image.get_axis_resolution("Z") * 1e6,
         )
 
 
+def check_argument_compatibility(
+    args: argparse.Namespace, czi_image: CziFile2
+) -> argparse.Namespace:
+    assert args.template.can_export_fields(czi_image.field_count(), args.fields), (
+        "when exporting more than 1 field, the template "
+        + f"must include the {TNTFields.SERIES_ID} seed. "
+        + f"Got '{args.template.template}' instead."
+    )
+
+    args.channels = check_channels(args.channels, czi_image)
+
+    assert args.template.can_export_channels(
+        czi_image.channel_count(), args.channels
+    ), (
+        "when exporting more than 1 channel, the template "
+        + f"must include either {TNTFields.CHANNEL_ID} or "
+        + f"{TNTFields.CHANNEL_NAME} seeds. "
+        + f"Got '{args.template.template}' instead."
+    )
+
+    if args.fields is None:
+        args.fields = range(czi_image.field_count())
+
+    return args
+
+
+@enable_rich_assert
 def run(args: argparse.Namespace) -> None:
-    CZI = CziFile2(args.input)
-    assert not CZI.isLive(), "time-course conversion images not implemented."
-    CZI.log_details()
+    czi_image = CziFile2(args.input)
     if args.dry:
+        czi_image.log_details()
         sys.exit()
 
-    args = check_argument_compatibility(args, CZI)
-
-    logging.info(f"Output directory: '{args.outdir}'")
     if not os.path.isdir(args.outdir):
         os.mkdir(args.outdir)
+    add_log_file_handler(os.path.join(args.outdir, "nd2_to_tiff.log"))
 
-    CZI.squeeze_axes("SCZYX")
-    reordered_axes = "CZYX" if 1 == CZI.field_count() else "SCZYX"
-    CZI.reorder_axes(reordered_axes)
+    czi_image.log_details()
+    args = check_argument_compatibility(args, czi_image)
+    assert not czi_image.isLive(), "time-course conversion images not implemented."
+
+    logging.info(f"Output directory: '{args.outdir}'")
+    czi_image.squeeze_axes("SCZYX")
+    reordered_axes = "CZYX" if 1 == czi_image.field_count() else "SCZYX"
+    czi_image.reorder_axes(reordered_axes)
 
     if args.fields is not None:
         args.fields = list(args.fields)
@@ -247,4 +254,6 @@ def run(args: argparse.Namespace) -> None:
             "Converting only the following fields: " + f"{[x for x in args.fields]}"
         )
 
-    convert_to_tiff(args, CZI)
+    convert_to_tiff(args, czi_image)
+
+    logging.info("Done. :thumbs_up: :smiley:")
