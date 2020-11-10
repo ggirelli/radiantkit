@@ -7,6 +7,7 @@ import logging
 import numpy as np  # type: ignore
 import os
 from radiantkit.const import default_axes, ProjectionType
+from radiantkit.deconvolution import get_deconvolution_rescaling_factor
 from radiantkit import stat
 from scipy import ndimage as ndi  # type: ignore
 import skimage as ski  # type: ignore
@@ -58,7 +59,7 @@ class ImageBase(object):
 
 class Image(ImageBase):
     _path_to_local: Optional[str] = None
-    _pixels: Optional[np.ndarray] = None
+    _pixels: np.ndarray = np.array()
     _shape: Tuple[int]
 
     def __init__(
@@ -465,6 +466,85 @@ class ImageBinary(Image):
         s = super(ImageBinary, self).__repr__()
         s += f"; Foreground voxels: {self.foreground}"
         s += f"; Background voxels: {self.background}"
+        return s
+
+
+class ImageGrayScale(Image):
+    _rescale_factor: float = 1.0
+    _background: Optional[float] = None
+    _foreground: Optional[float] = None
+
+    def __init__(
+        self,
+        pixels: np.ndarray,
+        path: Optional[str] = None,
+        axes: Optional[str] = None,
+        do_rescaling: bool = False,
+    ):
+        super(ImageGrayScale, self).__init__(pixels, path, axes)
+        if do_rescaling:
+            self._rescale_factor = self.get_deconvolution_rescaling_factor()
+
+    @property
+    def background(self):
+        return self._background
+
+    @property
+    def foreground(self):
+        return self._foreground
+
+    @property
+    def rescale_factor(self) -> float:
+        return self._rescale_factor
+
+    @rescale_factor.setter
+    def rescale_factor(self, new_factor: float) -> None:
+        self._pixels = self.pixels / self.rescale_factor
+        self._rescale_factor = new_factor
+        self._pixels = self.pixels * self.rescale_factor
+
+    @property
+    def pixels(self) -> np.ndarray:
+        if self._pixels is None and self._path_to_local is not None:
+            self.load_from_local()
+        return self._pixels / self._rescale_factor
+
+    @staticmethod
+    def from_tiff(
+        path: str, axes: Optional[str] = None, do_rescaling: bool = True
+    ) -> "ImageGrayScale":
+        img = ImageGrayScale(read_tiff(path), path, axes, do_rescaling)
+        return img
+
+    def get_deconvolution_rescaling_factor(self) -> float:
+        if self._path_to_local is None:
+            return 1.0
+        return get_deconvolution_rescaling_factor(self._path_to_local)
+
+    def threshold_global(self, thr: Union[int, float]) -> ImageBinary:
+        return ImageBinary(self.pixels > thr, doRebinarize=False)
+
+    def threshold_adaptive(
+        self, block_size: int, method: str, mode: str, *args, **kwargs
+    ) -> ImageBinary:
+        return ImageBinary(
+            threshold_adaptive(self.pixels, block_size, method, mode, *args, **kwargs),
+            doRebinarize=False,
+        )
+
+    def update_ground(
+        self, M: Union[ImageBinary, ImageLabeled], block_side: int = 11
+    ) -> None:
+        if isinstance(M, ImageLabeled):
+            M = M.binarize()
+        M = dilate(M.pixels, block_side)
+        self._foreground = np.median(self.pixels[M])
+        self._background = np.median(self.pixels[np.logical_not(M)])
+
+    def __repr__(self) -> str:
+        s = super(ImageGrayScale, self).__repr__()
+        if self.background is not None:
+            s += f"; Back/foreground: {(self.background, self.foreground)}"
         return s
 
 
