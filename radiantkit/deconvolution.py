@@ -52,6 +52,7 @@ def get_deconwolf_rescaling_factor(path: str) -> float:
     basename, ext = tuple(os.path.splitext(os.path.basename(path)))
     path = os.path.join(os.path.dirname(path), f"{basename}.log.txt")
     if not os.path.exists(path):
+        logging.info(f"no deconwolf log found: '{path}'")
         return 1
 
     with open(path, "r") as log:
