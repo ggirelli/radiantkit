@@ -27,7 +27,7 @@ def get_deconvolution_rescaling_factor(path: str, verbose: bool = False) -> floa
             logging.info(f"Deconwolf rescaling factor: {deconwolf_factor}")
             return deconwolf_factor
         else:
-            logging.info("no rescaling factor found.")
+            logging.info(f"no rescaling factor found for '{path}'.")
             return 1.0
 
 
@@ -50,7 +50,7 @@ def get_huygens_rescaling_factor(path: str) -> float:
 
 def get_deconwolf_rescaling_factor(path: str) -> float:
     basename, ext = tuple(os.path.splitext(os.path.basename(path)))
-    path = os.path.join(os.path.dirname(path), f"dw_{basename}.log.txt")
+    path = os.path.join(os.path.dirname(path), f"{basename}.log.txt")
     if not os.path.exists(path):
         return 1
 
