@@ -11,6 +11,8 @@ import os
 from radiantkit.const import __version__
 from radiantkit import const, path, stat, string
 from radiantkit import channel, image, segmentation
+from radiantkit.exception import enable_rich_assert
+from radiantkit.io import add_log_file_handler
 import re
 from rich.logging import RichHandler  # type: ignore
 from rich.progress import track  # type: ignore
@@ -25,6 +27,7 @@ logging.basicConfig(
 )
 
 
+@enable_rich_assert
 def init_parser(subparsers: argparse._SubParsersAction) -> argparse.ArgumentParser:
     parser = subparsers.add_parser(
         __name__.split(".")[-1],
@@ -211,6 +214,7 @@ Input images that have the specified prefix and suffix are not segmented.""",
     return parser
 
 
+@enable_rich_assert
 def parse_arguments(args: argparse.Namespace) -> argparse.Namespace:
     args.version = __version__
 
@@ -365,6 +369,7 @@ def run_segmentation(
         )
 
 
+@enable_rich_assert
 def run(args: argparse.Namespace) -> None:
     confirm_arguments(args)
     if os.path.isfile(args.input):
@@ -375,6 +380,8 @@ def run(args: argparse.Namespace) -> None:
         args.input = os.path.dirname(args.input)
     else:
         imglist = path.find_re(args.input, args.inreg)
+
+    add_log_file_handler(os.path.join(args.input, "tiff_segment.log.txt"))
 
     _, imglist = path.select_by_prefix_and_suffix(
         args.input, imglist, args.outprefix, args.outsuffix
