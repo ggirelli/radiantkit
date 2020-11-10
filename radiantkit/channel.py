@@ -6,6 +6,7 @@
 import logging
 import numpy as np  # type: ignore
 import os
+from radiantkit.deconvolution import get_deconvolution_rescaling_factor
 from radiantkit import image
 from radiantkit.image import Image, ImageBinary, ImageLabeled
 import sys
@@ -46,13 +47,13 @@ class ImageGrayScale(Image):
     ) -> "ImageGrayScale":
         img = ImageGrayScale(image.read_tiff(path), path, axes)
         if doRescale:
-            img.rescale_factor = img.get_huygens_rescaling_factor()
+            img.rescale_factor = img.get_deconvolution_rescaling_factor()
         return img
 
-    def get_huygens_rescaling_factor(self) -> float:
+    def get_deconvolution_rescaling_factor(self) -> float:
         if self._path_to_local is None:
             return 1.0
-        return image.get_huygens_rescaling_factor(self._path_to_local)
+        return get_deconvolution_rescaling_factor(self._path_to_local)
 
     def threshold_global(self, thr: Union[int, float]) -> ImageBinary:
         return ImageBinary(self.pixels > thr, doRebinarize=False)
@@ -206,9 +207,7 @@ class ChannelList(object):
             logging.error(f"{name} channel unavailable. Mask not added.")
             return
         if self.mask is not None and not replace:
-            logging.warning(
-                f"mask is already present." + "Use replace=True to replace it."
-            )
+            logging.warning("mask is already present. Use replace=True to replace it.")
         self.__init_or_check_shape(M.shape)
         self.__init_or_check_aspect(M.aspect)
         self._mask = M

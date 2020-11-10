@@ -468,23 +468,6 @@ class ImageBinary(Image):
         return s
 
 
-def get_huygens_rescaling_factor(path: str) -> float:
-    basename, ext = tuple(os.path.splitext(os.path.basename(path)))
-    path = os.path.join(os.path.dirname(path), f"{basename}_history.txt")
-    if not os.path.exists(path):
-        return 1
-    needle = "Stretched to Integer type"
-    with open(path, "r") as fhistory:
-        factor = fhistory.readlines()
-        factor = [x for x in factor if needle in x]
-    if 0 == len(factor):
-        return 1
-    elif 1 == len(factor):
-        return float(factor[0].strip().split(" ")[-1])
-    else:
-        return np.prod([float(f.strip().split(" ")[-1]) for f in factor])
-
-
 def get_dtype(imax: Union[int, float]) -> str:
     depths = [8, 16]
     for depth in depths:
