@@ -397,6 +397,5 @@ def run(args: argparse.Namespace) -> None:
             segment(args, imgpath, args.input)
     else:
         Parallel(n_jobs=args.threads, verbose=11)(
-            delayed(segment)(args, imgpath, args.input, logLevel)
-            for imgpath in imglist
+            delayed(segment)(args, imgpath, args.input, logLevel) for imgpath in imglist
         )

@@ -459,16 +459,27 @@ class NuclearFeaturePlotter(object):
         return self._fig.to_json()
 
 
-def plot_nuclear_features(
-    obj_features: pd.DataFrame,
-    spx_features: Optional[pd.DataFrame],
-    n_input_cols: int = 3,
-    n_grid_cols: int = 3,
+def plot_nuclear_features1(
+    # obj_features: pd.DataFrame,
+    # spx_features: Optional[pd.DataFrame],
+    # n_input_cols: int = 3,
+    # n_grid_cols: int = 3,
+    *args,
+    **kwargs,
 ) -> FigureJSON:
-    nfp = NuclearFeaturePlotter(obj_features, spx_features)
-    nfp.n_input_cols = n_input_cols
-    nfp.n_grid_cols = n_grid_cols
-    return nfp.plot()
+    print(args)
+    print(kwargs)
+    # nfp = NuclearFeaturePlotter(obj_features, spx_features)
+    # nfp.n_input_cols = n_input_cols
+    # nfp.n_grid_cols = n_grid_cols
+    # return nfp.plot()
+    import sys
+
+    sys.exit()
+
+
+def plot_nuclear_features(**data) -> FigureJSON:
+    pass
 
 
 class RadialProfilePlotter(object):
@@ -631,7 +642,11 @@ class RadialProfilePlotter(object):
     def __add_profile_roots(
         self, label: str, pfit: Polynomial, yranges: Dict[str, Tuple[float, float]]
     ) -> List[go.Scatter]:
-        data = []
+        data: List[go.Scatter] = []
+
+        if any([np.isnan(x) for x in pfit.coef]):
+            return data
+
         roots = stat.get_radial_profile_roots(pfit, self.npoints)
 
         if roots[0] is not None:
@@ -803,6 +818,13 @@ class RadialProfilePlotter(object):
         return plots
 
 
-def plot_profiles(poly_fit: Dict, raw_data: pd.DataFrame) -> BaseProfilePlots:
+def plot_condition_profiles(poly_fit: Dict, raw_data: pd.DataFrame) -> BaseProfilePlots:
     rpp = RadialProfilePlotter(raw_data, poly_fit)
     return rpp.plot_channel_profile_list()
+
+
+def plot_profiles(**data) -> Dict[str, BaseProfilePlots]:
+    pdata: Dict[str, BaseProfilePlots] = {}
+    for k, v in data.items():
+        pdata[k] = plot_condition_profiles(**v)
+    return pdata

@@ -176,8 +176,7 @@ def run(args: argparse.Namespace) -> None:
     logging.info(f"Threads:\t{args.threads}")
 
     series_data = Parallel(n_jobs=args.threads, verbose=11)(
-        delayed(is_OOF)(args, impath)
-        for impath in path.find_re(args.input, args.inreg)
+        delayed(is_OOF)(args, impath) for impath in path.find_re(args.input, args.inreg)
     )
 
     pd.concat(series_data).to_csv(args.output, "\t", index=False)
