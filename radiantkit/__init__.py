@@ -5,7 +5,7 @@
 
 from radiantkit.const import __version__
 from radiantkit import const, exception, scripts
-from radiantkit import conversion, segmentation
+from radiantkit import conversion, deconvolution, segmentation
 from radiantkit import image, particle, series
 from radiantkit import path, plot, stat, string
 from radiantkit import report, pipeline
@@ -16,6 +16,7 @@ __all__ = [
     "exception",
     "scripts",
     "conversion",
+    "deconvolution",
     "segmentation",
     "image",
     "particle",

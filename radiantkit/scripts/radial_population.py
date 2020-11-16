@@ -4,18 +4,19 @@
 """
 
 import argparse
-import ggc  # type: ignore
+from joblib import cpu_count  # type: ignore
 import logging
 import os
 import pandas as pd  # type: ignore
 import pickle
 from radiantkit import const
-from radiantkit import distance, io, string
+from radiantkit import distance, string
 from radiantkit import particle, series
 from radiantkit.scripts.common import series as ra_series
 from radiantkit.scripts.common import args as ra_args
 import re
 from rich.logging import RichHandler  # type: ignore
+from rich.prompt import Confirm  # type: ignore
 import sys
 
 logging.basicConfig(
@@ -35,7 +36,7 @@ __LABEL__ = "Radiality (population)"
 def init_parser(subparsers: argparse._SubParsersAction) -> argparse.ArgumentParser:
     parser = subparsers.add_parser(
         __name__.split(".")[-1],
-        description=f"""Generate average radial
+        description="""Generate average radial
         profiles for a cell population. Requires a folder containing tiff
         images with grayscale intensities and masks with segmented nuclei.
         We recommend deconvolving the grayscale images to obtain a better
@@ -141,14 +142,14 @@ def init_parser(subparsers: argparse._SubParsersAction) -> argparse.ArgumentPars
         type=int,
         metavar="NUMBER",
         default=200,
-        help=f"""Number of bins for polynomial fitting. Default: 200.""",
+        help="""Number of bins for polynomial fitting. Default: 200.""",
     )
     critical.add_argument(
         "--degree",
         type=int,
         metavar="NUMBER",
         default=5,
-        help=f"""Degree of polynomial fitting. Default: 5.""",
+        help="""Degree of polynomial fitting. Default: 5.""",
     )
 
     pickler = parser.add_argument_group("pickle arguments")
@@ -268,7 +269,7 @@ def parse_arguments(args: argparse.Namespace) -> argparse.Namespace:
         )
         args.block_side += 1
 
-    args.threads = ggc.args.check_threads(args.threads)
+    args.threads = cpu_count() if args.threads > cpu_count() else args.threads
 
     return args
 
@@ -311,15 +312,16 @@ Reference channel name : '{args.ref_channel}'
 
 
 def confirm_arguments(args: argparse.Namespace) -> None:
-    settings_string = print_settings(args)
+    # settings_string =
+    print_settings(args)
     if not args.do_all:
-        io.ask("Confirm settings and proceed?")
+        assert Confirm.ask("Confirm settings and proceed?")
 
     assert os.path.isdir(args.input), f"input folder not found: {args.input}"
 
-    settings_path = os.path.join(args.output, "radial_population.config.txt")
-    with open(settings_path, "w+") as OH:
-        ggc.args.export_settings(OH, settings_string)
+    # settings_path = os.path.join(args.output, "radial_population.config.txt")
+    # with open(settings_path, "w+") as OH:
+    #     ggc.args.export_settings(OH, settings_string)
 
 
 def export_profiles(
@@ -357,11 +359,11 @@ def run(args: argparse.Namespace) -> None:
     confirm_arguments(args)
     args, series_list = ra_series.init_series_list(args)
 
-    logging.info(f"extracting nuclei")
+    logging.info("extracting nuclei")
     series_list.extract_particles(particle.Nucleus, threads=args.threads)
     logging.info(f"extracted {len(list(series_list.particles()))} nuclei")
 
-    logging.info(f"generating radial profiles")
+    logging.info("generating radial profiles")
     rdc = distance.RadialDistanceCalculator(args.axes, args.center_type, args.quantile)
     profiles = series_list.get_radial_profiles(
         rdc, args.bins, args.degree, threads=args.threads

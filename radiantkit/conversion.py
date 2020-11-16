@@ -4,21 +4,30 @@
 """
 
 import argparse
+from collections import defaultdict
 from czifile import CziFile  # type: ignore
+import logging
 from logging import Logger, getLogger
 from nd2reader import ND2Reader  # type: ignore
 from nd2reader.parser import Parser as ND2Parser  # type: ignore
 import numpy as np  # type: ignore
 from radiantkit.string import TIFFNameTemplate as TNTemplate
 import six
-from typing import Iterable, List, Optional, Set, Tuple
+from typing import DefaultDict, Iterable, List, Optional, Set, Tuple
 import warnings
 import xml.etree.ElementTree as ET
 
 
 class ND2Reader2(ND2Reader):
+    _xy_resolution: float
+    _z_resolution: Set[float]
+    _dtype: str
+
     def __init__(self, filename):
         super(ND2Reader2, self).__init__(filename)
+        self._set_xy_resolution()
+        self._set_z_resolution()
+        self._set_proposed_dtype()
 
     def log_details(self, logger: Logger = getLogger()) -> None:
         logger.info(f"Input: {self.filename}")
@@ -35,16 +44,69 @@ class ND2Reader2(ND2Reader):
                 f"XYZ size: {self.sizes['x']} x "
                 + f"{self.sizes['y']} x {self.sizes['z']}"
             )
-            resolutionZ = self.get_resolutionZ()
-            logger.info(f"Delta Z value(s): {set(resolutionZ)}")
+            logger.info(f"XY resolution: {self.xy_resolution:.3f} um")
+            logger.info(f"Delta Z value(s): {self._z_resolution} um")
         else:
             logger.info(f"XY size: {self.sizes['x']} x {self.sizes['y']}")
+            logger.info(f"XY resolution: {self.xy_resolution} um")
+
+        logger.info(
+            f"Format: '{self.dtype}' [{self.pixel_type_tag}:{self.bits_per_pixel}]"
+        )
 
     @property
-    def pixel_type_tag(self):
+    def xy_resolution(self) -> float:
+        return self._xy_resolution
+
+    @property
+    def z_resolution(self) -> Set[float]:
+        return self._z_resolution
+
+    @property
+    def pixel_type_tag(self) -> int:
         return self.parser._raw_metadata.image_attributes[six.b("SLxImageAttributes")][
             six.b("ePixelType")
         ]
+
+    @property
+    def bits_per_pixel(self) -> int:
+        return self.parser._raw_metadata.image_attributes[six.b("SLxImageAttributes")][
+            six.b("uiBpcSignificant")
+        ]
+
+    @property
+    def dtype(self) -> str:
+        return self._dtype
+
+    def _set_xy_resolution(self):
+        self._xy_resolution = self.metadata["pixel_microns"]
+        if 0 == self._xy_resolution:
+            logging.warning("XY resolution set to 0! (possibly incorrect obj. setup)")
+
+    def _set_z_resolution(self):
+        self._z_resolution: Set[float] = set()
+        for field_id in range(self.field_count()):
+            self._z_resolution = self._z_resolution.union(
+                self.get_field_resolutionZ(field_id)
+            )
+
+    def _set_proposed_dtype(self) -> None:
+        dtype_tag: DefaultDict = defaultdict(lambda: "float")
+        dtype_tag[1] = "uint"
+        dtype_tag[2] = "int"
+        dtype = f"{dtype_tag[self.pixel_type_tag]}{self.bits_per_pixel}"
+        supported_dtypes = (
+            "uint8",
+            "uint16",
+            "uint32",
+            "int8",
+            "int16",
+            "int32",
+            "float8",
+            "float16",
+            "float32",
+        )
+        self._dtype = "float64" if dtype not in supported_dtypes else dtype
 
     def field_count(self) -> int:
         if "v" not in self.axes:
@@ -81,12 +143,6 @@ class ND2Reader2(ND2Reader):
             self.bundle_axes = "zyxc" if self.hasMultiChannels() else "zyx"
         else:
             self.bundle_axes = "yxc" if "c" in self.axes else "yx"
-
-    def get_resolutionZ(self) -> Set[float]:
-        resolution_z: Set[float] = set()
-        for field_id in range(self.field_count()):
-            resolution_z = resolution_z.union(self.get_field_resolutionZ(field_id))
-        return resolution_z
 
     def get_field_resolutionZ(self, field_id: int) -> Set[float]:
         with open(self.filename, "rb") as ND2H:

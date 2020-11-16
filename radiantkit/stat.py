@@ -4,7 +4,8 @@
 """
 
 from enum import Enum
-from matplotlib import pyplot as plt  # type: ignore
+
+# from matplotlib import pyplot as plt  # type: ignore
 import numpy as np  # type: ignore
 from numpy.polynomial.polynomial import Polynomial  # type: ignore
 import pandas as pd  # type: ignore
@@ -118,13 +119,13 @@ def gaussian_fit(xx: np.ndarray) -> Optional[np.ndarray]:
     return fitted_params
 
 
-def plot_gaussian_fit(xx: np.ndarray, fitted_params: np.ndarray) -> None:
-    assert 3 == len(fitted_params)
-    df = sp.stats.gaussian_kde(xx)
-    plt.plot(xx, df(xx), ".")
-    x2 = np.linspace(xx.min(), xx.max(), 1000)
-    plt.plot(x2, gaussian(x2, *fitted_params), "r")
-    plt.show()
+# def plot_gaussian_fit(xx: np.ndarray, fitted_params: np.ndarray) -> None:
+#     assert 3 == len(fitted_params)
+#     df = sp.stats.gaussian_kde(xx)
+#     plt.plot(xx, df(xx), ".")
+#     x2 = np.linspace(xx.min(), xx.max(), 1000)
+#     plt.plot(x2, gaussian(x2, *fitted_params), "r")
+#     plt.show()
 
 
 def sog(
@@ -161,14 +162,14 @@ def sog_fit(xx: np.ndarray) -> Optional[np.ndarray]:
     return fitted_params
 
 
-def plot_sog_fit(xx: np.ndarray, fitted_params: np.ndarray) -> None:
-    assert 6 == len(fitted_params)
-    df = sp.stats.gaussian_kde(xx)
-    plt.plot(xx, df(xx), ".")
-    x2 = np.linspace(xx.min(), xx.max(), 1000)
-    plt.plot(x2, gaussian(x2, *fitted_params[:3]), "r")
-    plt.plot(x2, gaussian(x2, *fitted_params[3:]), "g")
-    plt.show()
+# def plot_sog_fit(xx: np.ndarray, fitted_params: np.ndarray) -> None:
+#     assert 6 == len(fitted_params)
+#     df = sp.stats.gaussian_kde(xx)
+#     plt.plot(xx, df(xx), ".")
+#     x2 = np.linspace(xx.min(), xx.max(), 1000)
+#     plt.plot(x2, gaussian(x2, *fitted_params[:3]), "r")
+#     plt.plot(x2, gaussian(x2, *fitted_params[3:]), "g")
+#     plt.show()
 
 
 def fwhm(xx: np.ndarray) -> Tuple[float]:
@@ -314,7 +315,7 @@ def radial_fit(
 class RootType(Enum):
     MAXIMA = "max"
     MINIMA = "min"
-    BOTH = "both"
+    # BOTH = "both"
 
 
 def select_maxima_roots(roots: np.ndarray, poly: Polynomial, npoints: int):

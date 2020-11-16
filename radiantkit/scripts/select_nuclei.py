@@ -4,8 +4,7 @@
 """
 
 import argparse
-import ggc  # type: ignore
-import joblib  # type: ignore
+from joblib import cpu_count, delayed, Parallel  # type: ignore
 import itertools
 import logging
 import numpy as np  # type: ignore
@@ -17,11 +16,12 @@ from radiantkit.image import ImageBinary, ImageLabeled
 from radiantkit.particle import NucleiList, Nucleus
 from radiantkit.scripts.common import series as ra_series
 from radiantkit.series import Series, SeriesList
-from radiantkit import io, path, string
+from radiantkit import path, string
 import re
 from rich.logging import RichHandler  # type: ignore
+from rich.progress import track  # type: ignore
+from rich.prompt import Confirm  # type: ignore
 import sys
-from tqdm import tqdm  # type: ignore
 from typing import Dict, List, Pattern
 
 logging.basicConfig(
@@ -223,7 +223,7 @@ def parse_arguments(args: argparse.Namespace) -> argparse.Namespace:
         )
         args.block_side += 1
 
-    args.threads = ggc.args.check_threads(args.threads)
+    args.threads = cpu_count() if args.threads > cpu_count() else args.threads
 
     return args
 
@@ -260,14 +260,15 @@ def print_settings(args: argparse.Namespace, clear: bool = True) -> str:
 
 
 def confirm_arguments(args: argparse.Namespace) -> None:
-    settings_string = print_settings(args)
+    # settings_string =
+    print_settings(args)
     if not args.do_all:
-        io.ask("Confirm settings and proceed?")
+        assert Confirm.ask("Confirm settings and proceed?")
 
     assert os.path.isdir(args.input), f"image folder not found: {args.input}"
 
-    with open(os.path.join(args.input, "select_nuclei.config.txt"), "w+") as OH:
-        ggc.args.export_settings(OH, settings_string)
+    # with open(os.path.join(args.input, "select_nuclei.config.txt"), "w+") as OH:
+    #     ggc.args.export_settings(OH, settings_string)
 
 
 def extract_passing_nuclei_per_series(
@@ -325,13 +326,13 @@ def remove_labels_from_series_list_masks(
     if args.remove_labels:
         logging.info("removing discarded nuclei labels from masks")
         if 1 == args.threads:
-            for s in tqdm(series_list):
+            for s in track(series_list):
                 s = remove_labels_from_series_mask(
                     s, passed[s.ID], args.labeled, args.compressed
                 )
         else:
-            series_list.series = joblib.Parallel(n_jobs=args.threads, verbose=11)(
-                joblib.delayed(remove_labels_from_series_mask)(
+            series_list.series = Parallel(n_jobs=args.threads, verbose=11)(
+                delayed(remove_labels_from_series_mask)(
                     s, passed[s.ID], args.labeled, args.compressed
                 )
                 for s in series_list
@@ -345,7 +346,7 @@ def run(args: argparse.Namespace) -> None:
     confirm_arguments(args)
     args, series_list = ra_series.init_series_list(args)
 
-    logging.info(f"extracting nuclei")
+    logging.info("extracting nuclei")
     series_list.extract_particles(Nucleus, [args.ref_channel], args.threads)
 
     nuclei = NucleiList(list(itertools.chain(*[s.particles for s in series_list])))

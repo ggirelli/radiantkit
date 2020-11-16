@@ -9,3 +9,4 @@
 /*.egg-info
 
 poetry.lock
+requirements.txt

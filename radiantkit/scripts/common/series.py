@@ -30,7 +30,7 @@ def init_series_list(
                 pickled = True
 
     if series_list is None:
-        logging.info(f"parsing series folder")
+        logging.info("parsing series folder")
         series_list = series.SeriesList.from_directory(
             args.input,
             args.inreg,
@@ -39,6 +39,7 @@ def init_series_list(
             args.aspect,
             args.labeled,
             args.block_side,
+            args.do_rescaling,
         )
 
     logging.info(

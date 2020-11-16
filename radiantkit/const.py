@@ -3,7 +3,7 @@
 @contact: gigi.ga90@gmail.com
 """
 
-__version__ = "0.0.1"
+__version__ = "0.0.1.16Nov2020"
 
 from enum import Enum
 

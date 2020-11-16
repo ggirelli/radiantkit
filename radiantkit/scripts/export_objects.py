@@ -4,15 +4,16 @@
 """
 
 import argparse
-import ggc  # type: ignore
+from joblib import cpu_count  # type: ignore
 import logging
 import os
 from radiantkit import const
 from radiantkit import particle, series
-from radiantkit import io, string
+from radiantkit import string
 from radiantkit.scripts.common import series as ra_series
 import re
 from rich.logging import RichHandler  # type: ignore
+from rich.prompt import Confirm  # type: ignore
 import sys
 
 logging.basicConfig(
@@ -113,6 +114,14 @@ def init_parser(subparsers: argparse._SubParsersAction) -> argparse.ArgumentPars
         help="Use labels from masks instead of relabeling.",
     )
     advanced.add_argument(
+        "--no-rescaling",
+        action="store_const",
+        dest="do_rescaling",
+        const=False,
+        default=True,
+        help="Do not rescale image even if deconvolved.",
+    )
+    advanced.add_argument(
         "--uncompressed",
         action="store_const",
         dest="compressed",
@@ -167,7 +176,7 @@ def parse_arguments(args: argparse.Namespace) -> argparse.Namespace:
     args.mask_prefix = string.add_trailing_dot(args.mask_prefix)
     args.mask_suffix = string.add_leading_dot(args.mask_suffix)
 
-    args.threads = ggc.args.check_threads(args.threads)
+    args.threads = cpu_count() if args.threads > cpu_count() else args.threads
 
     return args
 
@@ -201,15 +210,16 @@ Reference channel name : '{args.ref_channel}'
 
 
 def confirm_arguments(args: argparse.Namespace) -> None:
-    settings_string = print_settings(args)
+    # settings_string =
+    print_settings(args)
     if not args.do_all:
-        io.ask("Confirm settings and proceed?")
+        assert Confirm.ask("Confirm settings and proceed?")
 
     assert os.path.isdir(args.input), f"image folder not found: {args.input}"
 
-    settings_path = os.path.join(args.output, "export_objects.config.txt")
-    with open(settings_path, "w+") as OH:
-        ggc.args.export_settings(OH, settings_string)
+    # settings_path = os.path.join(args.output, "export_objects.config.txt")
+    # with open(settings_path, "w+") as OH:
+    #     ggc.args.export_settings(OH, settings_string)
 
 
 def export_tiffs(args: argparse.Namespace, series_list: series.SeriesList) -> None:
@@ -226,7 +236,7 @@ def run(args: argparse.Namespace) -> None:
     confirm_arguments(args)
     args, series_list = ra_series.init_series_list(args)
 
-    logging.info(f"extracting nuclei")
+    logging.info("extracting nuclei")
     series_list.extract_particles(particle.Nucleus, threads=args.threads)
     logging.info(f"extracted {len(list(series_list.particles()))} nuclei")
 

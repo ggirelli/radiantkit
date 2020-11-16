@@ -12,10 +12,10 @@ from radiantkit.const import __version__
 from radiantkit.conversion import ND2Reader2
 from radiantkit.exception import enable_rich_assert
 import radiantkit.image as imt
+from radiantkit.io import add_log_file_handler
 from radiantkit.string import MultiRange
 from radiantkit.string import TIFFNameTemplateFields as TNTFields
 from radiantkit.string import TIFFNameTemplate as TNTemplate
-from rich.console import Console  # type: ignore
 from rich.logging import RichHandler  # type: ignore
 from rich.progress import track  # type: ignore
 import sys
@@ -144,8 +144,7 @@ def parse_arguments(args: argparse.Namespace) -> argparse.Namespace:
     ), f"output directory cannot be a file: {args.outdir}"
 
     if args.fields is not None:
-        args.fields = MultiRange(args.fields)
-        args.fields.zero_indexed = True
+        args.fields = list(MultiRange(args.fields))
 
     if args.channels is not None:
         args.channels = [c.lower() for c in args.channels]
@@ -173,13 +172,13 @@ def get_resolution_Z(nd2_image: ND2Reader2, field_id: int, enforce: float) -> fl
 def get_field_from_2d_nd2(
     nd2_image: ND2Reader2, field_id: int, channel_id: int
 ) -> np.ndarray:
-    return nd2_image[field_id][:, :, channel_id]
+    return nd2_image[field_id][:, :, channel_id].astype(nd2_image.dtype)
 
 
 def get_field_from_3d_nd2(
     nd2_image: ND2Reader2, field_id: int, channel_id: int
 ) -> np.ndarray:
-    return nd2_image[field_id][:, :, :, channel_id]
+    return nd2_image[field_id][:, :, :, channel_id].astype(nd2_image.dtype)
 
 
 get_field_fun = {2: get_field_from_2d_nd2, 3: get_field_from_3d_nd2}
@@ -188,18 +187,19 @@ get_field_fun = {2: get_field_from_2d_nd2, 3: get_field_from_3d_nd2}
 def export_single_channel(
     field_of_view: pims.frame.Frame,
     opath: str,
-    resolution: Tuple[Tuple[float, float], float] = ((0.0, 0.0), 0.0),
+    xy_resolution: Tuple[float, float] = (0.0, 0.0),
+    z_resolution: float = 0.0,
     compress: bool = False,
-    pixel_type: int = 4,
 ) -> None:
+    x_pixels_per_um = 0 if 0 == xy_resolution[0] else 1 / xy_resolution[0]
+    y_pixels_per_um = 0 if 0 == xy_resolution[1] else 1 / xy_resolution[1]
     imt.save_tiff(
         opath,
         field_of_view,
         compress,
-        resolution=resolution[0],
         inMicrons=True,
-        ResolutionZ=resolution[1],
-        extratags=[(339, "i", 1, pixel_type, True)],
+        z_resolution=z_resolution,
+        resolution=(x_pixels_per_um, y_pixels_per_um, None),
     )
 
 
@@ -213,7 +213,7 @@ def export_multiple_channels(
     channels = list(nd2_image.get_channel_names()) if channels is None else channels
     get_field = get_field_fun[3] if nd2_image.is3D() else get_field_fun[2]
     channels = nd2_image.select_channels(channels)
-    for channel_id in range(nd2_image[field_id].shape[3]):
+    for channel_id in range(nd2_image.channel_count()):
         channel_name = nd2_image.metadata["channels"][channel_id].lower()
         if channel_name in channels:
             export_single_channel(
@@ -222,15 +222,9 @@ def export_multiple_channels(
                     args.outdir,
                     nd2_image.get_tiff_path(args.template, channel_id, field_id),
                 ),
-                (
-                    (
-                        1 / float(nd2_image.metadata["pixel_microns"]),
-                        1 / float(nd2_image.metadata["pixel_microns"]),
-                    ),
-                    resolutionZ,
-                ),
+                (nd2_image.xy_resolution, nd2_image.xy_resolution),
+                resolutionZ,
                 args.doCompress,
-                args.pixel_type,
             )
 
 
@@ -255,7 +249,8 @@ def export_field(
 
 
 def convert_to_tiff(args: argparse.Namespace, nd2_image: ND2Reader2) -> None:
-    nd2_image.iter_axes = "v"
+    if "v" in nd2_image.axes:
+        nd2_image.iter_axes = "v"
     nd2_image.set_axes_for_bundling()
 
     if args.fields is not None:
@@ -265,7 +260,7 @@ def convert_to_tiff(args: argparse.Namespace, nd2_image: ND2Reader2) -> None:
         )
         field_list = args.fields
     else:
-        field_list = range(1, nd2_image.sizes["v"] + 1)
+        field_list = range(1, nd2_image.field_count() + 1)
     field_generator = track(field_list, description="Converting field")
 
     for field_id in field_generator:
@@ -312,30 +307,11 @@ def check_argument_compatibility(
     if args.deltaZ is not None:
         logging.info(f"Enforcing a deltaZ of {args.deltaZ:.3f} um.")
     else:
-        resolutionZ = nd2_image.get_resolutionZ()
-        assert 1 == len(resolutionZ), f"Z resolution is not constant {resolutionZ}."
+        assert 1 == len(
+            nd2_image.z_resolution
+        ), f"Z resolution is not constant {nd2_image.z_resolution}."
 
     return args
-
-
-def add_log_file_handler(path: str, logger_name: str = "") -> None:
-    """Adds log file handler to logger.
-
-    By defaults, adds the handler to the root logger.
-
-    Arguments:
-        path {str} -- path to output log file
-
-    Keyword Arguments:
-        logger_name {str} -- logger name (default: {""})
-    """
-    assert not os.path.isdir(path)
-    log_dir = os.path.dirname(path)
-    assert os.path.isdir(log_dir) or "" == log_dir
-    fh = RichHandler(console=Console(file=open(path, mode="w+")), markup=True)
-    fh.setLevel(logging.INFO)
-    logging.getLogger(logger_name).addHandler(fh)
-    logging.info(f"[green]Log to[/]\t\t{path}")
 
 
 @enable_rich_assert
@@ -347,13 +323,12 @@ def run(args: argparse.Namespace) -> None:
 
     if not os.path.isdir(args.outdir):
         os.mkdir(args.outdir)
-    add_log_file_handler(os.path.join(args.outdir, "nd2_to_tiff.log"))
+    add_log_file_handler(os.path.join(args.outdir, "nd2_to_tiff.log.txt"))
 
     nd2_image.log_details()
     args = check_argument_compatibility(args, nd2_image)
 
     logging.info(f"Output directory: '{args.outdir}'")
-    args.pixel_type = nd2_image.pixel_type_tag
 
     convert_to_tiff(args, nd2_image)
 

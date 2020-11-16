@@ -5,17 +5,19 @@
 
 import logging
 import argparse
-from ggc.args import check_threads, export_settings  # type: ignore
-from joblib import delayed, Parallel  # type: ignore
+from joblib import cpu_count, delayed, Parallel  # type: ignore
 import numpy as np  # type: ignore
 import os
 from radiantkit.const import __version__
 from radiantkit import const, path, stat, string
-from radiantkit import channel, image, io, segmentation
+from radiantkit import channel, image, segmentation
+from radiantkit.exception import enable_rich_assert
+from radiantkit.io import add_log_file_handler
 import re
 from rich.logging import RichHandler  # type: ignore
+from rich.progress import track  # type: ignore
+from rich.prompt import Confirm  # type: ignore
 import sys
-from tqdm import tqdm  # type: ignore
 from typing import Optional
 
 logging.basicConfig(
@@ -25,6 +27,7 @@ logging.basicConfig(
 )
 
 
+@enable_rich_assert
 def init_parser(subparsers: argparse._SubParsersAction) -> argparse.ArgumentParser:
     parser = subparsers.add_parser(
         __name__.split(".")[-1],
@@ -211,6 +214,7 @@ Input images that have the specified prefix and suffix are not segmented.""",
     return parser
 
 
+@enable_rich_assert
 def parse_arguments(args: argparse.Namespace) -> argparse.Namespace:
     args.version = __version__
 
@@ -232,7 +236,7 @@ def parse_arguments(args: argparse.Namespace) -> argparse.Namespace:
             args.mask_2d
         ), f"2D mask folder not found, '{args.mask_2d}'"
 
-    args.threads = check_threads(args.threads)
+    args.threads = cpu_count() if args.threads > cpu_count() else args.threads
 
     loglvl = 20
     loglvl = logging.DEBUG if args.debug_mode else 20
@@ -274,17 +278,18 @@ def print_settings(args: argparse.Namespace, clear: bool = True) -> str:
 
 
 def confirm_arguments(args: argparse.Namespace) -> None:
-    settings_string = print_settings(args)
+    # settings_string =
+    print_settings(args)
     if not args.do_all:
-        io.ask("Confirm settings and proceed?")
+        assert Confirm.ask("Confirm settings and proceed?")
 
     if not os.path.isfile(args.input):
         assert os.path.isdir(args.input), f"image folder not found: {args.input}"
     if not os.path.isdir(args.output):
         os.mkdir(args.output)
 
-    with open(os.path.join(args.output, "tiff_segment.config.txt"), "w+") as OH:
-        export_settings(OH, settings_string)
+    # with open(os.path.join(args.output, "tiff_segment.config.txt"), "w+") as OH:
+    #     export_settings(OH, settings_string)
 
 
 def read_mask_2d(
@@ -301,14 +306,14 @@ def read_mask_2d(
     return mask2d
 
 
-def run_segmentation(
+def segment(
     args: argparse.Namespace, imgpath: str, imgdir: str, loglevel: str = "INFO"
 ) -> None:
     logging.getLogger().setLevel(loglevel)
     logging.info(f"Segmenting image '{imgpath}'")
 
     img = channel.ImageGrayScale.from_tiff(
-        os.path.join(imgdir, imgpath), doRescale=args.do_rescaling
+        os.path.join(imgdir, imgpath), do_rescale=args.do_rescaling
     )
     logging.info(f"image axes: {img.axes}")
     logging.info(f"image shape: {img.shape}")
@@ -364,6 +369,7 @@ def run_segmentation(
         )
 
 
+@enable_rich_assert
 def run(args: argparse.Namespace) -> None:
     confirm_arguments(args)
     if os.path.isfile(args.input):
@@ -375,6 +381,8 @@ def run(args: argparse.Namespace) -> None:
     else:
         imglist = path.find_re(args.input, args.inreg)
 
+    add_log_file_handler(os.path.join(args.input, "tiff_segment.log.txt"))
+
     _, imglist = path.select_by_prefix_and_suffix(
         args.input, imglist, args.outprefix, args.outsuffix
     )
@@ -385,10 +393,9 @@ def run(args: argparse.Namespace) -> None:
 
     logging.info(f"found {len(imglist)} image(s) to segment.")
     if 1 == args.threads:
-        for imgpath in tqdm(imglist):
-            run_segmentation(args, imgpath, args.input)
+        for imgpath in track(imglist):
+            segment(args, imgpath, args.input)
     else:
         Parallel(n_jobs=args.threads, verbose=11)(
-            delayed(run_segmentation)(args, imgpath, args.input, logLevel)
-            for imgpath in imglist
+            delayed(segment)(args, imgpath, args.input, logLevel) for imgpath in imglist
         )

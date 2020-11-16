@@ -7,6 +7,7 @@ import logging
 import numpy as np  # type: ignore
 import os
 from radiantkit.const import default_axes, ProjectionType
+from radiantkit.deconvolution import get_deconvolution_rescaling_factor
 from radiantkit import stat
 from scipy import ndimage as ndi  # type: ignore
 import skimage as ski  # type: ignore
@@ -58,7 +59,7 @@ class ImageBase(object):
 
 class Image(ImageBase):
     _path_to_local: Optional[str] = None
-    _pixels: Optional[np.ndarray] = None
+    _pixels: np.ndarray
     _shape: Tuple[int]
 
     def __init__(
@@ -224,7 +225,7 @@ class Image(ImageBase):
         compressed: bool,
         bundle_axes: Optional[str] = None,
         inMicrons: bool = False,
-        ResolutionZ: Optional[float] = None,
+        z_resolution: Optional[float] = None,
         forImageJ: bool = False,
         **kwargs,
     ) -> None:
@@ -232,12 +233,11 @@ class Image(ImageBase):
             bundle_axes = self._axes_order
         save_tiff(
             path,
-            self.pixels,
+            self.pixels.astype(self.dtype),
             compressed,
-            self.dtype,
             bundle_axes,
             inMicrons,
-            ResolutionZ,
+            z_resolution,
             forImageJ,
             **kwargs,
         )
@@ -443,7 +443,7 @@ class ImageBinary(Image):
         compressed: bool,
         bundle_axes: Optional[str] = None,
         inMicrons: bool = False,
-        ResolutionZ: Optional[float] = None,
+        z_resolution: Optional[float] = None,
         forImageJ: bool = False,
         **kwargs,
     ) -> None:
@@ -451,12 +451,11 @@ class ImageBinary(Image):
             bundle_axes = self._axes_order
         save_tiff(
             path,
-            self.pixels * np.iinfo(self.dtype).max,
+            (self.pixels * np.iinfo(self.dtype).max).astype(self.dtype),
             compressed,
-            self.dtype,
             bundle_axes,
             inMicrons,
-            ResolutionZ,
+            z_resolution,
             forImageJ,
             **kwargs,
         )
@@ -468,21 +467,83 @@ class ImageBinary(Image):
         return s
 
 
-def get_huygens_rescaling_factor(path: str) -> float:
-    basename, ext = tuple(os.path.splitext(os.path.basename(path)))
-    path = os.path.join(os.path.dirname(path), f"{basename}_history.txt")
-    if not os.path.exists(path):
-        return 1
-    needle = "Stretched to Integer type"
-    with open(path, "r") as fhistory:
-        factor = fhistory.readlines()
-        factor = [x for x in factor if needle in x]
-    if 0 == len(factor):
-        return 1
-    elif 1 == len(factor):
-        return float(factor[0].strip().split(" ")[-1])
-    else:
-        return np.prod([float(f.strip().split(" ")[-1]) for f in factor])
+class ImageGrayScale(Image):
+    _rescale_factor: float = 1.0
+    _background: Optional[float] = None
+    _foreground: Optional[float] = None
+
+    def __init__(
+        self,
+        pixels: np.ndarray,
+        path: Optional[str] = None,
+        axes: Optional[str] = None,
+        do_rescale: bool = False,
+    ):
+        super(ImageGrayScale, self).__init__(pixels, path, axes)
+        if do_rescale:
+            self._rescale_factor = self.get_deconvolution_rescaling_factor()
+
+    @property
+    def background(self):
+        return self._background
+
+    @property
+    def foreground(self):
+        return self._foreground
+
+    @property
+    def rescale_factor(self) -> float:
+        return self._rescale_factor
+
+    @rescale_factor.setter
+    def rescale_factor(self, new_factor: float) -> None:
+        self._pixels = self.pixels / self.rescale_factor
+        self._rescale_factor = new_factor
+        self._pixels = self.pixels * self.rescale_factor
+
+    @property
+    def pixels(self) -> np.ndarray:
+        if self._pixels is None and self._path_to_local is not None:
+            self.load_from_local()
+        return self._pixels / self._rescale_factor
+
+    @staticmethod
+    def from_tiff(
+        path: str, axes: Optional[str] = None, do_rescale: bool = False
+    ) -> "ImageGrayScale":
+        img = ImageGrayScale(read_tiff(path), path, axes, do_rescale)
+        return img
+
+    def get_deconvolution_rescaling_factor(self) -> float:
+        if self._path_to_local is None:
+            return 1.0
+        return get_deconvolution_rescaling_factor(self._path_to_local)
+
+    def threshold_global(self, thr: Union[int, float]) -> ImageBinary:
+        return ImageBinary(self.pixels > thr, doRebinarize=False)
+
+    def threshold_adaptive(
+        self, block_size: int, method: str, mode: str, *args, **kwargs
+    ) -> ImageBinary:
+        return ImageBinary(
+            threshold_adaptive(self.pixels, block_size, method, mode, *args, **kwargs),
+            doRebinarize=False,
+        )
+
+    def update_ground(
+        self, M: Union[ImageBinary, ImageLabeled], block_side: int = 11
+    ) -> None:
+        if isinstance(M, ImageLabeled):
+            M = M.binarize()
+        M = dilate(M.pixels, block_side)
+        self._foreground = np.median(self.pixels[M])
+        self._background = np.median(self.pixels[np.logical_not(M)])
+
+    def __repr__(self) -> str:
+        s = super(ImageGrayScale, self).__repr__()
+        if self.background is not None:
+            s += f"; Back/foreground: {(self.background, self.foreground)}"
+        return s
 
 
 def get_dtype(imax: Union[int, float]) -> str:
@@ -518,37 +579,14 @@ def extract_nd(img: np.ndarray, nd: int) -> np.ndarray:
     return img
 
 
-def add_sample_format_tag(img, **kwargs) -> Dict[Any, Any]:
-    if kwargs is None:
-        kwargs = {}
-
-    extratags: List[Tuple[int, str, int, Any, bool]] = (
-        [] if "extratags" not in kwargs.keys() else kwargs["extratags"]
-    )
-
-    if any([339 == tag[0] for tag in extratags]):
-        return kwargs
-
-    if np.issubdtype(img.dtype, np.uint):
-        extratags.append((339, "i", 1, 1, True))
-    elif np.issubdtype(img.dtype, np.floating):
-        extratags.append((339, "i", 1, 3, True))
-    else:
-        extratags.append((339, "i", 1, 4, True))
-
-    kwargs["extratags"] = extratags
-    return kwargs
-
-
 def save_tiff(
     path: str,
     img: np.ndarray,
     compressed: bool,
-    dtype: Optional[str] = None,
     bundle_axes: str = "ZYX",
     inMicrons: bool = False,
-    ResolutionZ: Optional[float] = None,
-    forImageJ: bool = False,
+    z_resolution: Optional[float] = None,
+    forImageJ: bool = True,
     **kwargs,
 ) -> None:
     while len(bundle_axes) > len(img.shape):
@@ -562,14 +600,8 @@ def save_tiff(
 
     metadata: Dict[str, Any] = dict(axes=bundle_axes)
     metadata["unit"] = "um" if inMicrons else None
-    metadata["spacing"] = ResolutionZ
+    metadata["spacing"] = z_resolution
     compressionLevel = 0 if not compressed else 9
-
-    dtype = dtype if dtype is not None else img.dtype
-    img = img.astype(dtype)
-
-    kwargs = add_sample_format_tag(img, **kwargs)
-
     tifffile.imwrite(
         path,
         img,
