@@ -187,12 +187,12 @@ get_field_fun = {2: get_field_from_2d_nd2, 3: get_field_from_3d_nd2}
 def export_single_channel(
     field_of_view: pims.frame.Frame,
     opath: str,
-    xy_resolution: Tuple[float, float] = (.0, .0),
-    z_resolution: float = .0,
+    xy_resolution: Tuple[float, float] = (0.0, 0.0),
+    z_resolution: float = 0.0,
     compress: bool = False,
 ) -> None:
-    x_pixels_per_um = 0 if 0 == xy_resolution[0] else 1/xy_resolution[0]
-    y_pixels_per_um = 0 if 0 == xy_resolution[1] else 1/xy_resolution[1]
+    x_pixels_per_um = 0 if 0 == xy_resolution[0] else 1 / xy_resolution[0]
+    y_pixels_per_um = 0 if 0 == xy_resolution[1] else 1 / xy_resolution[1]
     imt.save_tiff(
         opath,
         field_of_view,
