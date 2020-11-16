@@ -81,7 +81,7 @@ class ND2Reader2(ND2Reader):
     def _set_xy_resolution(self):
         self._xy_resolution = self.metadata["pixel_microns"]
         if 0 == self._xy_resolution:
-            logging.warning("XY resolution set to 0.")
+            logging.warning("XY resolution set to 0! (possibly incorrect obj. setup)")
 
     def _set_z_resolution(self):
         self._z_resolution: Set[float] = set()
