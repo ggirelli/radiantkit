@@ -6,6 +6,7 @@
 import argparse
 from collections import defaultdict
 from czifile import CziFile  # type: ignore
+import logging
 from logging import Logger, getLogger
 from nd2reader import ND2Reader  # type: ignore
 from nd2reader.parser import Parser as ND2Parser  # type: ignore
@@ -24,7 +25,7 @@ class ND2Reader2(ND2Reader):
 
     def __init__(self, filename):
         super(ND2Reader2, self).__init__(filename)
-        self._xy_resolution = self.metadata["pixel_microns"]
+        self._set_xy_resolution()
         self._set_z_resolution()
         self._set_proposed_dtype()
 
@@ -77,6 +78,18 @@ class ND2Reader2(ND2Reader):
     def dtype(self) -> str:
         return self._dtype
 
+    def _set_xy_resolution(self):
+        self._xy_resolution = self.metadata["pixel_microns"]
+        if 0 == self._xy_resolution:
+            logging.warning("XY resolution set to 0.")
+
+    def _set_z_resolution(self):
+        self._z_resolution: Set[float] = set()
+        for field_id in range(self.field_count()):
+            self._z_resolution = self._z_resolution.union(
+                self.get_field_resolutionZ(field_id)
+            )
+
     def _set_proposed_dtype(self) -> None:
         dtype_tag: DefaultDict = defaultdict(lambda: "float")
         dtype_tag[1] = "uint"
@@ -120,13 +133,6 @@ class ND2Reader2(ND2Reader):
             self.bundle_axes = "zyxc" if self.hasMultiChannels() else "zyx"
         else:
             self.bundle_axes = "yxc" if "c" in self.axes else "yx"
-
-    def _set_z_resolution(self):
-        self._z_resolution: Set[float] = set()
-        for field_id in range(self.field_count()):
-            self._z_resolution = self._z_resolution.union(
-                self.get_field_resolutionZ(field_id)
-            )
 
     def get_field_resolutionZ(self, field_id: int) -> Set[float]:
         with open(self.filename, "rb") as ND2H:

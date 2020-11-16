@@ -187,16 +187,19 @@ get_field_fun = {2: get_field_from_2d_nd2, 3: get_field_from_3d_nd2}
 def export_single_channel(
     field_of_view: pims.frame.Frame,
     opath: str,
-    resolution: Tuple[Tuple[float, float], float] = ((0.0, 0.0), 0.0),
+    xy_resolution: Tuple[float, float] = (.0, .0),
+    z_resolution: float = .0,
     compress: bool = False,
 ) -> None:
+    x_pixels_per_um = 0 if 0 == xy_resolution[0] else 1/xy_resolution[0]
+    y_pixels_per_um = 0 if 0 == xy_resolution[1] else 1/xy_resolution[1]
     imt.save_tiff(
         opath,
         field_of_view,
         compress,
-        resolution=resolution[0],
         inMicrons=True,
-        ResolutionZ=resolution[1],
+        z_resolution=z_resolution,
+        resolution=(x_pixels_per_um, y_pixels_per_um, None),
     )
 
 
@@ -210,7 +213,7 @@ def export_multiple_channels(
     channels = list(nd2_image.get_channel_names()) if channels is None else channels
     get_field = get_field_fun[3] if nd2_image.is3D() else get_field_fun[2]
     channels = nd2_image.select_channels(channels)
-    for channel_id in range(nd2_image[field_id].shape[3]):
+    for channel_id in range(nd2_image.channel_count()):
         channel_name = nd2_image.metadata["channels"][channel_id].lower()
         if channel_name in channels:
             export_single_channel(
@@ -219,10 +222,8 @@ def export_multiple_channels(
                     args.outdir,
                     nd2_image.get_tiff_path(args.template, channel_id, field_id),
                 ),
-                (
-                    (nd2_image.xy_resolution, nd2_image.xy_resolution),
-                    resolutionZ,
-                ),
+                (nd2_image.xy_resolution, nd2_image.xy_resolution),
+                resolutionZ,
                 args.doCompress,
             )
 
@@ -248,7 +249,8 @@ def export_field(
 
 
 def convert_to_tiff(args: argparse.Namespace, nd2_image: ND2Reader2) -> None:
-    nd2_image.iter_axes = "v"
+    if "v" in nd2_image.axes:
+        nd2_image.iter_axes = "v"
     nd2_image.set_axes_for_bundling()
 
     if args.fields is not None:
@@ -258,7 +260,7 @@ def convert_to_tiff(args: argparse.Namespace, nd2_image: ND2Reader2) -> None:
         )
         field_list = args.fields
     else:
-        field_list = range(1, nd2_image.sizes["v"] + 1)
+        field_list = range(1, nd2_image.field_count() + 1)
     field_generator = track(field_list, description="Converting field")
 
     for field_id in field_generator:

@@ -225,7 +225,7 @@ class Image(ImageBase):
         compressed: bool,
         bundle_axes: Optional[str] = None,
         inMicrons: bool = False,
-        ResolutionZ: Optional[float] = None,
+        z_resolution: Optional[float] = None,
         forImageJ: bool = False,
         **kwargs,
     ) -> None:
@@ -237,7 +237,7 @@ class Image(ImageBase):
             compressed,
             bundle_axes,
             inMicrons,
-            ResolutionZ,
+            z_resolution,
             forImageJ,
             **kwargs,
         )
@@ -443,7 +443,7 @@ class ImageBinary(Image):
         compressed: bool,
         bundle_axes: Optional[str] = None,
         inMicrons: bool = False,
-        ResolutionZ: Optional[float] = None,
+        z_resolution: Optional[float] = None,
         forImageJ: bool = False,
         **kwargs,
     ) -> None:
@@ -455,7 +455,7 @@ class ImageBinary(Image):
             compressed,
             bundle_axes,
             inMicrons,
-            ResolutionZ,
+            z_resolution,
             forImageJ,
             **kwargs,
         )
@@ -585,8 +585,8 @@ def save_tiff(
     compressed: bool,
     bundle_axes: str = "ZYX",
     inMicrons: bool = False,
-    ResolutionZ: Optional[float] = None,
-    forImageJ: bool = False,
+    z_resolution: Optional[float] = None,
+    forImageJ: bool = True,
     **kwargs,
 ) -> None:
     while len(bundle_axes) > len(img.shape):
@@ -600,9 +600,8 @@ def save_tiff(
 
     metadata: Dict[str, Any] = dict(axes=bundle_axes)
     metadata["unit"] = "um" if inMicrons else None
-    metadata["spacing"] = ResolutionZ
+    metadata["spacing"] = z_resolution
     compressionLevel = 0 if not compressed else 9
-
     tifffile.imwrite(
         path,
         img,
