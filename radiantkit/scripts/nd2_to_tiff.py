@@ -144,7 +144,7 @@ def parse_arguments(args: argparse.Namespace) -> argparse.Namespace:
     ), f"output directory cannot be a file: {args.outdir}"
 
     if args.fields is not None:
-        args.fields = MultiRange(args.fields)
+        args.fields = list(MultiRange(args.fields))
 
     if args.channels is not None:
         args.channels = [c.lower() for c in args.channels]
@@ -172,13 +172,13 @@ def get_resolution_Z(nd2_image: ND2Reader2, field_id: int, enforce: float) -> fl
 def get_field_from_2d_nd2(
     nd2_image: ND2Reader2, field_id: int, channel_id: int
 ) -> np.ndarray:
-    return nd2_image[field_id][:, :, channel_id]
+    return nd2_image[field_id][:, :, channel_id].astype(nd2_image.dtype)
 
 
 def get_field_from_3d_nd2(
     nd2_image: ND2Reader2, field_id: int, channel_id: int
 ) -> np.ndarray:
-    return nd2_image[field_id][:, :, :, channel_id]
+    return nd2_image[field_id][:, :, :, channel_id].astype(nd2_image.dtype)
 
 
 get_field_fun = {2: get_field_from_2d_nd2, 3: get_field_from_3d_nd2}
@@ -189,7 +189,6 @@ def export_single_channel(
     opath: str,
     resolution: Tuple[Tuple[float, float], float] = ((0.0, 0.0), 0.0),
     compress: bool = False,
-    pixel_type: int = 4,
 ) -> None:
     imt.save_tiff(
         opath,
@@ -198,7 +197,6 @@ def export_single_channel(
         resolution=resolution[0],
         inMicrons=True,
         ResolutionZ=resolution[1],
-        extratags=[(339, "i", 1, pixel_type, True)],
     )
 
 
@@ -222,14 +220,10 @@ def export_multiple_channels(
                     nd2_image.get_tiff_path(args.template, channel_id, field_id),
                 ),
                 (
-                    (
-                        1 / float(nd2_image.metadata["pixel_microns"]),
-                        1 / float(nd2_image.metadata["pixel_microns"]),
-                    ),
+                    (nd2_image.xy_resolution, nd2_image.xy_resolution),
                     resolutionZ,
                 ),
                 args.doCompress,
-                args.pixel_type,
             )
 
 
@@ -311,8 +305,9 @@ def check_argument_compatibility(
     if args.deltaZ is not None:
         logging.info(f"Enforcing a deltaZ of {args.deltaZ:.3f} um.")
     else:
-        resolutionZ = nd2_image.get_resolutionZ()
-        assert 1 == len(resolutionZ), f"Z resolution is not constant {resolutionZ}."
+        assert 1 == len(
+            nd2_image.z_resolution
+        ), f"Z resolution is not constant {nd2_image.z_resolution}."
 
     return args
 
@@ -332,7 +327,6 @@ def run(args: argparse.Namespace) -> None:
     args = check_argument_compatibility(args, nd2_image)
 
     logging.info(f"Output directory: '{args.outdir}'")
-    args.pixel_type = nd2_image.pixel_type_tag
 
     convert_to_tiff(args, nd2_image)
 

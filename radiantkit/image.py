@@ -233,9 +233,8 @@ class Image(ImageBase):
             bundle_axes = self._axes_order
         save_tiff(
             path,
-            self.pixels,
+            self.pixels.astype(self.dtype),
             compressed,
-            self.dtype,
             bundle_axes,
             inMicrons,
             ResolutionZ,
@@ -452,9 +451,8 @@ class ImageBinary(Image):
             bundle_axes = self._axes_order
         save_tiff(
             path,
-            self.pixels * np.iinfo(self.dtype).max,
+            (self.pixels * np.iinfo(self.dtype).max).astype(self.dtype),
             compressed,
-            self.dtype,
             bundle_axes,
             inMicrons,
             ResolutionZ,
@@ -581,33 +579,10 @@ def extract_nd(img: np.ndarray, nd: int) -> np.ndarray:
     return img
 
 
-def add_sample_format_tag(img, **kwargs) -> Dict[Any, Any]:
-    if kwargs is None:
-        kwargs = {}
-
-    extratags: List[Tuple[int, str, int, Any, bool]] = (
-        [] if "extratags" not in kwargs.keys() else kwargs["extratags"]
-    )
-
-    if any([339 == tag[0] for tag in extratags]):
-        return kwargs
-
-    if np.issubdtype(img.dtype, np.uint):
-        extratags.append((339, "i", 1, 1, True))
-    elif np.issubdtype(img.dtype, np.floating):
-        extratags.append((339, "i", 1, 3, True))
-    else:
-        extratags.append((339, "i", 1, 4, True))
-
-    kwargs["extratags"] = extratags
-    return kwargs
-
-
 def save_tiff(
     path: str,
     img: np.ndarray,
     compressed: bool,
-    dtype: Optional[str] = None,
     bundle_axes: str = "ZYX",
     inMicrons: bool = False,
     ResolutionZ: Optional[float] = None,
@@ -627,11 +602,6 @@ def save_tiff(
     metadata["unit"] = "um" if inMicrons else None
     metadata["spacing"] = ResolutionZ
     compressionLevel = 0 if not compressed else 9
-
-    dtype = dtype if dtype is not None else img.dtype
-    img = img.astype(dtype)
-
-    kwargs = add_sample_format_tag(img, **kwargs)
 
     tifffile.imwrite(
         path,

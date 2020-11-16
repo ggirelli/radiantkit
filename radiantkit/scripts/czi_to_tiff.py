@@ -188,9 +188,8 @@ def convert_to_tiff(args: argparse.Namespace, czi_image: CziFile2) -> None:
     for (OI, opath) in track(field_generator(args, czi_image), total=int(export_total)):
         imt.save_tiff(
             os.path.join(args.outdir, opath),
-            OI,
+            OI.astype(imt.get_dtype(OI.max())),
             args.doCompress,
-            dtype=imt.get_dtype(OI.max()),
             bundle_axes="TZYX",
             resolution=(
                 1e-6 / czi_image.get_axis_resolution("X"),
