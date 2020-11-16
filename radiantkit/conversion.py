@@ -95,7 +95,17 @@ class ND2Reader2(ND2Reader):
         dtype_tag[1] = "uint"
         dtype_tag[2] = "int"
         dtype = f"{dtype_tag[self.pixel_type_tag]}{self.bits_per_pixel}"
-        supported_dtypes = ("uint8", "uint16", "float8", "float16")
+        supported_dtypes = (
+            "uint8",
+            "uint16",
+            "uint32",
+            "int8",
+            "int16",
+            "int32",
+            "float8",
+            "float16",
+            "float32",
+        )
         self._dtype = "float64" if dtype not in supported_dtypes else dtype
 
     def field_count(self) -> int:
