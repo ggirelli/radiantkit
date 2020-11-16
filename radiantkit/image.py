@@ -6,7 +6,7 @@
 import logging
 import numpy as np  # type: ignore
 import os
-from radiantkit.const import default_axes, ProjectionType
+from radiantkit.const import __version__, default_axes, ProjectionType
 from radiantkit.deconvolution import get_deconvolution_rescaling_factor
 from radiantkit import stat
 from scipy import ndimage as ndi  # type: ignore
@@ -579,6 +579,17 @@ def extract_nd(img: np.ndarray, nd: int) -> np.ndarray:
     return img
 
 
+def get_sampleformat_tag(dtype):
+    if np.issubdtype(dtype, np.integer):
+        return 1
+    elif np.issubdtype(dtype, np.signedinteger):
+        return 2
+    elif np.issubdtype(dtype, np.float):
+        return 3
+    else:
+        return 4
+
+
 def save_tiff(
     path: str,
     img: np.ndarray,
@@ -608,6 +619,8 @@ def save_tiff(
         compress=compressionLevel,
         imagej=forImageJ,
         metadata=metadata,
+        software=f"radiant v{__version__}",
+        extratags=[(339, "i", 1, get_sampleformat_tag(img.dtype), False)],
         **kwargs,
     )
 
