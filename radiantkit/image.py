@@ -620,7 +620,7 @@ def save_tiff(
         imagej=forImageJ,
         metadata=metadata,
         software=f"radiant v{__version__}",
-        extratags=[(339, 'i', 1, get_sampleformat_tag(img.dtype), False)],
+        extratags=[(339, "i", 1, get_sampleformat_tag(img.dtype), False)],
         **kwargs,
     )
 
