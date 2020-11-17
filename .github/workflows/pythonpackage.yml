@@ -60,12 +60,13 @@ jobs:
         key: venv-${{ runner.os }}-${{ hashFiles('**/poetry.lock') }}
     # install dependencies if cache does not exist
     - name: Install dependencies
-      run: |
-        poetry add pytest
-        poetry install
+      run: poetry install
       if: steps.cached-poetry-dependencies.outputs.cache-hit != 'true'
     # run test suite
     - name: Test
       run: |
         source .venv/bin/activate
+        echo $(pwd)
+        echo $(ls)
+        echo $(ls radiantkit/tests/)
         pytest tests/
