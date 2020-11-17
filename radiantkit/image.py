@@ -41,16 +41,17 @@ class ImageBase(object):
         if spacing is None:
             return
         spacing = np.array(spacing)
+        aspect_slice = slice(len(self.aspect) - len(spacing), len(self.aspect))
         if len(self.aspect) == len(spacing):
             self._aspect = spacing
         elif len(spacing) < len(self._axes_order):
-            self.aspect[-len(spacing) :] = spacing
+            self.aspect[aspect_slice] = spacing
             logging.warning(
                 f"aspect changed to {self.aspect} "
                 + f"(used only last {len(self.aspect)} values)"
             )
         else:
-            self.aspect = spacing[-len(self.aspect) :]
+            self.aspect = spacing[aspect_slice]
             logging.warning(
                 f"aspect changed to {self.aspect} "
                 + f"(used only last {len(self.aspect)} values)"
@@ -76,8 +77,14 @@ class Image(ImageBase):
             assert all([1 == axes.count(c) for c in set(axes)])
             self._axes_order = axes
         else:
-            self._axes_order = self._ALLOWED_AXES[-len(self.shape) :]
-        self._aspect = self._aspect[-len(self.shape) :]
+            self._axes_order = self._ALLOWED_AXES[
+                slice(
+                    len(self._ALLOWED_AXES) - len(self.shape), len(self._ALLOWED_AXES)
+                )
+            ]
+        self._aspect = self._aspect[
+            slice(len(self.aspect) - len(self.shape), len(self.aspect))
+        ]
         if path is not None:
             if os.path.isfile(path):
                 self._path_to_local = path
@@ -164,7 +171,9 @@ class Image(ImageBase):
         self._pixels = extract_nd(self._pixels, self.nd)
         assert len(self._pixels.shape) <= self.nd
         if len(self._pixels.shape) != self.nd:
-            self._axes_order = self._axes_order[-self.nd :]
+            self._axes_order = self._axes_order[
+                slice(len(self._axes_order) - self.nd, len(self._axes_order))
+            ]
 
     def _remove_empty_axes(self) -> None:
         if len(self.pixels.shape) != self.nd:

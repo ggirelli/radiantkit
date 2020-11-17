@@ -13,7 +13,7 @@ import sys
 def init_parser(subparsers: argparse._SubParsersAction) -> argparse.ArgumentParser:
     parser = subparsers.add_parser(
         __name__.split(".")[-1],
-        description=f"""Long description""",
+        description="Long description",
         formatter_class=argparse.RawDescriptionHelpFormatter,
         help="Setup vanilla snakemake workflows. *NOT IMPLEMENTED*",
     )
@@ -72,7 +72,7 @@ def run(args: argparse.Namespace) -> None:
     setup_workflow(args.root, args.workflow)
     print(f"\nPipeline set up in '{args.root}'.\nNext:\n")
     config_path = os.path.join(args.root, f"{args.workflow}.config.yaml")
-    print(f"(1) Manually update the config file, for example with:")
+    print("(1) Manually update the config file, for example with:")
     print(f"nano '{config_path}'\n")
-    print(f"(2) Then, run the pipeline with:")
+    print("(2) Then, run the pipeline with:")
     print(f"{os.path.join(args.root, 'run.sh')}\n")

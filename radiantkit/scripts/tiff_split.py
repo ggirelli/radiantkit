@@ -296,11 +296,11 @@ def init_xy(
 
 
 def tsplit3d(img: np.ndarray, x: int, y: int, s: List[int]) -> np.ndarray:
-    return img[:, y : (y + s[1]), x : (x + s[0])]
+    return img[:, slice(y, (y + s[1])), slice(x, (x + s[0]))]
 
 
 def tsplit2d(img: np.ndarray, x: int, y: int, s: List[int]) -> np.ndarray:
-    return img[y : (y + s[1]), x : (x + s[0])]
+    return img[slice(y, (y + s[1])), slice(x, (x + s[0]))]
 
 
 tsplit_fun = {2: tsplit2d, 3: tsplit3d}

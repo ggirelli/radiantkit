@@ -11,7 +11,7 @@ import sys
 def init_parser(subparsers: argparse._SubParsersAction) -> argparse.ArgumentParser:
     parser = subparsers.add_parser(
         __name__.split(".")[-1],
-        description=f"""Long description""",
+        description="Long description",
         formatter_class=argparse.RawDescriptionHelpFormatter,
         help="Measure the radial position of a set of points." + " *NOT IMPLEMENTED*",
     )
