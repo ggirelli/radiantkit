@@ -13,7 +13,7 @@ from radiantkit import const, path, plot, scripts
 from typing import Any, Callable, Dict, List, Optional, Pattern
 
 DirectoryPath = str
-OutputTypeList = List['OutputType']
+OutputTypeList = List["OutputType"]
 ScriptStub = str
 ScriptLabel = str
 OutputFileLabel = str
