@@ -10,7 +10,7 @@ import os
 import pims  # type: ignore
 from radiantkit.const import __version__
 from radiantkit.conversion import ND2Reader2
-from radiantkit.exception import enable_rich_assert
+from radiantkit.exception import enable_rich_exceptions
 import radiantkit.image as imt
 from radiantkit.io import add_log_file_handler
 from radiantkit.string import MultiRange
@@ -21,7 +21,7 @@ import sys
 from typing import List, Optional, Tuple
 
 
-@enable_rich_assert
+@enable_rich_exceptions
 def init_parser(subparsers: argparse._SubParsersAction) -> argparse.ArgumentParser:
     parser = subparsers.add_parser(
         __name__.split(".")[-1],
@@ -125,7 +125,7 @@ def init_parser(subparsers: argparse._SubParsersAction) -> argparse.ArgumentPars
     return parser
 
 
-@enable_rich_assert
+@enable_rich_exceptions
 def parse_arguments(args: argparse.Namespace) -> argparse.Namespace:
     if args.outdir is None:
         args.outdir = os.path.splitext(os.path.basename(args.input))[0]
@@ -307,7 +307,7 @@ def check_argument_compatibility(
     return args
 
 
-@enable_rich_assert
+@enable_rich_exceptions
 def run(args: argparse.Namespace) -> None:
     nd2_image = ND2Reader2(args.input)
     if args.dry:

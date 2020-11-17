@@ -12,13 +12,14 @@ import os
 import pandas as pd  # type: ignore
 from radiantkit.const import __version__
 from radiantkit import channel, path, stat
-from radiantkit.exception import enable_rich_assert
+from radiantkit.exception import enable_rich_exceptions
 from radiantkit.io import add_log_file_handler
 import sys
 from typing import List
 
 
-@enable_rich_assert
+
+@enable_rich_exceptions
 def init_parser(subparsers: argparse._SubParsersAction) -> argparse.ArgumentParser:
     parser = subparsers.add_parser(
         __name__.split(".")[-1],
@@ -101,7 +102,7 @@ definition.
     return parser
 
 
-@enable_rich_assert
+@enable_rich_exceptions
 def parse_arguments(args: argparse.Namespace) -> argparse.Namespace:
     if args.output is None:
         args.output = os.path.join(args.input, "oof.tsv")
@@ -153,7 +154,7 @@ def is_OOF(args: argparse.Namespace, ipath: str) -> pd.DataFrame:
     return profile_data
 
 
-@enable_rich_assert
+@enable_rich_exceptions
 def run(args: argparse.Namespace) -> None:
     assert os.path.isdir(args.input), f"image directory not found: '{args.input}'"
     add_log_file_handler(os.path.join(args.input, "oof.log.txt"))

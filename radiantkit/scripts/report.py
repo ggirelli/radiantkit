@@ -7,9 +7,11 @@ import argparse
 import logging
 import os
 from radiantkit import const, output, report
+from radiantkit.exception import enable_rich_exceptions
 import sys
 
 
+@enable_rich_exceptions
 def init_parser(subparsers: argparse._SubParsersAction) -> argparse.ArgumentParser:
     parser = subparsers.add_parser(
         __name__.split(".")[-1],
@@ -57,20 +59,22 @@ def init_parser(subparsers: argparse._SubParsersAction) -> argparse.ArgumentPars
     return parser
 
 
+@enable_rich_exceptions
 def parse_arguments(args: argparse.Namespace) -> argparse.Namespace:
     assert os.path.isdir(args.input)
     args.version = const.__version__
     return args
 
 
+@enable_rich_exceptions
 def run(args: argparse.Namespace) -> None:
     logging.info(f"looking at '{args.input}'")
     output_list = output.OutputReader.read_recursive(args.input, args.inreg)
 
-    logging.info("preparing plots")
-    plot_data = output.OutputPlotter.plot(output_list)
+    # logging.info("preparing plots")
+    # plot_data = output.OutputPlotter.plot(output_list)
 
-    logging.info("generating HTML report")
-    report.general_report(args.input, args, output_list, plot_data)
+    # logging.info("generating HTML report")
+    # report.general_report(args.input, args, output_list, plot_data)
 
     raise NotImplementedError
