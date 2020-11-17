@@ -4,7 +4,7 @@
 """
 
 from radiantkit.const import __version__
-from radiantkit import const, exception, scripts
+from radiantkit import const, exception, output, scripts
 from radiantkit import conversion, deconvolution, segmentation
 from radiantkit import image, particle, series
 from radiantkit import path, plot, stat, string
@@ -14,6 +14,7 @@ __all__ = [
     "__version__",
     "const",
     "exception",
+    "output",
     "scripts",
     "conversion",
     "deconvolution",
