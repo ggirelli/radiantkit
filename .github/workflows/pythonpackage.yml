@@ -66,7 +66,4 @@ jobs:
     - name: Test
       run: |
         source .venv/bin/activate
-        echo $(pwd)
-        echo $(ls)
-        echo $(ls radiantkit/tests/)
-        pytest tests/
+        pytest radiantkit/tests/
