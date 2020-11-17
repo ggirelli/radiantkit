@@ -6,8 +6,7 @@
 import argparse
 import logging
 import os
-from radiantkit import const, report
-from radiantkit.scripts.common import output
+from radiantkit import const, output, report
 from rich.logging import RichHandler  # type: ignore
 import sys
 
@@ -21,14 +20,12 @@ logging.basicConfig(
 def init_parser(subparsers: argparse._SubParsersAction) -> argparse.ArgumentParser:
     parser = subparsers.add_parser(
         __name__.split(".")[-1],
-        description=f"""Long description""",
+        description="Long description",
         formatter_class=argparse.RawDescriptionHelpFormatter,
         help="Generate radiant report(s).",
     )
 
-    parser.add_argument(
-        "input", type=str, help="""Path to folder with radiant output."""
-    )
+    parser.add_argument("input", type=str, help="Path to folder with radiant output.")
 
     advanced = parser.add_argument_group("advanced arguments")
     advanced.add_argument(
@@ -36,7 +33,7 @@ def init_parser(subparsers: argparse._SubParsersAction) -> argparse.ArgumentPars
         type=str,
         metavar="STRING",
         default="objects",
-        help=f"""Name of subfolder for nested search. Default: 'objects'""",
+        help="Name of subfolder for nested search. Default: 'objects'",
     )
     advanced.add_argument(
         "--inreg",
