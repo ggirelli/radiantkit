@@ -14,17 +14,10 @@ from radiantkit import channel, image, segmentation
 from radiantkit.exception import enable_rich_assert
 from radiantkit.io import add_log_file_handler
 import re
-from rich.logging import RichHandler  # type: ignore
 from rich.progress import track  # type: ignore
 from rich.prompt import Confirm  # type: ignore
 import sys
 from typing import Optional
-
-logging.basicConfig(
-    level=logging.INFO,
-    format="%(message)s",
-    handlers=[RichHandler(markup=True, rich_tracebacks=True)],
-)
 
 
 @enable_rich_assert

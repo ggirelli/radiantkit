@@ -4,18 +4,10 @@
 """
 
 import argparse
-import logging
 import os
 from radiantkit.const import __version__
 from radiantkit.pipeline import setup_workflow
-from rich.logging import RichHandler  # type: ignore
 import sys
-
-logging.basicConfig(
-    level=logging.INFO,
-    format="%(message)s",
-    handlers=[RichHandler(markup=True, rich_tracebacks=True)],
-)
 
 
 def init_parser(subparsers: argparse._SubParsersAction) -> argparse.ArgumentParser:

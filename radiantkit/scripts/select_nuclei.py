@@ -18,17 +18,10 @@ from radiantkit.scripts.common import series as ra_series
 from radiantkit.series import Series, SeriesList
 from radiantkit import path, string
 import re
-from rich.logging import RichHandler  # type: ignore
 from rich.progress import track  # type: ignore
 from rich.prompt import Confirm  # type: ignore
 import sys
 from typing import Dict, List, Pattern
-
-logging.basicConfig(
-    level=logging.INFO,
-    format="%(message)s",
-    handlers=[RichHandler(markup=True, rich_tracebacks=True)],
-)
 
 __OUTPUT__ = {"raw_data": "select_nuclei.data.tsv", "fit": "select_nuclei.fit.pkl"}
 __OUTPUT_CONDITION__ = all

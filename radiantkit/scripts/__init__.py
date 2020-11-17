@@ -14,6 +14,15 @@ from radiantkit.scripts import tiff_desplit, tiff_split
 from radiantkit.scripts import tiff_findoof, tiff_segment, tiffcu
 from radiantkit.scripts import pipeline, report
 
+import logging
+from rich.logging import RichHandler  # type: ignore
+
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(message)s",
+    handlers=[RichHandler(markup=True, rich_tracebacks=True)],
+)
+
 __all__ = [
     "common",
     "config",

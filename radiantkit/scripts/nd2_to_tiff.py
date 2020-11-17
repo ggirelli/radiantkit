@@ -16,16 +16,9 @@ from radiantkit.io import add_log_file_handler
 from radiantkit.string import MultiRange
 from radiantkit.string import TIFFNameTemplateFields as TNTFields
 from radiantkit.string import TIFFNameTemplate as TNTemplate
-from rich.logging import RichHandler  # type: ignore
 from rich.progress import track  # type: ignore
 import sys
 from typing import List, Optional, Tuple
-
-logging.basicConfig(
-    level=logging.INFO,
-    format="%(message)s",
-    handlers=[RichHandler(markup=True, rich_tracebacks=True)],
-)
 
 
 @enable_rich_assert

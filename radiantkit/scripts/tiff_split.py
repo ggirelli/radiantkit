@@ -10,17 +10,10 @@ import numpy as np  # type: ignore
 import os
 from radiantkit.const import __version__
 from radiantkit import image as imt
-from rich.logging import RichHandler  # type: ignore
 from rich.progress import track  # type: ignore
 from rich.prompt import Confirm  # type: ignore
 import sys
 from typing import Iterable, List, Tuple
-
-logging.basicConfig(
-    level=logging.INFO,
-    format="%(message)s",
-    handlers=[RichHandler(markup=True, rich_tracebacks=True)],
-)
 
 
 def init_parser(subparsers: argparse._SubParsersAction) -> argparse.ArgumentParser:

@@ -15,15 +15,8 @@ from radiantkit import particle, series
 from radiantkit.scripts.common import series as ra_series
 from radiantkit.scripts.common import args as ra_args
 import re
-from rich.logging import RichHandler  # type: ignore
 from rich.prompt import Confirm  # type: ignore
 import sys
-
-logging.basicConfig(
-    level=logging.INFO,
-    format="%(message)s",
-    handlers=[RichHandler(markup=True, rich_tracebacks=True)],
-)
 
 __OUTPUT__ = {
     "poly_fit": "radial_population.profile.poly_fit.pkl",
