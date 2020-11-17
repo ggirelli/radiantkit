@@ -17,6 +17,9 @@ from radiantkit.io import add_log_file_handler
 import sys
 from typing import List
 
+__OUTPUT__ = {"focus_data": "oof.tsv"}
+__OUTPUT_CONDITION__ = all
+__LABEL__ = "TIFF focus analysis"
 
 
 @enable_rich_exceptions
@@ -45,14 +48,6 @@ definition.
         help="Fraction of stack (middle-centered) for in-focus fields. Default: .5",
         default=0.5,
     )
-
-    # parser.add_argument(
-    #     "--plot",
-    #     action="store_const",
-    #     const=True,
-    #     default=False,
-    #     help="""Generate pdf plot of intensity sum per Z-slice.""",
-    # )
 
     parser.add_argument(
         "--version",
