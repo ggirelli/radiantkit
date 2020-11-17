@@ -21,35 +21,32 @@ jobs:
     - uses: actions/setup-python@v2
       with:
         python-version: ${{ matrix.python-version }}
-    - name: Cache pip
-      uses: actions/cache@v1
+    - name: Install Poetry
+      uses: snok/install-poetry@v1.1.1
+    - name: Load cached venv (poetry)
+      id: cached-poetry-dependencies
+      uses: actions/cache@v2
       with:
-        path: ~/.cache/pip # This path is specific to Ubuntu
-        # Look to see if there is a cache hit for the corresponding requirements file
-        key: ${{ runner.os }}-pip-${{ hashFiles('requirements.txt') }}
-        restore-keys: |
-          ${{ runner.os }}-pip-
-          ${{ runner.os }}-
-    - name: Upgrade pip and install flake8
-      run: |
-        python -m pip install --upgrade pip
-        pip install flake8
-    - uses: dschep/install-poetry-action@v1.3
-    - name: Install package with poetry
+        path: .venv
+        key: venv-${{ runner.os }}-${{ hashFiles('**/poetry.lock') }}
+    - name: Install dependencies
       run: poetry install
-    - name: "Running black"
-      uses: lgeiger/black-action@v1.0.1
+      if: steps.cached-poetry-dependencies.outputs.cache-hit != 'true'
+    - uses: ricardochaves/python-lint@v1.3.0
       with:
-        args: ". --check"
-    - name: Lint with flake8
-      run: |
-        # stop the build if there are Python syntax errors or undefined names
-        flake8 . --count --select=E9,F63,F7,F82 --show-source --statistics
-        # exit-zero treats all errors as warnings
-        flake8 . --count --exit-zero --max-complexity=5 --max-line-length=88 --ignore=E203 --statistics
-    - uses: jpetrucciani/mypy-check@0.761
-      with:
-        path: '.'
+        python-root-list: "."
+        use-pylint: false
+        use-pycodestyle: false
+        use-flake8: true
+        use-black: true
+        use-mypy: true
+        use-isort: false
+        extra-pylint-options: ""
+        extra-pycodestyle-options: ""
+        extra-flake8-options: "--count --exit-zero --max-complexity=5 --max-line-length=88 --ignore=E203 --statistics"
+        extra-black-options: ""
+        extra-mypy-options: ""
+        extra-isort-options: ""
     - name: Test with pytest
       run: |
         pip install pytest
