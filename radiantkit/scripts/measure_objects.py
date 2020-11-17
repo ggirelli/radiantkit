@@ -12,15 +12,8 @@ from radiantkit import particle, series
 from radiantkit import string
 from radiantkit.scripts.common import series as ra_series
 import re
-from rich.logging import RichHandler  # type: ignore
 from rich.prompt import Confirm  # type: ignore
 import sys
-
-logging.basicConfig(
-    level=logging.INFO,
-    format="%(message)s",
-    handlers=[RichHandler(markup=True, rich_tracebacks=True)],
-)
 
 __OUTPUT__ = {
     "obj_features": "nuclear_features.tsv",

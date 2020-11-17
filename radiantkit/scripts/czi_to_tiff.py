@@ -9,25 +9,18 @@ import numpy as np  # type: ignore
 import os
 from radiantkit.const import __version__
 from radiantkit.conversion import CziFile2
-from radiantkit.exception import enable_rich_assert
+from radiantkit.exception import enable_rich_exceptions
 import radiantkit.image as imt
 from radiantkit.io import add_log_file_handler
 from radiantkit.string import MultiRange
 from radiantkit.string import TIFFNameTemplateFields as TNTFields
 from radiantkit.string import TIFFNameTemplate as TNTemplate
-from rich.logging import RichHandler  # type: ignore
 from rich.progress import track  # type: ignore
 import sys
 from typing import Iterable, List, Tuple
 
-logging.basicConfig(
-    level=logging.INFO,
-    format="%(message)s",
-    handlers=[RichHandler(markup=True, rich_tracebacks=True)],
-)
 
-
-@enable_rich_assert
+@enable_rich_exceptions
 def init_parser(subparsers: argparse._SubParsersAction) -> argparse.ArgumentParser:
     parser = subparsers.add_parser(
         __name__.split(".")[-1],
@@ -118,7 +111,7 @@ double quotes, i.e., "\\$". Alternatively, use single quotes, i.e., '$'.""",
     return parser
 
 
-@enable_rich_assert
+@enable_rich_exceptions
 def parse_arguments(args: argparse.Namespace) -> argparse.Namespace:
     if args.outdir is None:
         args.outdir = os.path.splitext(os.path.basename(args.input))[0]
@@ -226,7 +219,7 @@ def check_argument_compatibility(
     return args
 
 
-@enable_rich_assert
+@enable_rich_exceptions
 def run(args: argparse.Namespace) -> None:
     czi_image = CziFile2(args.input)
     if args.dry:

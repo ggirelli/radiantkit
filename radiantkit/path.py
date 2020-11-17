@@ -54,7 +54,7 @@ def pair_raw_mask_images(
     olist: List[RawMaskPair] = []
     for fpath in flist:
         fbase, fext = os.path.splitext(fpath)
-        fbase = fbase[len(prefix) : -len(suffix)]
+        fbase = fbase[slice(len(prefix), len(fbase) - len(suffix) + 1)]
         raw_image = f"{fbase}{fext}"
         if not os.path.isfile(os.path.join(dpath, raw_image)):
             logging.warning(f"missing raw image for mask '{fpath}', skipped.")

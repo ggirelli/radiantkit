@@ -8,7 +8,7 @@ from datetime import datetime
 import jinja2 as jj2
 import os
 import plotly.graph_objects as go  # type: ignore
-from radiantkit.scripts.common import output
+from radiantkit import output
 from typing import Any, Dict
 
 

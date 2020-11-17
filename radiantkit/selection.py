@@ -40,11 +40,11 @@ class BoundingElement(object):
             axes_bounds.append((axis.argmax(), len(axis) - axis[::-1].argmax()))
         return BoundingElement(tuple(axes_bounds))
 
-    def apply(self, I: Image) -> np.ndarray:
-        assert len(self._bounds) == len(I.shape)
-        for axis_id in range(len(I.shape)):
-            assert self._bounds[axis_id][1] <= I.shape[axis_id]
-        return I.pixels[tuple([slice(b0, b1) for b0, b1 in self._bounds])].copy()
+    def apply(self, img: Image) -> np.ndarray:
+        assert len(self._bounds) == len(img.shape)
+        for axis_id in range(len(img.shape)):
+            assert self._bounds[axis_id][1] <= img.shape[axis_id]
+        return img.pixels[tuple([slice(b0, b1) for b0, b1 in self._bounds])].copy()
 
     def __repr__(self):
         return f"{len(self._bounds)}D Bounding Element: {self._bounds}"

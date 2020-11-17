@@ -6,29 +6,21 @@
 import argparse
 import logging
 import os
-from radiantkit import const, report
-from radiantkit.scripts.common import output
-from rich.logging import RichHandler  # type: ignore
+from radiantkit import const, output, report
+from radiantkit.exception import enable_rich_exceptions
 import sys
 
-logging.basicConfig(
-    level=logging.INFO,
-    format="%(message)s",
-    handlers=[RichHandler(markup=True, rich_tracebacks=True)],
-)
 
-
+@enable_rich_exceptions
 def init_parser(subparsers: argparse._SubParsersAction) -> argparse.ArgumentParser:
     parser = subparsers.add_parser(
         __name__.split(".")[-1],
-        description=f"""Long description""",
+        description="Long description",
         formatter_class=argparse.RawDescriptionHelpFormatter,
         help="Generate radiant report(s).",
     )
 
-    parser.add_argument(
-        "input", type=str, help="""Path to folder with radiant output."""
-    )
+    parser.add_argument("input", type=str, help="Path to folder with radiant output.")
 
     advanced = parser.add_argument_group("advanced arguments")
     advanced.add_argument(
@@ -36,7 +28,7 @@ def init_parser(subparsers: argparse._SubParsersAction) -> argparse.ArgumentPars
         type=str,
         metavar="STRING",
         default="objects",
-        help=f"""Name of subfolder for nested search. Default: 'objects'""",
+        help="Name of subfolder for nested search. Default: 'objects'",
     )
     advanced.add_argument(
         "--inreg",
@@ -67,20 +59,22 @@ def init_parser(subparsers: argparse._SubParsersAction) -> argparse.ArgumentPars
     return parser
 
 
+@enable_rich_exceptions
 def parse_arguments(args: argparse.Namespace) -> argparse.Namespace:
     assert os.path.isdir(args.input)
     args.version = const.__version__
     return args
 
 
+@enable_rich_exceptions
 def run(args: argparse.Namespace) -> None:
     logging.info(f"looking at '{args.input}'")
     output_list = output.OutputReader.read_recursive(args.input, args.inreg)
 
-    logging.info("preparing plots")
-    plot_data = output.OutputPlotter.plot(output_list)
+    # logging.info("preparing plots")
+    # plot_data = output.OutputPlotter.plot(output_list)
 
-    logging.info("generating HTML report")
-    report.general_report(args.input, args, output_list, plot_data)
+    # logging.info("generating HTML report")
+    # report.general_report(args.input, args, output_list, plot_data)
 
     raise NotImplementedError

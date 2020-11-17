@@ -12,20 +12,17 @@ import os
 import pandas as pd  # type: ignore
 from radiantkit.const import __version__
 from radiantkit import channel, path, stat
-from radiantkit.exception import enable_rich_assert
+from radiantkit.exception import enable_rich_exceptions
 from radiantkit.io import add_log_file_handler
-from rich.logging import RichHandler  # type: ignore
 import sys
 from typing import List
 
-logging.basicConfig(
-    level=logging.INFO,
-    format="%(message)s",
-    handlers=[RichHandler(markup=True, rich_tracebacks=True)],
-)
+__OUTPUT__ = {"focus_data": "oof.tsv"}
+__OUTPUT_CONDITION__ = all
+__LABEL__ = "TIFF focus analysis"
 
 
-@enable_rich_assert
+@enable_rich_exceptions
 def init_parser(subparsers: argparse._SubParsersAction) -> argparse.ArgumentParser:
     parser = subparsers.add_parser(
         __name__.split(".")[-1],
@@ -51,14 +48,6 @@ definition.
         help="Fraction of stack (middle-centered) for in-focus fields. Default: .5",
         default=0.5,
     )
-
-    # parser.add_argument(
-    #     "--plot",
-    #     action="store_const",
-    #     const=True,
-    #     default=False,
-    #     help="""Generate pdf plot of intensity sum per Z-slice.""",
-    # )
 
     parser.add_argument(
         "--version",
@@ -108,7 +97,7 @@ definition.
     return parser
 
 
-@enable_rich_assert
+@enable_rich_exceptions
 def parse_arguments(args: argparse.Namespace) -> argparse.Namespace:
     if args.output is None:
         args.output = os.path.join(args.input, "oof.tsv")
@@ -160,7 +149,7 @@ def is_OOF(args: argparse.Namespace, ipath: str) -> pd.DataFrame:
     return profile_data
 
 
-@enable_rich_assert
+@enable_rich_exceptions
 def run(args: argparse.Namespace) -> None:
     assert os.path.isdir(args.input), f"image directory not found: '{args.input}'"
     add_log_file_handler(os.path.join(args.input, "oof.log.txt"))

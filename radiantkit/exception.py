@@ -8,11 +8,11 @@ import sys
 from typing import Callable
 
 
-def enable_rich_assert(fun: Callable) -> Callable:
+def enable_rich_exceptions(fun: Callable) -> Callable:
     def wrapper(*args, **kwargs):
         try:
             return fun(*args, **kwargs)
-        except AssertionError as e:
+        except Exception as e:
             logging.exception(e)
             sys.exit()
 

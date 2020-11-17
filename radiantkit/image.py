@@ -41,16 +41,17 @@ class ImageBase(object):
         if spacing is None:
             return
         spacing = np.array(spacing)
+        aspect_slice = slice(len(self.aspect) - len(spacing), len(self.aspect))
         if len(self.aspect) == len(spacing):
             self._aspect = spacing
         elif len(spacing) < len(self._axes_order):
-            self.aspect[-len(spacing) :] = spacing
+            self.aspect[aspect_slice] = spacing
             logging.warning(
                 f"aspect changed to {self.aspect} "
                 + f"(used only last {len(self.aspect)} values)"
             )
         else:
-            self.aspect = spacing[-len(self.aspect) :]
+            self.aspect = spacing[aspect_slice]
             logging.warning(
                 f"aspect changed to {self.aspect} "
                 + f"(used only last {len(self.aspect)} values)"
@@ -76,8 +77,14 @@ class Image(ImageBase):
             assert all([1 == axes.count(c) for c in set(axes)])
             self._axes_order = axes
         else:
-            self._axes_order = self._ALLOWED_AXES[-len(self.shape) :]
-        self._aspect = self._aspect[-len(self.shape) :]
+            self._axes_order = self._ALLOWED_AXES[
+                slice(
+                    len(self._ALLOWED_AXES) - len(self.shape), len(self._ALLOWED_AXES)
+                )
+            ]
+        self._aspect = self._aspect[
+            slice(len(self.aspect) - len(self.shape), len(self.aspect))
+        ]
         if path is not None:
             if os.path.isfile(path):
                 self._path_to_local = path
@@ -164,7 +171,9 @@ class Image(ImageBase):
         self._pixels = extract_nd(self._pixels, self.nd)
         assert len(self._pixels.shape) <= self.nd
         if len(self._pixels.shape) != self.nd:
-            self._axes_order = self._axes_order[-self.nd :]
+            self._axes_order = self._axes_order[
+                slice(len(self._axes_order) - self.nd, len(self._axes_order))
+            ]
 
     def _remove_empty_axes(self) -> None:
         if len(self.pixels.shape) != self.nd:
@@ -590,6 +599,58 @@ def get_sampleformat_tag(dtype):
         return 4
 
 
+def add_missing_axes(
+    img: np.ndarray, bundle_axes: str, expected_axes: str = "TZCYX"
+) -> Tuple[np.ndarray, str]:
+    new_shape = []
+    for a in expected_axes:
+        if a not in bundle_axes.upper():
+            bundle_axes = f"{a}{bundle_axes.upper()}"
+            new_shape.append(1)
+    new_shape.extend(img.shape)
+    img = img.reshape(new_shape)
+    return (img, bundle_axes)
+
+
+def remove_unexpected_axes(
+    img: np.ndarray, bundle_axes: str, expected_axes: str = "TZCYX"
+) -> Tuple[np.ndarray, str]:
+    bundle_axes_list = list(bundle_axes.upper())
+    for a in bundle_axes_list:
+        if a not in expected_axes:
+            axis_index = bundle_axes_list.index(a)
+            logging.warning(f"dropped axis {a} [{axis_index}].")
+            img = np.delete(img, axis_index, 1)
+            bundle_axes_list.pop(axis_index)
+            bundle_axes = "".join(bundle_axes_list)
+    return (img, bundle_axes)
+
+
+def reorder_axes(
+    img: np.ndarray, bundle_axes: str, expected_axes: str = "TZCYX"
+) -> Tuple[np.ndarray, str]:
+    bundle_axes_list = list(bundle_axes.upper())
+    while bundle_axes != expected_axes:
+        for i in range(len(expected_axes)):
+            if bundle_axes[i] != expected_axes[i]:
+                a1 = (bundle_axes[i], i)
+                a2 = (expected_axes[i], bundle_axes.index(expected_axes[i]))
+                bundle_axes_list[a1[1]] = a2[0]
+                bundle_axes_list[a2[1]] = a1[0]
+                bundle_axes = "".join(bundle_axes_list)
+                img = np.swapaxes(img, a1[1], a2[1])
+    return (img, bundle_axes)
+
+
+def enforce_default_axis_bundle(
+    img: np.ndarray, bundle_axes: str, expected_axes: str = "TZCYX"
+) -> Tuple[np.ndarray, str]:
+    img, bundle_axes = add_missing_axes(img, bundle_axes, expected_axes)
+    img, bundle_axes = remove_unexpected_axes(img, bundle_axes, expected_axes)
+    img, bundle_axes = reorder_axes(img, bundle_axes, expected_axes)
+    return (img, bundle_axes)
+
+
 def save_tiff(
     path: str,
     img: np.ndarray,
@@ -598,16 +659,14 @@ def save_tiff(
     inMicrons: bool = False,
     z_resolution: Optional[float] = None,
     forImageJ: bool = True,
+    forceTZCYX: bool = True,
     **kwargs,
 ) -> None:
-    while len(bundle_axes) > len(img.shape):
-        new_shape = [1]
-        for n in img.shape:
-            new_shape.append(n)
-        img.shape = new_shape
-
     assert_msg = "shape mismatch between bundled axes and image."
     assert len(bundle_axes) == len(img.shape), assert_msg
+
+    if forceTZCYX:
+        img, bundle_axes = enforce_default_axis_bundle(img, bundle_axes, "TZCYX")
 
     metadata: Dict[str, Any] = dict(axes=bundle_axes)
     metadata["unit"] = "um" if inMicrons else None

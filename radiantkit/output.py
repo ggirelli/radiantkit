@@ -12,6 +12,14 @@ import plotly.graph_objects as go  # type: ignore
 from radiantkit import const, path, plot, scripts
 from typing import Any, Callable, Dict, List, Optional, Pattern
 
+DirectoryPath = str
+OutputTypeList = List["OutputType"]
+ScriptStub = str
+ScriptLabel = str
+OutputFileLabel = str
+OutputData = Dict[OutputFileLabel, Any]
+BaseName = str
+
 
 class OutputType(Enum):
     """Enum for registered radiant script stubs.
@@ -29,6 +37,7 @@ class OutputType(Enum):
         RADIAL_POPULATION {str} -- stub for radial_population
     """
 
+    TIFF_FIND_OOF = "tiff_findoof"
     SELECT_NUCLEI = "select_nuclei"
     MEASURE_OBJECTS = "measure_objects"
     RADIAL_POPULATION = "radial_population"
@@ -51,6 +60,7 @@ class OutputType(Enum):
 
     def plot(self, **data) -> go.Figure:
         plot_fun: Dict[str, Callable] = dict(
+            tiff_findoof=lambda *x, **y: None,
             select_nuclei=plot.plot_nuclear_selection,
             measure_objects=plot.plot_nuclear_features,
             radial_population=plot.plot_profiles,
@@ -60,15 +70,6 @@ class OutputType(Enum):
     @staticmethod
     def to_dict():
         return dict([(x.value, x.label) for x in OutputType])
-
-
-DirectoryPath = str
-OutputTypeList = List[OutputType]
-ScriptStub = str
-ScriptLabel = str
-OutputFileLabel = str
-OutputData = Dict[OutputFileLabel, Any]
-BaseName = str
 
 
 class OutputChecker(object):
@@ -149,6 +150,9 @@ class OutputFinder(object):
         for f in subfolder_list:
             logging.info(f"looking into subfolder '{f.name}'")
             current_output = OutputFinder.search_recursive(f.path, inreg)
+            if 0 == len(current_output):
+                logging.warning(f"skipped subfolder '{f.path}'.")
+                continue
             path_list = [x.value for x in current_output[f.path]]
             logging.info(f"found output for: {path_list}")
             output_list.update(current_output)

@@ -4,22 +4,14 @@
 """
 
 import argparse
-import logging
 from radiantkit.const import __version__
-from rich.logging import RichHandler  # type: ignore
 import sys
-
-logging.basicConfig(
-    level=logging.INFO,
-    format="%(message)s",
-    handlers=[RichHandler(markup=True, rich_tracebacks=True)],
-)
 
 
 def init_parser(subparsers: argparse._SubParsersAction) -> argparse.ArgumentParser:
     parser = subparsers.add_parser(
         __name__.split(".")[-1],
-        description=f"""Long description""",
+        description="Long description",
         formatter_class=argparse.RawDescriptionHelpFormatter,
         help="Generate single-cell radial profiles. *NOT IMPLEMENTED*",
     )
