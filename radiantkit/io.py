@@ -29,4 +29,4 @@ def add_log_file_handler(path: str, logger_name: Optional[str] = None) -> None:
     fh = RichHandler(console=Console(file=open(path, mode="w+")), markup=True)
     fh.setLevel(logging.INFO)
     logging.getLogger(logger_name).addHandler(fh)
-    logging.info(f"[green]Log to[/]\t\t{path}")
+    logging.info(f"[green]Log to[/]: '{path}'")

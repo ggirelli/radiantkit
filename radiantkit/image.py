@@ -662,8 +662,9 @@ def save_tiff(
     forceTZCYX: bool = True,
     **kwargs,
 ) -> None:
-    assert_msg = "shape mismatch between bundled axes and image."
-    assert len(bundle_axes) == len(img.shape), assert_msg
+    assert len(bundle_axes) == len(
+        img.shape
+    ), f"shape mismatch between bundled axes ({bundle_axes}) and image ({img.shape})."
 
     if forceTZCYX:
         img, bundle_axes = enforce_default_axis_bundle(img, bundle_axes, "TZCYX")

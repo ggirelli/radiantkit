@@ -183,13 +183,12 @@ def convert_to_tiff(args: argparse.Namespace, czi_image: CziFile2) -> None:
             os.path.join(args.outdir, opath),
             OI.astype(imt.get_dtype(OI.max())),
             args.doCompress,
-            bundle_axes="TZYX",
             resolution=(
                 1e-6 / czi_image.get_axis_resolution("X"),
                 1e-6 / czi_image.get_axis_resolution("Y"),
             ),
             inMicrons=True,
-            ResolutionZ=czi_image.get_axis_resolution("Z") * 1e6,
+            z_resolution=czi_image.get_axis_resolution("Z") * 1e6,
         )
 
 
@@ -228,16 +227,15 @@ def run(args: argparse.Namespace) -> None:
 
     if not os.path.isdir(args.outdir):
         os.mkdir(args.outdir)
-    add_log_file_handler(os.path.join(args.outdir, "nd2_to_tiff.log.txt"))
+    add_log_file_handler(os.path.join(args.outdir, "czi_to_tiff.log.txt"))
 
     czi_image.log_details()
     args = check_argument_compatibility(args, czi_image)
     assert not czi_image.isLive(), "time-course conversion images not implemented."
 
     logging.info(f"Output directory: '{args.outdir}'")
-    czi_image.squeeze_axes("SCZYX")
-    reordered_axes = "CZYX" if 1 == czi_image.field_count() else "SCZYX"
-    czi_image.reorder_axes(reordered_axes)
+    czi_image.squeeze_axes("STCZYX")
+    czi_image.reorder_axes("STCZYX")
 
     if args.fields is not None:
         args.fields = list(args.fields)
