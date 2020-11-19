@@ -30,7 +30,7 @@ class ND2Reader2(ND2Reader):
         self._set_proposed_dtype()
 
     def log_details(self, logger: Logger = getLogger()) -> None:
-        logger.info(f"Input: {self.filename}")
+        logger.info(f"Input: '{self.filename}'")
 
         logger.info(
             f"Found {self.field_count()} field(s) of view, "
@@ -186,10 +186,13 @@ class CziFile2(CziFile):
         return self.__pixels
 
     def log_details(self, logger: Logger = getLogger()) -> None:
+        logger.info(f"Input: '{self._fh.name}'")
+
         logger.info(
             f"Found {self.field_count()} field(s) of view, "
             + f"with {self.channel_count()} channel(s)."
         )
+
         logger.info(f"Channels: {list(self.get_channel_names())}.")
 
         x_size = self.pixels.shape[self.axes.index("X")]
@@ -197,9 +200,11 @@ class CziFile2(CziFile):
         if self.is3D:
             z_size = self.pixels.shape[self.axes.index("Z")]
             logger.info(f"XYZ size: {x_size} x {y_size} x {z_size}")
-            logger.info(f"Delta Z value: {self.get_axis_resolution('Z')}")
         else:
             logger.info(f"XY size: {x_size} x {y_size}")
+
+        for axis_name, axis_resolution in self.get_resolution().items():
+            logger.info(f"{axis_name} resolution: {axis_resolution*1e6:.3f} um")
 
     def field_count(self) -> int:
         if "S" not in self.axes:
@@ -262,7 +267,7 @@ class CziFile2(CziFile):
     def reorder_axes(self, bundle_axes: str) -> None:
         if self.axes == bundle_axes:
             return
-        bundle_axes_list = list(bundle_axes)
+        bundle_axes_list = [a for a in bundle_axes if a in self.axes]
         assert len(bundle_axes_list) == len(self.axes)
         assert all([axis in self.axes for axis in bundle_axes_list])
         self.__pixels = np.moveaxis(
