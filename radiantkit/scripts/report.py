@@ -6,7 +6,7 @@
 import argparse
 import logging
 import os
-from radiantkit import const, output, report
+from radiantkit import const, report
 from radiantkit.exception import enable_rich_exceptions
 import sys
 
@@ -29,6 +29,14 @@ def init_parser(subparsers: argparse._SubParsersAction) -> argparse.ArgumentPars
         metavar="STRING",
         default="objects",
         help="Name of subfolder for nested search. Default: 'objects'",
+    )
+    advanced.add_argument(
+        "--not-root",
+        action="store_const",
+        dest="is_root",
+        const=False,
+        default=True,
+        help="Input folder is single-condition (not root folder).",
     )
     advanced.add_argument(
         "--inreg",
@@ -69,12 +77,15 @@ def parse_arguments(args: argparse.Namespace) -> argparse.Namespace:
 @enable_rich_exceptions
 def run(args: argparse.Namespace) -> None:
     logging.info(f"looking at '{args.input}'")
-    output_list = output.OutputReader.read_recursive(args.input, args.inreg)
+    repmaker = report.ReportMaker(args.input)
+    repmaker.is_root = args.is_root
+    repmaker.make()
+    # output_list = output.OutputReader.read_recursive(args.input, args.inreg)
 
-    # logging.info("preparing plots")
-    # plot_data = output.OutputPlotter.plot(output_list)
-
+    logging.info("preparing plots")
+    # plot_data = output.OutputPlotter(output_list)
+    # logging.info(plot_data._data)
     # logging.info("generating HTML report")
     # report.general_report(args.input, args, output_list, plot_data)
 
-    raise NotImplementedError
+    logging.info("Done. :thumbs_up: :smiley:")

@@ -3,63 +3,75 @@
 @contact: gigi.ga90@gmail.com
 """
 
-import argparse
-from datetime import datetime
-import jinja2 as jj2
+from abc import abstractmethod
+from importlib import import_module
+import logging
 import os
-import plotly.graph_objects as go  # type: ignore
-from radiantkit import output
-from typing import Any, Dict
+from radiantkit import scripts
+from radiantkit.output import Output, OutputDirectories
+from types import ModuleType
+from typing import Dict, List, Optional, Tuple
 
 
-class JinjaTemplate(object):
-    _env: jj2.Environment
-    _template: jj2.Template
+class ReportBase(OutputDirectories):
+    _stub: str
+    _files: Dict[str, Tuple[str, bool]]
 
-    def __init__(self, template: str):
-        super(JinjaTemplate, self).__init__()
-        self._env = jj2.Environment(
-            loader=jj2.PackageLoader("radiantkit", "templates"),
-            autoescape=jj2.select_autoescape(["html", "xml"]),
-        )
-        self._template = self._env.get_template(template)
+    def __init__(self, *args, **kwargs):
+        super(ReportBase, self).__init__(*args, **kwargs)
 
-    def render(self, path: str, **kwargs) -> None:
-        with open(path, "w+") as OH:
-            OH.write(self._template.render(**kwargs))
+    def __found_output(self) -> bool:
+        output = Output(self._dirpath, self._subdirs)
+        output.is_root = self.is_root
+        for stub, (filename, required) in self._files.items():
+            found_in: List[str] = output.search(filename)
+            if not found_in and required:
+                logging.warning(
+                    f"missing required output file '{filename}' "
+                    + f"for script '{self._stub}' report."
+                )
+                return False
+        return True
 
+    def make(self) -> None:
+        if not self.__found_output():
+            return
+        raise NotImplementedError("here report creation should proceed")
 
-class Report(JinjaTemplate):
-    _env: jj2.Environment
-    _template: jj2.Template
-
-    def __init__(self, template: str):
-        super(Report, self).__init__(template)
-        self._env.filters["basename"] = os.path.basename
-        self._env.filters["dirname"] = os.path.dirname
-        self._template = self._env.get_template(template)
-
-    def render(self, path: str, **kwargs) -> None:
-        assert "title" in kwargs
-        super(Report, self).render(path, **kwargs)
+    @abstractmethod
+    def plot(self, *args, **kwargs) -> None:
+        pass
 
 
-def general_report(
-    dpath: str,
-    args: argparse.Namespace,
-    output_list: Dict[str, Any],
-    plot_data: Dict[str, Dict[str, go.Figure]],
-) -> None:
-    assert os.path.isdir(dpath)
-    repi = Report("reports/main.tpl.html")
-    repi.render(
-        os.path.join(dpath, "radiant.html"),
-        args=args,
-        odata=output_list,
-        pdata=plot_data,
-        title="RadIAntKit",
-        otd=output.OutputType.to_dict(),
-        ref_channel="dapi",
-        now=str(datetime.now()),
-        online=args.online,
-    )
+class ReportMaker(OutputDirectories):
+    __reportable: List[ReportBase]
+
+    def __init__(self, *args, **kwargs):
+        super(ReportMaker, self).__init__(*args, **kwargs)
+
+    def __get_report_instance(self, module_name: str) -> Optional[ReportBase]:
+        try:
+            script_module: ModuleType = import_module(
+                f"radiantkit.scripts.{module_name}"
+            )
+            if "Report" in dir(script_module):
+                if issubclass(script_module.Report, ReportBase):  # type: ignore
+                    report = script_module.Report(self._dirpath)  # type: ignore
+                    report.is_root = self.is_root
+                    return report
+        except ModuleNotFoundError:
+            pass
+        return None
+
+    def __find_reportable(self) -> None:
+        self.__reportable = []
+        assert os.path.isdir(self._dirpath)
+        for module_name in dir(scripts):
+            report_instance = self.__get_report_instance(module_name)
+            if report_instance is not None:
+                self.__reportable.append(report_instance)
+
+    def make(self) -> None:
+        self.__find_reportable()
+        for report in self.__reportable:
+            report.make()

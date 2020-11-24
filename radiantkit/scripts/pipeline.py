@@ -6,7 +6,7 @@
 import argparse
 import os
 from radiantkit.const import __version__
-from radiantkit.pipeline import setup_workflow
+# from radiantkit.pipeline import setup_workflow
 import sys
 
 
@@ -69,7 +69,8 @@ def parse_arguments(args: argparse.Namespace) -> argparse.Namespace:
 
 
 def run(args: argparse.Namespace) -> None:
-    setup_workflow(args.root, args.workflow)
+    raise NotImplementedError
+    # setup_workflow(args.root, args.workflow)
     print(f"\nPipeline set up in '{args.root}'.\nNext:\n")
     config_path = os.path.join(args.root, f"{args.workflow}.config.yaml")
     print("(1) Manually update the config file, for example with:")

@@ -14,12 +14,17 @@ from radiantkit.const import __version__
 from radiantkit import channel, path, stat
 from radiantkit.exception import enable_rich_exceptions
 from radiantkit.io import add_log_file_handler
+from radiantkit.report import ReportBase
 import sys
 from typing import List
 
-__OUTPUT__ = {"focus_data": "oof.tsv"}
-__OUTPUT_CONDITION__ = all
-__LABEL__ = "TIFF focus analysis"
+
+class Report(ReportBase):
+    _stub = "tiff_findoof"
+    _files = {"focus_data": ("oof.tsv", True)}
+
+    def plot(self, *args, **kwargs) -> None:
+        pass
 
 
 @enable_rich_exceptions
