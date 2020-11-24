@@ -165,13 +165,19 @@ def get_resolution_Z(nd2_image: ND2Reader2, field_id: int, enforce: float) -> fl
 def get_field_from_2d_nd2(
     nd2_image: ND2Reader2, field_id: int, channel_id: int
 ) -> np.ndarray:
-    return nd2_image[field_id][:, :, channel_id].astype(nd2_image.dtype)
+    if 1 == nd2_image.channel_count():
+        return nd2_image[field_id][:, :].astype(nd2_image.dtype)
+    else:
+        return nd2_image[field_id][:, :, channel_id].astype(nd2_image.dtype)
 
 
 def get_field_from_3d_nd2(
     nd2_image: ND2Reader2, field_id: int, channel_id: int
 ) -> np.ndarray:
-    return nd2_image[field_id][:, :, :, channel_id].astype(nd2_image.dtype)
+    if 1 == nd2_image.channel_count():
+        return nd2_image[field_id][:, :, :].astype(nd2_image.dtype)
+    else:
+        return nd2_image[field_id][:, :, :, channel_id].astype(nd2_image.dtype)
 
 
 get_field_fun = {2: get_field_from_2d_nd2, 3: get_field_from_3d_nd2}
