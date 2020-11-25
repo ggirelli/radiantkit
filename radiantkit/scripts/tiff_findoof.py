@@ -5,29 +5,21 @@
 
 
 import argparse
+from collections import defaultdict
 from joblib import cpu_count, delayed, Parallel  # type: ignore
 import logging
 import numpy as np  # type: ignore
 import os
 import pandas as pd  # type: ignore
+import plotly.graph_objects as go  # type: ignore
+import plotly.express as px  # type: ignore
 from radiantkit.const import __version__
 from radiantkit import channel, path, stat
 from radiantkit.exception import enable_rich_exceptions
 from radiantkit.io import add_log_file_handler
 from radiantkit.report import ReportBase
 import sys
-from typing import List
-
-
-class Report(ReportBase):
-    def __init__(self, *args, **kwargs):
-        super(ReportBase, self).__init__(*args, **kwargs)
-        self._stub = "tiff_findoof"
-        self._files = {"focus_data": ("oof.tsv", True, [])}
-
-    def plot(self, *args, **kwargs) -> None:
-        assert 'focus_data' in kwargs
-        logging.info(kwargs['focus_data'])
+from typing import DefaultDict, Dict, List
 
 
 @enable_rich_exceptions
@@ -177,7 +169,34 @@ def run(args: argparse.Namespace) -> None:
     )
 
     pd.concat(series_data).to_csv(args.output, "\t", index=False)
-    # if args.plot:
-    #     plot_profile(args, series_data, f"{os.path.splitext(args.output)[0]}.pdf")
 
     logging.info("Done. :thumbs_up: :smiley:")
+
+
+class Report(ReportBase):
+    def __init__(self, *args, **kwargs):
+        super(Report, self).__init__(*args, **kwargs)
+        self._stub = "tiff_findoof"
+        self._files = {"focus_data": ("oof.tsv", True, [])}
+
+    def plot(
+        self, data: DefaultDict[str, Dict[str, pd.DataFrame]]
+    ) -> DefaultDict[str, Dict[str, go.Figure]]:
+        fig_data: DefaultDict[str, Dict[str, go.Figure]] = defaultdict(lambda: {})
+        assert "focus_data" in data
+        for dirpath, dirdata in data["focus_data"].items():
+            fig = px.line(dirdata, x="x", y="y", color="path", line_dash="response")
+            fig.update_layout(
+                title=f"Condition: {dirpath}",
+                xaxis_title="Z-slice index",
+                yaxis_title="Gradient of magnitude",
+            )
+            fig_data["focus_data"]["dirdata"] = fig
+        return fig_data
+
+    def make_page(self, fig_data: Dict[str, Dict[str, go.Figure]]) -> None:
+        assert "focus_data" in fig_data
+        print([self.figure_to_html(fig) for fig in fig_data["focus_data"].values()])
+        raise NotImplementedError(
+            "here should assemble figures into a single html page"
+        )

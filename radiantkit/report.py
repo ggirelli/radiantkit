@@ -8,11 +8,13 @@ from collections import defaultdict
 from importlib import import_module
 import logging
 import os
+import pandas as pd  # type: ignore
+import plotly.graph_objects as go  # type: ignore
 from radiantkit.const import DirectoryPathList, OutputFileDirpath
 from radiantkit import scripts
 from radiantkit.output import Output, OutputDirectories, OutputReader
 from types import ModuleType
-from typing import Any, DefaultDict, Dict, List, Optional
+from typing import DefaultDict, Dict, List, Optional
 
 
 class ReportBase(OutputDirectories):
@@ -38,8 +40,8 @@ class ReportBase(OutputDirectories):
             else:
                 self.__located_files[stub] = (filename, required, found_in)
 
-    def _read(self) -> DefaultDict[str, Dict[str, Any]]:
-        data: DefaultDict[str, Dict[str, Any]] = defaultdict(lambda: {})
+    def _read(self) -> DefaultDict[str, Dict[str, pd.DataFrame]]:
+        data: DefaultDict[str, Dict[str, pd.DataFrame]] = defaultdict(lambda: {})
         for stub, (filename, _, dirpathlist) in self.__located_files.items():
             for dirpath in dirpathlist:
                 filepath = os.path.join(dirpath, filename)
@@ -48,14 +50,25 @@ class ReportBase(OutputDirectories):
                 data[stub][dirpath] = OutputReader.read_single_file(filepath)
         return data
 
-    def make(self) -> None:
-        self._search()
-        self.plot(**self._read())
-        raise NotImplementedError("here report creation should proceed")
+    @staticmethod
+    def figure_to_html(fig: go.Figure, include_plotlyjs: bool = False) -> str:
+        return (
+            fig.to_html(include_plotlyjs=False).split("<body>")[1].split("</body>")[0]
+        )
 
     @abstractmethod
-    def plot(self, *args, **kwargs) -> None:
-        pass
+    def plot(
+        self, data: DefaultDict[str, Dict[str, pd.DataFrame]]
+    ) -> Dict[str, Dict[str, go.Figure]]:
+        ...
+
+    @abstractmethod
+    def make_page(self, fig_data: Dict[str, Dict[str, go.Figure]]) -> None:
+        ...
+
+    def make(self) -> None:
+        self._search()
+        return self.make_page(self.plot(self._read()))
 
 
 class ReportMaker(OutputDirectories):
@@ -65,6 +78,8 @@ class ReportMaker(OutputDirectories):
         super(ReportMaker, self).__init__(*args, **kwargs)
 
     def __get_report_instance(self, module_name: str) -> Optional[ReportBase]:
+        """ReportMaker supports script modules with a defined 'Report' class that is a
+        subclass of ReportBase"""
         try:
             script_module: ModuleType = import_module(
                 f"radiantkit.scripts.{module_name}"

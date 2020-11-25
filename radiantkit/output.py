@@ -7,7 +7,7 @@ import os
 import pandas as pd  # type: ignore
 import pickle
 from radiantkit.const import DirectoryPathList
-from typing import Any, Optional, Pattern
+from typing import Optional, Pattern
 
 DEFAULT_SUBDIRS: DirectoryPathList = ["objects"]
 
@@ -82,7 +82,7 @@ class OutputReader(object):
     def read_csv(
         path: str,
         sep: str = ",",
-    ) -> Optional[pd.DataFrame]:
+    ) -> pd.DataFrame:
         return pd.read_csv(path, sep=sep)
 
     @staticmethod
@@ -90,12 +90,12 @@ class OutputReader(object):
         return OutputReader.read_csv(path, "\t")
 
     @staticmethod
-    def read_pkl(path: str) -> Any:
+    def read_pkl(path: str) -> pd.DataFrame:
         with open(path, "rb") as PIH:
-            return pickle.load(PIH)
+            return pd.DataFrame(pickle.load(PIH))
 
     @staticmethod
-    def read_single_file(path: str) -> Any:
+    def read_single_file(path: str) -> pd.DataFrame:
         if path.endswith(".csv"):
             return OutputReader.read_csv(path)
         if path.endswith(".tsv"):
