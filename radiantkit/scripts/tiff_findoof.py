@@ -20,11 +20,14 @@ from typing import List
 
 
 class Report(ReportBase):
-    _stub = "tiff_findoof"
-    _files = {"focus_data": ("oof.tsv", True)}
+    def __init__(self, *args, **kwargs):
+        super(ReportBase, self).__init__(*args, **kwargs)
+        self._stub = "tiff_findoof"
+        self._files = {"focus_data": ("oof.tsv", True, [])}
 
     def plot(self, *args, **kwargs) -> None:
-        pass
+        assert 'focus_data' in kwargs
+        logging.info(kwargs['focus_data'])
 
 
 @enable_rich_exceptions

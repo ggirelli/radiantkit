@@ -4,38 +4,53 @@
 """
 
 from abc import abstractmethod
+from collections import defaultdict
 from importlib import import_module
 import logging
 import os
+from radiantkit.const import DirectoryPathList, OutputFileDirpath
 from radiantkit import scripts
-from radiantkit.output import Output, OutputDirectories
+from radiantkit.output import Output, OutputDirectories, OutputReader
 from types import ModuleType
-from typing import Dict, List, Optional, Tuple
+from typing import Any, DefaultDict, Dict, List, Optional
 
 
 class ReportBase(OutputDirectories):
     _stub: str
-    _files: Dict[str, Tuple[str, bool]]
+    _files: OutputFileDirpath
+    __located_files: OutputFileDirpath
 
     def __init__(self, *args, **kwargs):
         super(ReportBase, self).__init__(*args, **kwargs)
 
-    def __found_output(self) -> bool:
+    def _search(self) -> None:
         output = Output(self._dirpath, self._subdirs)
         output.is_root = self.is_root
-        for stub, (filename, required) in self._files.items():
-            found_in: List[str] = output.search(filename)
+        self.__located_files = {}
+        for stub, (filename, required, _) in self._files.items():
+            found_in: DirectoryPathList = output.search(filename)
             if not found_in and required:
                 logging.warning(
                     f"missing required output file '{filename}' "
                     + f"for script '{self._stub}' report."
                 )
-                return False
-        return True
+                continue
+            else:
+                self.__located_files[stub] = (filename, required, found_in)
+
+    def _read(self) -> DefaultDict[str, Dict[str, Any]]:
+        data: DefaultDict[str, Dict[str, Any]] = defaultdict(lambda: {})
+        for stub, (filename, _, dirpathlist) in self.__located_files.items():
+            for dirpath in dirpathlist:
+                filepath = os.path.join(dirpath, filename)
+                logging.info(f"reading [{stub}] output file '{filepath}'.")
+                assert os.path.isfile(filepath)
+                data[stub][dirpath] = OutputReader.read_single_file(filepath)
+        return data
 
     def make(self) -> None:
-        if not self.__found_output():
-            return
+        self._search()
+        self.plot(**self._read())
         raise NotImplementedError("here report creation should proceed")
 
     @abstractmethod

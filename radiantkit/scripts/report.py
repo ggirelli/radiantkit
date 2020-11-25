@@ -77,15 +77,9 @@ def parse_arguments(args: argparse.Namespace) -> argparse.Namespace:
 @enable_rich_exceptions
 def run(args: argparse.Namespace) -> None:
     logging.info(f"looking at '{args.input}'")
+
     repmaker = report.ReportMaker(args.input)
     repmaker.is_root = args.is_root
     repmaker.make()
-    # output_list = output.OutputReader.read_recursive(args.input, args.inreg)
-
-    logging.info("preparing plots")
-    # plot_data = output.OutputPlotter(output_list)
-    # logging.info(plot_data._data)
-    # logging.info("generating HTML report")
-    # report.general_report(args.input, args, output_list, plot_data)
 
     logging.info("Done. :thumbs_up: :smiley:")
