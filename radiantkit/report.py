@@ -100,6 +100,29 @@ class ReportBase(OutputDirectories):
     ) -> Dict[str, Dict[str, go.Figure]]:
         ...
 
+    def __make_panel_page(
+        self, panel_type: str, panels: str, keys: List[str], msg: str = ""
+    ) -> str:
+        page = f"""
+    <small>{msg}</small>
+    <select class='{self._stub} {panel_type}-panel u-full-width'>"""
+        for d in keys:
+            page += f"\n\t\t\t<option>{os.path.basename(d)}</option>"
+        page += f"""
+    </select>
+    {panels}
+    <script type='text/javascript'>
+        // Condition selection
+        $('div.{self.stub}.{panel_type}-panel[data-condition='+
+            $('select.{panel_type}-panel.{self.stub}').val()+']').removeClass('hidden');
+        $('select.{panel_type}-panel.{self.stub}').change(function(e) {{
+            $('div.{self.stub}.{panel_type}-panel:not(.hidden)').addClass('hidden');
+            $('div.{self.stub}.{panel_type}-panel[data-condition='+$(this).val()+']')
+                .removeClass('hidden');
+        }})
+    </script>"""
+        return page
+
     def _make_log_panels(self, log_data: DefaultDict[str, Dict[str, Any]]) -> str:
         panels: str = "\n\t".join(
             [
@@ -162,29 +185,6 @@ class ReportBase(OutputDirectories):
             sorted(fig_data[self._stub].keys()),
             "Select a condition to update the plot below.",
         )
-
-    def __make_panel_page(
-        self, panel_type: str, panels: str, keys: List[str], msg: str = ""
-    ) -> str:
-        page = f"""
-    <small>{msg}</small>
-    <select class='{self._stub} {panel_type}-panel u-full-width'>"""
-        for d in keys:
-            page += f"\n\t\t\t<option>{os.path.basename(d)}</option>"
-        page += f"""
-    </select>
-    {panels}
-    <script type='text/javascript'>
-        // Condition selection
-        $('div.{self.stub}.{panel_type}-panel[data-condition='+
-            $('select.{panel_type}-panel.{self.stub}').val()+']').removeClass('hidden');
-        $('select.{panel_type}-panel.{self.stub}').change(function(e) {{
-            $('div.{self.stub}.{panel_type}-panel:not(.hidden)').addClass('hidden');
-            $('div.{self.stub}.{panel_type}-panel[data-condition='+$(this).val()+']')
-                .removeClass('hidden');
-        }})
-    </script>"""
-        return page
 
     def _make_html(
         self,
