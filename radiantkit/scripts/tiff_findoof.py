@@ -185,18 +185,43 @@ class Report(ReportBase):
         fig_data: DefaultDict[str, Dict[str, go.Figure]] = defaultdict(lambda: {})
         assert "focus_data" in data
         for dirpath, dirdata in data["focus_data"].items():
+            dirdata.sort_values(["path", "x"], inplace=True)
             fig = px.line(dirdata, x="x", y="y", color="path", line_dash="response")
             fig.update_layout(
-                title=f"Condition: {dirpath}",
+                title=f"Condition: {os.path.basename(dirpath)}",
                 xaxis_title="Z-slice index",
                 yaxis_title="Gradient of magnitude",
             )
-            fig_data["focus_data"]["dirdata"] = fig
+            fig_data["focus_data"][dirpath] = fig
         return fig_data
 
-    def make_page(self, fig_data: Dict[str, Dict[str, go.Figure]]) -> None:
+    def __make_selector(self, dirlist: List[str]) -> str:
+        selector = "<select class='focus-analysis u-full-width'>\n"
+        for d in dirlist:
+            selector += f"<option>{os.path.basename(d)}</option>\n"
+        selector += "</select>\n"
+        return selector
+
+    def make_page(self, fig_data: Dict[str, Dict[str, go.Figure]]) -> str:
         assert "focus_data" in fig_data
-        print([self.figure_to_html(fig) for fig in fig_data["focus_data"].values()])
-        raise NotImplementedError(
-            "here should assemble figures into a single html page"
-        )
+
+        figure_panels: List[str] = [
+            self.figure_to_html(
+                fig,
+                classes=["focus-analysis", "panel", "hidden"],
+                data=dict(condition=os.path.basename(dpath)),
+            )
+            for dpath, fig in sorted(fig_data["focus_data"].items(), key=lambda x: x[0])
+        ]
+
+        page = self.__make_selector(sorted(fig_data["focus_data"].keys()))
+        page += "\n".join(figure_panels)
+        page += """<script type='text/javascript'>
+    $('.focus-analysis.panel[data-condition='+$('select.focus-analysis').val()+']').removeClass('hidden');
+    $('select.focus-analysis').change(function(e) {
+        $('.focus-analysis.panel:not(.hidden)').addClass('hidden');
+        $('.focus-analysis.panel[data-condition='+$(this).val()+']').removeClass('hidden');
+    })
+</script>"""
+
+        return page

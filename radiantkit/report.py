@@ -51,10 +51,27 @@ class ReportBase(OutputDirectories):
         return data
 
     @staticmethod
-    def figure_to_html(fig: go.Figure, include_plotlyjs: bool = False) -> str:
-        return (
-            fig.to_html(include_plotlyjs=False).split("<body>")[1].split("</body>")[0]
-        )
+    def figure_to_html(
+        fig: go.Figure,
+        include_plotlyjs: bool = False,
+        classes: List[str] = [],
+        data: Dict[str, str] = {},
+    ) -> str:
+        html = (
+            fig.to_html(include_plotlyjs=False)
+            .split("<body>")[1]
+            .split("</body>")[0]
+            .strip()
+        )[5:-6]
+
+        div_opening = "<div"
+        if classes:
+            div_opening += f" class='{' '.join(classes)}'"
+        for k, v in data.items():
+            div_opening += f" data-{k}='{v}'"
+        div_opening += ">"
+
+        return f"{div_opening}{html}</div>"
 
     @abstractmethod
     def plot(
@@ -63,15 +80,20 @@ class ReportBase(OutputDirectories):
         ...
 
     @abstractmethod
-    def make_page(self, fig_data: Dict[str, Dict[str, go.Figure]]) -> None:
+    def make_page(self, fig_data: Dict[str, Dict[str, go.Figure]]) -> str:
         ...
 
-    def make(self) -> None:
+    def make(self) -> str:
         self._search()
         return self.make_page(self.plot(self._read()))
 
 
 class ReportMaker(OutputDirectories):
+    jquery_src: str = "https://code.jquery.com/jquery-3.5.1.min.js"
+    plotly_src: str = "https://cdn.plot.ly/plotly-latest.min.js"
+    skeleton_href: str = (
+        "https://cdnjs.cloudflare.com/ajax/libs/skeleton/2.0.4/skeleton.min.css"
+    )
     __reportable: List[ReportBase]
 
     def __init__(self, *args, **kwargs):
@@ -101,7 +123,28 @@ class ReportMaker(OutputDirectories):
             if report_instance is not None:
                 self.__reportable.append(report_instance)
 
+    def __make_head(self) -> str:
+        return f"""<head>
+    <script src="{self.plotly_src}"></script>
+    <link rel="stylesheet" href="{self.skeleton_href}" />
+    <script src="{self.jquery_src}" ></script>
+    <style type="text/css">
+        .hidden {{
+            display: none;
+        }}
+    </style>
+</head>"""
+
+    def __make_body(self) -> str:
+        body_parts: List[str] = []
+        for report in self.__reportable:
+            body_parts.append(report.make())
+        return "<body>\n" + "\n".join(body_parts) + "\n</body>"
+
     def make(self) -> None:
         self.__find_reportable()
-        for report in self.__reportable:
-            report.make()
+        with open("test.html", "w+") as OH:
+            OH.write("<html>\n")
+            OH.write(self.__make_head())
+            OH.write(self.__make_body())
+            OH.write("\n</html>")
