@@ -13,7 +13,7 @@ from radiantkit import const
 from radiantkit import distance, string
 from radiantkit import particle, series
 from radiantkit.scripts.common import series as ra_series
-from radiantkit.scripts.common import args as ra_args
+from radiantkit.scripts.common import argtools
 import re
 from rich.prompt import Confirm  # type: ignore
 import sys
@@ -240,7 +240,7 @@ def parse_arguments(args: argparse.Namespace) -> argparse.Namespace:
 
     if args.output is None:
         args.output = os.path.join(args.input, const.default_subfolder)
-    ra_args.check_output_folder_path(args.output)
+    argtools.check_output_folder_path(args.output)
 
     assert "(?P<channel_name>" in args.inreg
     assert "(?P<series_id>" in args.inreg
@@ -249,7 +249,7 @@ def parse_arguments(args: argparse.Namespace) -> argparse.Namespace:
     args.mask_prefix = string.add_trailing_dot(args.mask_prefix)
     args.mask_suffix = string.add_leading_dot(args.mask_suffix)
 
-    ra_args.check_axes(args.axes)
+    argtools.check_axes(args.axes)
     if args.center_type is distance.CenterType.QUANTILE:
         if args.quantile is not None:
             assert args.quantile > 0 and args.quantile <= 1

@@ -8,7 +8,7 @@ import logging
 import os
 import pickle
 from radiantkit import series
-from radiantkit.scripts.common import args as ra_args
+from radiantkit.scripts.common import argtools
 from typing import Tuple
 
 
@@ -18,7 +18,7 @@ def init_series_list(
     pickled = False
     series_list = None
     pickle_path = os.path.join(args.input, args.pickle_name)
-    args = ra_args.set_default_args_for_series_init(args)
+    args = argtools.set_default_args_for_series_init(args)
 
     if os.path.exists(pickle_path):
         if not args.import_instance:
@@ -48,7 +48,7 @@ def init_series_list(
         + f": {series_list.channel_names}"
     )
 
-    args = ra_args.check_parallelization_and_pickling(args, pickled)
+    args = argtools.check_parallelization_and_pickling(args, pickled)
 
     return args, series_list
 
