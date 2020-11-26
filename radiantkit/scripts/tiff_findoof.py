@@ -127,7 +127,7 @@ class Report(report.ReportBase):
         self._stub = "tiff_findoof"
         self._title = "Focus analysis"
         self._files = {"focus_data": ("oof.tsv", True, [])}
-        self._log = {"log": ("oof.log.txt", True, [])}
+        self._log = {"log": ("oof.log.txt", False, [])}
         self._args = {"args": ("oof.args.pkl", True, [])}
 
     def _plot(
@@ -151,6 +151,3 @@ class Report(report.ReportBase):
             fig_data[self._stub][dirpath] = fig
 
         return fig_data
-
-    def _make_html(self, fig_data: Dict[str, Dict[str, go.Figure]]) -> str:
-        return self._make_plot_panels(fig_data)

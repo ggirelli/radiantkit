@@ -48,7 +48,7 @@ class ReportBase(OutputDirectories):
         output = Output(self._dirpath, self._subdirs)
         output.is_root = self.is_root
         located_files: const.OutputFileDirpath = {}
-        for stub, (filename, required, _) in self._files.items():
+        for stub, (filename, required, _) in files.items():
             found_in: const.DirectoryPathList = output.search(filename)
             if not found_in and required:
                 logging.warning(
@@ -63,7 +63,6 @@ class ReportBase(OutputDirectories):
     def _read(
         self, located_files: const.OutputFileDirpath
     ) -> DefaultDict[str, Dict[str, Any]]:
-        logging.info(f"reading output files of '{self._stub}'.")
         data: DefaultDict[str, Dict[str, pd.DataFrame]] = defaultdict(lambda: {})
         for stub, (filename, _, dirpathlist) in located_files.items():
             for dirpath in dirpathlist:
@@ -97,18 +96,58 @@ class ReportBase(OutputDirectories):
 
     @abstractmethod
     def _plot(
-        self, data: DefaultDict[str, Dict[str, pd.DataFrame]]
+        self, data: DefaultDict[str, Dict[str, Any]]
     ) -> Dict[str, Dict[str, go.Figure]]:
         ...
+
+    def _make_log_panels(self, log_data: DefaultDict[str, Dict[str, Any]]) -> str:
+        panels: str = "\n\t".join(
+            [
+                f"""<div class='{self._stub} log-panel hidden'
+        data-condition='{os.path.basename(dpath)}'>
+        <pre style='overflow: auto;'><code>
+    {log.strip()}
+        </code></pre>
+    </div>"""
+                for dpath, log in sorted(log_data["log"].items(), key=lambda x: x[0])
+            ]
+        )
+
+        return self.__make_panel_page(
+            "log",
+            panels,
+            sorted(log_data['log'].keys()),
+            "Select a condition to show its log below.",
+        )
+
+    def _make_arg_panels(self, arg_data: DefaultDict[str, Dict[str, Any]]) -> str:
+        panels: str = "\n\t".join(
+            [
+                f"""<div class='{self._stub} args-panel hidden'
+        data-condition='{os.path.basename(dpath)}'>
+        <pre style='overflow: auto;'><code>
+    {args}
+        </code></pre>
+    </div>"""
+                for dpath, args in sorted(arg_data["args"].items(), key=lambda x: x[0])
+            ]
+        )
+
+        return self.__make_panel_page(
+            "args",
+            panels,
+            sorted(arg_data['args'].keys()),
+            "Select a condition to show its arguments below.",
+        )
 
     def _make_plot_panels(self, fig_data: Dict[str, Dict[str, go.Figure]]) -> str:
         assert self._stub in fig_data
 
-        figure_panels: str = "\n\t".join(
+        panels: str = "\n\t".join(
             [
                 self.figure_to_html(
                     fig,
-                    classes=[self._stub, "panel", "hidden"],
+                    classes=[self._stub, "plot-panel", "hidden"],
                     data=dict(condition=os.path.basename(dpath)),
                 )
                 for dpath, fig in sorted(
@@ -117,34 +156,113 @@ class ReportBase(OutputDirectories):
             ]
         )
 
+        return self.__make_panel_page(
+            "plot",
+            panels,
+            sorted(fig_data[self._stub].keys()),
+            "Select a condition to update the plot below.",
+        )
+
+    def __make_panel_page(
+        self, panel_type: str, panels: str, keys: List[str], msg: str = ""
+    ) -> str:
         page = f"""
-<!--Report for {self._stub}-->
-<div class='report hidden' data-report='{self._stub}'>
-    <small>Select a condition to update the plot below.</small>
-    <select class='{self._stub} u-full-width'>"""
-        for d in sorted(fig_data[self._stub].keys()):
+    <small>{msg}</small>
+    <select class='{self._stub} {panel_type}-panel u-full-width'>"""
+        for d in keys:
             page += f"\n\t\t\t<option>{os.path.basename(d)}</option>"
         page += f"""
     </select>
-    {figure_panels}
+    {panels}
     <script type='text/javascript'>
         // Condition selection
-        $('.{self.stub}.panel[data-condition='+$('select.{self.stub}').val()+']').removeClass('hidden');
-        $('select.{self.stub}').change(function(e) {{
-            $('.{self.stub}.panel:not(.hidden)').addClass('hidden');
-            $('.{self.stub}.panel[data-condition='+$(this).val()+']').removeClass('hidden');
+        $('div.{self.stub}.{panel_type}-panel[data-condition='+
+            $('select.{panel_type}-panel.{self.stub}').val()+']').removeClass('hidden');
+        $('select.{panel_type}-panel.{self.stub}').change(function(e) {{
+            $('div.{self.stub}.{panel_type}-panel:not(.hidden)').addClass('hidden');
+            $('div.{self.stub}.{panel_type}-panel[data-condition='+$(this).val()+']')
+                .removeClass('hidden');
         }})
-    </script>
-</div>"""
-
+    </script>"""
         return page
 
-    @abstractmethod
-    def _make_html(self, fig_data: Dict[str, Dict[str, go.Figure]]) -> str:
-        ...
+    def _make_html(
+        self,
+        fig_data: Optional[Dict[str, Dict[str, go.Figure]]] = None,
+        log_data: Optional[DefaultDict[str, Dict[str, Any]]] = None,
+        arg_data: Optional[DefaultDict[str, Dict[str, Any]]] = None,
+    ) -> str:
+        page = f"""
+<!--Report for {self._stub}-->
+<div class='report hidden' data-report='{self._stub}'>"""
+
+        index = f"""
+    <div id='{self._stub}-wrapper-index' class='row'>"""
+        panels = ""
+
+        if fig_data is not None:
+            index += """
+        <div class='four columns'>
+            <a class='button button-primary u-full-width'
+            data-target='plot-panel' href='#'>Plots</a>
+        </div>"""
+            fig_panels = self._make_plot_panels(fig_data).replace("\n", "\n\t")
+            panels += f"""
+    <!--Plots-->
+    <div class='plot-panel wrapper'>{fig_panels}
+    </div>"""
+
+        if log_data is not None:
+            index += """
+        <div class='four columns'>
+            <a class='button u-full-width' data-target='log-panel' href='#'>Logs</a>
+        </div>"""
+            log_panels = self._make_log_panels(log_data)
+            panels += f"""
+    <!--Logs-->
+    <div class='log-panel wrapper hidden'>{log_panels}
+    </div>"""
+
+        if arg_data is not None:
+            index += """
+        <div class='four columns'>
+            <a class='button u-full-width' data-target='args-panel' href='#'>Args</a>
+        </div>"""
+            arg_panels = self._make_arg_panels(arg_data)
+            panels += f"""
+    <!--Args-->
+    <div class='args-panel wrapper hidden'>{arg_panels}
+    </div>"""
+
+        index += """
+    </div>"""
+        page += index
+        page += panels
+        page += f"""
+</div>
+<script type='text/javascript'>
+    // Select panel type
+    $('#{self._stub}-wrapper-index a.button').click(function(e) {{
+        e.preventDefault();
+        $('div.report[data-report="{self._stub}"] .wrapper:not(.hidden)')
+            .addClass('hidden');
+        $('div.report[data-report="{self._stub}"] .wrapper.'+$(this).data('target'))
+            .removeClass('hidden');
+        $('#{self._stub}-wrapper-index a.button-primary').removeClass('button-primary');
+        $(this).addClass('button-primary');
+    }});
+</script>"""
+        return page
 
     def make(self) -> str:
-        return self._make_html(self._plot(self._read(self._search(self._files))))
+        logging.info(f"reading output files of '{self._stub}'.")
+        output_data = self._read(self._search(self._files))
+        logging.info(f"reading logs and args of '{self._stub}'.")
+        log_data = self._read(self._search(self._log))
+        arg_data = self._read(self._search(self._args))
+        return self._make_html(
+            fig_data=self._plot(output_data), log_data=log_data, arg_data=arg_data
+        )
 
 
 class ReportMaker(OutputDirectories):

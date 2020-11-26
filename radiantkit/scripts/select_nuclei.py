@@ -356,8 +356,8 @@ class Report(ReportBase):
             "raw_data": ("select_nuclei.data.tsv", True, []),
             "fit": ("select_nuclei.fit.pkl", True, []),
         }
-        self._log = {"log": ("select_nuclei.log.txt", True, [])}
-        self._args = {"args": ("select_nuclei.args.pkl", True, [])}
+        self._log = {"log": ("select_nuclei.log.txt", False, [])}
+        self._args = {"args": ("select_nuclei.args.pkl", False, [])}
 
     def _plot(
         self, data: DefaultDict[str, Dict[str, pd.DataFrame]]
@@ -375,12 +375,10 @@ class Report(ReportBase):
                 labels={"pass": "Selected"},
             )
             fig.update_layout(
-                title=f"Condition: {os.path.basename(dirpath)}",
+                title=f"Condition: {os.path.basename(dirpath)};"
+                + f" #nuclei: {dirdata.shape[0]}",
                 xaxis_title="Nuclear size (um3)",
                 yaxis_title="Integral of DNA stain intensity (a.u.)",
             )
             fig_data[self._stub][dirpath] = fig
         return fig_data
-
-    def _make_html(self, fig_data: Dict[str, Dict[str, go.Figure]]) -> str:
-        return self._make_plot_panels(fig_data)
