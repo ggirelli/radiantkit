@@ -4,28 +4,28 @@
 """
 
 import argparse
-from joblib import cpu_count, delayed, Parallel  # type: ignore
+from collections import defaultdict
+from joblib import delayed, Parallel  # type: ignore
 import itertools
 import logging
 import numpy as np  # type: ignore
 import os
 import pandas as pd  # type: ignore
+import plotly.graph_objects as go  # type: ignore
+import plotly.express as px  # type: ignore
 import pickle
-from radiantkit import const
+from radiantkit import const, io
 from radiantkit.image import ImageBinary, ImageLabeled
 from radiantkit.particle import NucleiList, Nucleus
-from radiantkit.scripts.common import series as ra_series
+from radiantkit.report import ReportBase
+import radiantkit.scripts.common.series as ra_series
+from radiantkit.scripts.common import argtools
 from radiantkit.series import Series, SeriesList
 from radiantkit import path, string
 import re
 from rich.progress import track  # type: ignore
 from rich.prompt import Confirm  # type: ignore
-import sys
-from typing import Dict, List, Pattern
-
-__OUTPUT__ = {"raw_data": "select_nuclei.data.tsv", "fit": "select_nuclei.fit.pkl"}
-__OUTPUT_CONDITION__ = all
-__LABEL__ = "Nuclei selection"
+from typing import DefaultDict, Dict, List, Pattern
 
 
 def init_parser(subparsers: argparse._SubParsersAction) -> argparse.ArgumentParser:
@@ -64,6 +64,7 @@ interactive data visualization.
     parser.add_argument(
         "ref_channel", type=str, help="Name of channel with DNA staining intensity."
     )
+    parser = argtools.add_version_argument(parser)
 
     critical = parser.add_argument_group("critical arguments")
     critical.add_argument(
@@ -89,16 +90,6 @@ interactive data visualization.
         help="""Suffix for output binarized images name.
         Default: 'mask'.""",
         default="mask",
-    )
-
-    parser.add_argument(
-        "--version",
-        action="version",
-        version="%s %s"
-        % (
-            sys.argv[0],
-            const.__version__,
-        ),
     )
 
     pickler = parser.add_argument_group("pickle arguments")
@@ -168,23 +159,8 @@ interactive data visualization.
         default=True,
         help="Generate uncompressed TIFF binary masks.",
     )
-    advanced.add_argument(
-        "--inreg",
-        type=str,
-        metavar="REGEXP",
-        help=f"""Regular expression to identify input TIFF images.
-        Must contain 'channel_name' and 'series_id' fields.
-        Default: '{const.default_inreg}'""",
-        default=const.default_inreg,
-    )
-    advanced.add_argument(
-        "--threads",
-        type=int,
-        metavar="NUMBER",
-        dest="threads",
-        default=1,
-        help="""Number of threads for parallelization. Default: 1""",
-    )
+    advanced = argtools.add_pattern_argument(advanced)
+    advanced = argtools.add_threads_argument(advanced)
     advanced.add_argument(
         "-y",
         "--do-all",
@@ -200,8 +176,6 @@ interactive data visualization.
 
 
 def parse_arguments(args: argparse.Namespace) -> argparse.Namespace:
-    args.version = const.__version__
-
     assert "(?P<channel_name>" in args.inreg
     assert "(?P<series_id>" in args.inreg
     args.inreg = re.compile(args.inreg)
@@ -216,13 +190,13 @@ def parse_arguments(args: argparse.Namespace) -> argparse.Namespace:
         )
         args.block_side += 1
 
-    args.threads = cpu_count() if args.threads > cpu_count() else args.threads
+    args.threads = argtools.check_threads(args.threads)
 
     return args
 
 
 def print_settings(args: argparse.Namespace, clear: bool = True) -> str:
-    s = f"""# Nuclei selection v{args.version}
+    s = f"""# Nuclei selection v{const.__version__}
 
     ---------- SETTING : VALUE ----------
 
@@ -253,15 +227,11 @@ def print_settings(args: argparse.Namespace, clear: bool = True) -> str:
 
 
 def confirm_arguments(args: argparse.Namespace) -> None:
-    # settings_string =
     print_settings(args)
     if not args.do_all:
         assert Confirm.ask("Confirm settings and proceed?")
 
     assert os.path.isdir(args.input), f"image folder not found: {args.input}"
-
-    # with open(os.path.join(args.input, "select_nuclei.config.txt"), "w+") as OH:
-    #     ggc.args.export_settings(OH, settings_string)
 
 
 def extract_passing_nuclei_per_series(
@@ -337,6 +307,8 @@ def remove_labels_from_series_list_masks(
 
 def run(args: argparse.Namespace) -> None:
     confirm_arguments(args)
+    argtools.dump_args(args, "select_nuclei.args.pkl")
+    io.add_log_file_handler(os.path.join(args.input, "select_nuclei.log.txt"))
     args, series_list = ra_series.init_series_list(args)
 
     logging.info("extracting nuclei")
@@ -362,13 +334,53 @@ def run(args: argparse.Namespace) -> None:
     np.set_printoptions(formatter={"float_kind": "{:.2E}".format})
     logging.info(f"intensity sum range: {details['isum']['range']}")
 
-    tsv_path = os.path.join(args.input, __OUTPUT__["raw_data"])
+    tsv_path = os.path.join(args.input, Report().files["raw_data"][0])
     logging.info(f"writing nuclear data to:\n{tsv_path}")
     nuclei_data.to_csv(tsv_path, sep="\t", index=False)
 
-    pkl_path = os.path.join(args.input, __OUTPUT__["fit"])
+    pkl_path = os.path.join(args.input, Report().files["fit"][0])
     logging.info(f"writing fit data to:\n{pkl_path}")
     with open(pkl_path, "wb") as POH:
         pickle.dump(details, POH)
 
     ra_series.pickle_series_list(args, series_list)
+
+
+class Report(ReportBase):
+    def __init__(self, *args, **kwargs):
+        super(Report, self).__init__(*args, **kwargs)
+        self._idx = 1.0
+        self._stub = "select_nuclei"
+        self._title = "Nuclei selection"
+        self._files = {
+            "raw_data": ("select_nuclei.data.tsv", True, []),
+            "fit": ("select_nuclei.fit.pkl", True, []),
+        }
+        self._log = {"log": ("select_nuclei.log.txt", True, [])}
+        self._args = {"args": ("select_nuclei.args.pkl", True, [])}
+
+    def _plot(
+        self, data: DefaultDict[str, Dict[str, pd.DataFrame]]
+    ) -> DefaultDict[str, Dict[str, go.Figure]]:
+        fig_data: DefaultDict[str, Dict[str, go.Figure]] = defaultdict(lambda: {})
+        assert "raw_data" in data
+        for dirpath, dirdata in data["raw_data"].items():
+            assert isinstance(dirdata, pd.DataFrame)
+            fig = go.Figure()
+            fig = px.scatter(
+                dirdata,
+                x="size",
+                y="isum_dapi",
+                color="pass",
+                labels={"pass": "Selected"},
+            )
+            fig.update_layout(
+                title=f"Condition: {os.path.basename(dirpath)}",
+                xaxis_title="Nuclear size (um3)",
+                yaxis_title="Integral of DNA stain intensity (a.u.)",
+            )
+            fig_data[self._stub][dirpath] = fig
+        return fig_data
+
+    def _make_html(self, fig_data: Dict[str, Dict[str, go.Figure]]) -> str:
+        return self._make_plot_panels(fig_data)

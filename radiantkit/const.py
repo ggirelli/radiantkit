@@ -9,7 +9,7 @@ from enum import Enum
 from typing import Dict, List, Tuple
 
 default_inreg = (
-    "^([^\\.]*\\.)?(?P<channel_name>[^/]*)_(?P<series_id>[0-9]+)"
+    "^(?P<dw_flag>dw_)?([^\\.]*\\.)?(?P<channel_name>[^/]*)_(?P<series_id>[0-9]+)"
     + "(?P<ext>(_cmle)?(\\.[^\\.]*)?\\.tiff?)$"
 )
 default_axes = "VCTZYX"
@@ -61,4 +61,5 @@ stub = str
 required = bool
 filename = str
 DirectoryPathList = List[str]
-OutputFileDirpath = Dict[stub, Tuple[filename, required, DirectoryPathList]]
+OutputFileDetails = Tuple[filename, required, DirectoryPathList]
+OutputFileDirpath = Dict[stub, OutputFileDetails]

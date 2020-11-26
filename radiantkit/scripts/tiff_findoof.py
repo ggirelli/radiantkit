@@ -3,26 +3,19 @@
 @contact: gigi.ga90@gmail.com
 """
 
-
 import argparse
 from collections import defaultdict
-from joblib import cpu_count, delayed, Parallel  # type: ignore
+from joblib import delayed, Parallel  # type: ignore
 import logging
-import numpy as np  # type: ignore
 import os
 import pandas as pd  # type: ignore
-import plotly.graph_objects as go  # type: ignore
-import plotly.express as px  # type: ignore
-from radiantkit.const import __version__
-from radiantkit import channel, path, stat
-from radiantkit.exception import enable_rich_exceptions
-from radiantkit.io import add_log_file_handler
-from radiantkit.report import ReportBase
-import sys
-from typing import DefaultDict, Dict, List
+from plotly import graph_objects as go, express as px  # type: ignore
+from radiantkit import const, exception, image, io, path, report
+from radiantkit.scripts.common import argtools
+from typing import DefaultDict, Dict
 
 
-@enable_rich_exceptions
+@exception.enable_rich_exceptions
 def init_parser(subparsers: argparse._SubParsersAction) -> argparse.ArgumentParser:
     parser = subparsers.add_parser(
         __name__.split(".")[-1],
@@ -48,35 +41,18 @@ definition.
         help="Fraction of stack (middle-centered) for in-focus fields. Default: .5",
         default=0.5,
     )
-
-    parser.add_argument(
-        "--version",
-        action="version",
-        version="%s %s"
-        % (
-            sys.argv[0],
-            __version__,
-        ),
-    )
+    parser = argtools.add_version_argument(parser)
 
     advanced = parser.add_argument_group("advanced arguments")
-    default_inreg = "^.*\\.tiff?$"
     advanced.add_argument(
         "--inreg",
         type=str,
         metavar="REGEXP",
-        help="""Regular expression to identify input TIFF images.
-        Default: '%s'"""
-        % (default_inreg,),
-        default=default_inreg,
+        help=f"""Regular expression to identify input TIFF images.
+        Default: '{const.default_inreg}'""",
+        default=const.default_inreg,
     )
-    advanced.add_argument(
-        "--threads",
-        metavar="NUMBER",
-        type=int,
-        default=1,
-        help="""Number of threads for parallelization. Default: 1""",
-    )
+    advanced = argtools.add_threads_argument(advanced)
     advanced.add_argument(
         "--intensity-sum",
         action="store_const",
@@ -97,75 +73,46 @@ definition.
     return parser
 
 
-@enable_rich_exceptions
+@exception.enable_rich_exceptions
 def parse_arguments(args: argparse.Namespace) -> argparse.Namespace:
     if args.output is None:
         args.output = os.path.join(args.input, "oof.tsv")
-    args.threads = cpu_count() if args.threads > cpu_count() else args.threads
+    args.threads = argtools.check_threads(args.threads)
+    args.descriptor_mode = (
+        image.SliceDescriptorMode.INTENSITY_SUM
+        if args.intensity_sum
+        else image.SliceDescriptorMode.GRADIENT_OF_MAGNITUDE
+    )
     return args
 
 
-def describe_slices(
-    args: argparse.Namespace, img: channel.ImageGrayScale
-) -> List[float]:
-    slice_descriptors = []
-    for zi in range(img.shape[0]):
-        if args.intensity_sum:
-            slice_descriptors.append(img.pixels[zi].sum())
-        else:
-            dx = stat.gpartial(img.pixels[zi, :, :], 1, 1)
-            dy = stat.gpartial(img.pixels[zi, :, :], 2, 1)
-            slice_descriptors.append(np.mean(np.mean((dx ** 2 + dy ** 2) ** (1 / 2))))
-    return slice_descriptors
-
-
-def is_OOF(args: argparse.Namespace, ipath: str) -> pd.DataFrame:
-    img = channel.ImageGrayScale.from_tiff(os.path.join(args.input, ipath))
-
-    slice_descriptors = describe_slices(args, img)
-
-    profile_data = pd.DataFrame.from_dict(
-        dict(
-            path=np.repeat(ipath, img.shape[0]),
-            x=np.array(range(img.shape[0])) + 1,
-            y=slice_descriptors,
-        )
-    )
-
-    max_slice_id = slice_descriptors.index(max(slice_descriptors))
-    halfrange = img.shape[0] * args.fraction / 2.0
-    halfstack = img.shape[0] / 2.0
-
-    response = "out-of-focus"
-    if max_slice_id >= (halfstack - halfrange):
-        if max_slice_id <= (halfstack + halfrange):
-            response = "in-focus"
-    logging.info(f"{ipath} is {response}.")
-    profile_data["response"] = response
-
+def check_focus(args: argparse.Namespace, ipath: str) -> pd.DataFrame:
+    img = image.ImageGrayScale.from_tiff(os.path.join(args.input, ipath))
+    response, profile_data = img.is_in_focus(args.descriptor_mode, args.fraction)
+    profile_data["path"] = ipath
+    profile_data["response"] = "in-focus" if response else "out-of-focus"
     if "out-of-focus" == response and args.rename:
         os.rename(os.path.join(args.input, ipath), os.path.join(args.input, ipath))
-
     return profile_data
 
 
-@enable_rich_exceptions
+@exception.enable_rich_exceptions
 def run(args: argparse.Namespace) -> None:
     assert os.path.isdir(args.input), f"image directory not found: '{args.input}'"
-    add_log_file_handler(os.path.join(args.input, "oof.log.txt"))
+    argtools.dump_args(args, "oof.args.pkl")
+    io.add_log_file_handler(os.path.join(args.input, "oof.log.txt"))
+
     logging.info(f"Input:\t\t{args.input}")
     logging.info(f"Output:\t\t{args.output}")
     logging.info(f"Fraction:\t{args.fraction}")
     logging.info(f"Rename:\t\t{args.rename}")
-    if args.intensity_sum:
-        logging.info("Mode:\t\tintensity_sum")
-    else:
-        logging.info("Mode:\t\tgradient_of_magnitude")
+    logging.info(f"Mode:\t\t{args.descriptor_mode.value}")
     logging.info(f"Regexp:\t\t{args.inreg}")
     logging.info(f"Threads:\t{args.threads}")
 
     series_data = Parallel(n_jobs=args.threads, verbose=11)(
-        delayed(is_OOF)(args, impath) for impath in path.find_re(args.input, args.inreg)
+        delayed(check_focus)(args, impath)
+        for impath in path.find_re(args.input, args.inreg)
     )
 
     pd.concat(series_data).to_csv(args.output, "\t", index=False)
@@ -173,55 +120,37 @@ def run(args: argparse.Namespace) -> None:
     logging.info("Done. :thumbs_up: :smiley:")
 
 
-class Report(ReportBase):
+class Report(report.ReportBase):
     def __init__(self, *args, **kwargs):
         super(Report, self).__init__(*args, **kwargs)
+        self._idx = 0.0
         self._stub = "tiff_findoof"
+        self._title = "Focus analysis"
         self._files = {"focus_data": ("oof.tsv", True, [])}
+        self._log = {"log": ("oof.log.txt", True, [])}
+        self._args = {"args": ("oof.args.pkl", True, [])}
 
-    def plot(
+    def _plot(
         self, data: DefaultDict[str, Dict[str, pd.DataFrame]]
     ) -> DefaultDict[str, Dict[str, go.Figure]]:
         fig_data: DefaultDict[str, Dict[str, go.Figure]] = defaultdict(lambda: {})
         assert "focus_data" in data
+
         for dirpath, dirdata in data["focus_data"].items():
-            dirdata.sort_values(["path", "x"], inplace=True)
-            fig = px.line(dirdata, x="x", y="y", color="path", line_dash="response")
-            fig.update_layout(
-                title=f"Condition: {os.path.basename(dirpath)}",
-                xaxis_title="Z-slice index",
-                yaxis_title="Gradient of magnitude",
+            assert isinstance(dirdata, pd.DataFrame)
+            dirdata.sort_values(["path", "Z-slice index"], inplace=True)
+            fig = px.line(
+                dirdata,
+                x="Z-slice index",
+                y=dirdata.columns[1],
+                color="path",
+                line_dash="response",
+                labels={"path": "Image", "response": "Result"},
             )
-            fig_data["focus_data"][dirpath] = fig
+            fig.update_layout(title=f"Condition: {os.path.basename(dirpath)}")
+            fig_data[self._stub][dirpath] = fig
+
         return fig_data
 
-    def __make_selector(self, dirlist: List[str]) -> str:
-        selector = "<select class='focus-analysis u-full-width'>\n"
-        for d in dirlist:
-            selector += f"<option>{os.path.basename(d)}</option>\n"
-        selector += "</select>\n"
-        return selector
-
-    def make_page(self, fig_data: Dict[str, Dict[str, go.Figure]]) -> str:
-        assert "focus_data" in fig_data
-
-        figure_panels: List[str] = [
-            self.figure_to_html(
-                fig,
-                classes=["focus-analysis", "panel", "hidden"],
-                data=dict(condition=os.path.basename(dpath)),
-            )
-            for dpath, fig in sorted(fig_data["focus_data"].items(), key=lambda x: x[0])
-        ]
-
-        page = self.__make_selector(sorted(fig_data["focus_data"].keys()))
-        page += "\n".join(figure_panels)
-        page += """<script type='text/javascript'>
-    $('.focus-analysis.panel[data-condition='+$('select.focus-analysis').val()+']').removeClass('hidden');
-    $('select.focus-analysis').change(function(e) {
-        $('.focus-analysis.panel:not(.hidden)').addClass('hidden');
-        $('.focus-analysis.panel[data-condition='+$(this).val()+']').removeClass('hidden');
-    })
-</script>"""
-
-        return page
+    def _make_html(self, fig_data: Dict[str, Dict[str, go.Figure]]) -> str:
+        return self._make_plot_panels(fig_data)

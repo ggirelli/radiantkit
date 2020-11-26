@@ -7,7 +7,7 @@ import os
 import pandas as pd  # type: ignore
 import pickle
 from radiantkit.const import DirectoryPathList
-from typing import Optional, Pattern
+from typing import Any, Optional, Pattern
 
 DEFAULT_SUBDIRS: DirectoryPathList = ["objects"]
 
@@ -90,18 +90,25 @@ class OutputReader(object):
         return OutputReader.read_csv(path, "\t")
 
     @staticmethod
-    def read_pkl(path: str) -> pd.DataFrame:
+    def read_pkl(path: str) -> Any:
         with open(path, "rb") as PIH:
-            return pd.DataFrame(pickle.load(PIH))
+            return pickle.load(PIH)
 
     @staticmethod
-    def read_single_file(path: str) -> pd.DataFrame:
+    def read_txt(path: str) -> str:
+        with open(path, "r") as IH:
+            return "".join(IH.readlines())
+
+    @staticmethod
+    def read_single_file(path: str) -> Any:
         if path.endswith(".csv"):
             return OutputReader.read_csv(path)
         if path.endswith(".tsv"):
             return OutputReader.read_tsv(path)
         elif path.endswith(".pkl"):
             return OutputReader.read_pkl(path)
+        elif path.endswith(".txt"):
+            return OutputReader.read_txt(path)
         else:
             raise NotImplementedError(
                 f"cannot read file of type '{os.path.splitext(path)[-1]}'"
