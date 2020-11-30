@@ -133,6 +133,7 @@ class Report(report.ReportBase):
     def _plot(
         self, data: DefaultDict[str, Dict[str, pd.DataFrame]]
     ) -> DefaultDict[str, Dict[str, go.Figure]]:
+        logging.info(f"plotting '{self._stub}'.")
         fig_data: DefaultDict[str, Dict[str, go.Figure]] = defaultdict(lambda: {})
         assert "focus_data" in data
 
@@ -147,7 +148,13 @@ class Report(report.ReportBase):
                 line_dash="response",
                 labels={"path": "Image", "response": "Result"},
             )
-            fig.update_layout(title=f"Condition: {os.path.basename(dirpath)}")
+            fig.update_layout(
+                title=f"""Focus analysis<br>
+<sub>Condition: {os.path.basename(dirpath)}</sub>""",
+                autosize=False,
+                width=1000,
+                height=800,
+            )
             fig_data[self._stub][dirpath] = fig
 
         return fig_data
