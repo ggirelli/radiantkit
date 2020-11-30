@@ -12,7 +12,7 @@ import numpy as np  # type: ignore
 import os
 import pandas as pd  # type: ignore
 import plotly.graph_objects as go  # type: ignore
-import plotly.express as px  # type: ignore
+from plotly.subplots import make_subplots  # type: ignore
 import pickle
 from radiantkit import const, io
 from radiantkit.image import ImageBinary, ImageLabeled
@@ -25,7 +25,8 @@ from radiantkit import path, string
 import re
 from rich.progress import track  # type: ignore
 from rich.prompt import Confirm  # type: ignore
-from typing import DefaultDict, Dict, List, Pattern
+from scipy.stats import gaussian_kde  # type: ignore
+from typing import Any, DefaultDict, Dict, List, Pattern
 
 
 def init_parser(subparsers: argparse._SubParsersAction) -> argparse.ArgumentParser:
@@ -359,26 +360,94 @@ class Report(ReportBase):
         self._log = {"log": ("select_nuclei.log.txt", False, [])}
         self._args = {"args": ("select_nuclei.args.pkl", False, [])}
 
+    def __make_scatter_trace(self, data: pd.DataFrame, name: str) -> go.Scatter:
+        return go.Scatter(
+            x=data["size"],
+            y=data["isum_dapi"],
+            mode="markers",
+            name=name,
+            xaxis="x",
+            yaxis="y",
+            customdata=np.dstack(
+                (
+                    data["label"],
+                    data["image"],
+                )
+            )[0],
+            hovertemplate="Size=%{x}<br>Intensity sum=%{y}<br>"
+            + "Label=%{customdata[0]}<br>"
+            + 'Image="%{customdata[1]}"',
+        )
+
+    def __add_density_contours(
+        self, fig: go.Figure, data: pd.DataFrame, fit: Dict[str, Dict[str, Any]]
+    ) -> go.Figure:
+        assert "size" in data
+        size_linsp = np.linspace(data["size"].min(), data["size"].max(), 200)
+        size_kde = gaussian_kde(data["size"])
+        fig.add_trace(
+            go.Scatter(
+                name="Size",
+                x=size_linsp,
+                y=size_kde(size_linsp),
+                xaxis="x",
+                yaxis="y3",
+            ),
+        )
+        assert "isum_dapi" in data
+        isum_linsp = np.linspace(data["isum_dapi"].min(), data["isum_dapi"].max(), 200)
+        isum_kde = gaussian_kde(data["isum_dapi"])
+        fig.add_trace(
+            go.Scatter(
+                name="Intensity sum",
+                x=isum_kde(isum_linsp),
+                y=isum_linsp,
+                xaxis="x2",
+                yaxis="y",
+            ),
+        )
+        return fig
+
     def _plot(
         self, data: DefaultDict[str, Dict[str, pd.DataFrame]]
     ) -> DefaultDict[str, Dict[str, go.Figure]]:
+        logging.info(f"plotting '{self._stub}'.")
         fig_data: DefaultDict[str, Dict[str, go.Figure]] = defaultdict(lambda: {})
         assert "raw_data" in data
         for dirpath, dirdata in data["raw_data"].items():
             assert isinstance(dirdata, pd.DataFrame)
-            fig = go.Figure()
-            fig = px.scatter(
-                dirdata,
-                x="size",
-                y="isum_dapi",
-                color="pass",
-                labels={"pass": "Selected"},
+            fig = make_subplots(
+                rows=2, cols=2, column_widths=[0.3, 0.7], row_heights=[0.3, 0.7]
             )
+
+            fig.add_trace(
+                self.__make_scatter_trace(dirdata.loc[dirdata["pass"]], "Selected")
+            )
+            fig.add_trace(
+                self.__make_scatter_trace(
+                    dirdata.loc[np.logical_not(dirdata["pass"])], "Discarded"
+                )
+            )
+
+            if dirpath in data["fit"]:
+                fig = self.__add_density_contours(fig, dirdata, data["fit"][dirpath])
+
             fig.update_layout(
-                title=f"Condition: {os.path.basename(dirpath)};"
-                + f" #nuclei: {dirdata.shape[0]}",
-                xaxis_title="Nuclear size (um3)",
-                yaxis_title="Integral of DNA stain intensity (a.u.)",
+                title_text=f"""Nuclei selection<br>
+<sub>Condition: {os.path.basename(dirpath)}; #nuclei: {dirdata.shape[0]}</sub>""",
+                xaxis=dict(domain=[0.19, 1], title="Size"),
+                yaxis=dict(
+                    domain=[0, 0.82],
+                    anchor="x2",
+                    title="Intensity sum",
+                ),
+                xaxis2=dict(domain=[0, 0.18], autorange="reversed", title="Density"),
+                yaxis2=dict(domain=[0, 0.82]),
+                xaxis3=dict(domain=[0.19, 1]),
+                yaxis3=dict(domain=[0.83, 1], title="Density"),
+                autosize=False,
+                width=1000,
+                height=1000,
             )
             fig_data[self._stub][dirpath] = fig
         return fig_data
