@@ -4,26 +4,28 @@
 """
 
 import argparse
+from collections import defaultdict
 from joblib import cpu_count  # type: ignore
 import logging
+from numpy.polynomial.polynomial import Polynomial  # type: ignore
+import numpy as np  # type: ignore
 import os
 import pandas as pd  # type: ignore
+import plotly.graph_objects as go  # type: ignore
+from plotly.subplots import make_subplots  # type: ignore
 import pickle
-from radiantkit import const
-from radiantkit import distance, string
-from radiantkit import particle, series
+from radiantkit import const, distance, particle, report, series, string
 from radiantkit.scripts.common import series as ra_series
 from radiantkit.scripts.common import argtools
 import re
 from rich.prompt import Confirm  # type: ignore
 import sys
+from typing import Any, DefaultDict, Dict, List
 
-__OUTPUT__ = {
+__OUTPUT__: Dict[str, str] = {
     "poly_fit": "radial_population.profile.poly_fit.pkl",
     "raw_data": "radial_population.profile.raw_data.tsv",
 }
-__OUTPUT_CONDITION__ = all
-__LABEL__ = "Radiality (population)"
 
 
 def init_parser(subparsers: argparse._SubParsersAction) -> argparse.ArgumentParser:
@@ -364,3 +366,176 @@ def run(args: argparse.Namespace) -> None:
 
     export_profiles(args, profiles)
     ra_series.pickle_series_list(args, series_list)
+
+
+class Report(report.ReportBase):
+    def __init__(self, *args, **kwargs):
+        super(Report, self).__init__(*args, **kwargs)
+        self._idx = 3.0
+        self._stub = "radial_population"
+        self._title = "Radiality (population)"
+        self._files = {
+            "poly_fit": (__OUTPUT__["poly_fit"], True, []),
+            "raw_data": (__OUTPUT__["raw_data"], True, []),
+        }
+        self._log = {"log": ("radial_population.log.txt", False, [])}
+        self._args = {"args": ("radial_population.args.pkl", False, [])}
+
+    def __make_scatter_trace(
+        self, name: str, data: pd.DataFrame, pfit: Polynomial
+    ) -> go.Scatter:
+        x, y = pfit.linspace(200)
+        xx, yy = pfit.deriv().linspace(200)
+        xxx, yyy = pfit.deriv().deriv().linspace(200)
+        return [
+            go.Scatter(
+                name=f"raw_{name}",
+                xaxis="x",
+                yaxis="y",
+                x=data["x"],
+                y=data["median_raw"],
+                mode="markers",
+                legendgroup=name,
+                marker=dict(size=4, opacity=0.5, color="#989898"),
+            ),
+            go.Scatter(
+                name=name,
+                x=x,
+                y=y,
+                xaxis="x",
+                yaxis="y",
+                mode="lines",
+                legendgroup=name,
+            ),
+            go.Scatter(
+                name=f"der1_{name}",
+                x=xx,
+                y=yy,
+                xaxis="x",
+                yaxis="y2",
+                mode="lines",
+                legendgroup=name,
+                showlegend=False,
+            ),
+            go.Scatter(
+                name=f"der2_{name}",
+                x=xxx,
+                y=yyy,
+                xaxis="x",
+                yaxis="y3",
+                mode="lines",
+                legendgroup=name,
+                showlegend=False,
+            ),
+        ]
+
+    def __make_single_panel(
+        self,
+        data: pd.DataFrame,
+        pfit_data: Dict[str, List[Dict[str, Any]]],
+        dirpath: str,
+        condition_lab: str,
+        channel_lab: str,
+        dtype: distance.DistanceType,
+    ) -> go.Figure:
+        pfit = [
+            x
+            for x in pfit_data[dirpath]
+            if x["cname"] == channel_lab
+            and x["distance_type"] == dtype.value
+            and x["stat"].value == "median"
+        ]
+        assert 1 == len(pfit), pfit
+        assert "pfit" in pfit[0]
+
+        channel_data = data.loc[channel_lab == data["channel"]]
+        fig = make_subplots(rows=3, cols=1)
+
+        plot_data = self.__make_scatter_trace(
+            channel_lab, channel_data, pfit[0]["pfit"]
+        )
+        for panel in plot_data:
+            fig.add_trace(panel)
+
+        yranges = dict(
+            y=(
+                np.min(
+                    [trace["y"].min() for trace in plot_data if "y" == trace["yaxis"]]
+                ),
+                np.max(
+                    [trace["y"].max() for trace in plot_data if "y" == trace["yaxis"]]
+                ),
+            ),
+            y2=(
+                np.min(
+                    [trace["y"].min() for trace in plot_data if "y2" == trace["yaxis"]]
+                ),
+                np.max(
+                    [trace["y"].max() for trace in plot_data if "y2" == trace["yaxis"]]
+                ),
+            ),
+            y3=(
+                np.min(
+                    [trace["y"].min() for trace in plot_data if "y3" == trace["yaxis"]]
+                ),
+                np.max(
+                    [trace["y"].max() for trace in plot_data if "y3" == trace["yaxis"]]
+                ),
+            ),
+        )
+
+        fig.update_layout(
+            title=f"""Median signal profile<br>
+<sub>Condition: {condition_lab};
+Channel: {channel_lab}</sub>""",
+            xaxis=dict(title=dtype.label, anchor="y3"),
+            yaxis=dict(
+                domain=[0.66, 1],
+                range=yranges["y"],
+                title="Intensity (a.u.)",
+            ),
+            yaxis2=dict(
+                domain=[0.33, 0.63],
+                range=yranges["y2"],
+                title="1st Derivative Intensity (a.u.)",
+            ),
+            yaxis3=dict(
+                domain=[0, 0.30],
+                range=yranges["y3"],
+                title="2nd Derivative Intensity (a.u.)",
+            ),
+            autosize=False,
+            width=1000,
+            height=1000,
+        )
+
+        return fig
+
+    def _plot(
+        self, data: DefaultDict[str, Dict[str, pd.DataFrame]]
+    ) -> DefaultDict[str, Dict[str, go.Figure]]:
+        fig_data: DefaultDict[str, Dict[str, go.Figure]] = defaultdict(lambda: {})
+        assert "raw_data" in data
+        assert "poly_fit" in data
+
+        for dirpath, dirdata in data["raw_data"].items():
+            assert isinstance(dirdata, pd.DataFrame)
+            assert dirpath in data["poly_fit"]
+            condition_lab = os.path.basename(os.path.dirname(dirpath))
+            distance_type = distance.DistanceType.LAMINA_NORM
+            for channel_lab in set(dirdata["channel"]):
+                distdata = dirdata.loc[distance_type.value == dirdata["distance_type"]]
+                if 0 == distdata.shape[0]:
+                    continue
+                fig_data[self._stub][
+                    f"{channel_lab}-{condition_lab}"
+                ] = self.__make_single_panel(
+                    distdata,
+                    data["poly_fit"],
+                    dirpath,
+                    condition_lab,
+                    channel_lab,
+                    distance_type,
+                )
+
+        return fig_data
