@@ -27,7 +27,7 @@ class ProfileStatType(Enum):
     Q3: str = "q3"
 
     @property
-    def id(self) -> str:
+    def id(self) -> int:
         return dict(
             q1=0,
             median=1,
