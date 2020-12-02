@@ -96,7 +96,7 @@ class ReportBase(OutputDirectories):
 
     @abstractmethod
     def _plot(
-        self, data: DefaultDict[str, Dict[str, Any]]
+        self, data: DefaultDict[str, Dict[str, Any]], *args, **kwargs
     ) -> Dict[str, Dict[str, go.Figure]]:
         ...
 
@@ -139,7 +139,7 @@ class ReportBase(OutputDirectories):
         return self.__make_panel_page(
             "log",
             panels,
-            sorted(log_data['log'].keys()),
+            sorted(log_data["log"].keys()),
             "Select a condition to show its log below.",
         )
 
@@ -159,7 +159,7 @@ class ReportBase(OutputDirectories):
         return self.__make_panel_page(
             "args",
             panels,
-            sorted(arg_data['args'].keys()),
+            sorted(arg_data["args"].keys()),
             "Select a condition to show its arguments below.",
         )
 
@@ -261,7 +261,9 @@ class ReportBase(OutputDirectories):
         log_data = self._read(self._search(self._log))
         arg_data = self._read(self._search(self._args))
         return self._make_html(
-            fig_data=self._plot(output_data), log_data=log_data, arg_data=arg_data
+            fig_data=self._plot(output_data, arg_data=arg_data),
+            log_data=log_data,
+            arg_data=arg_data,
         )
 
 

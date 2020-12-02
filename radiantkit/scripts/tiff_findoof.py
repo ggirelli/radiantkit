@@ -12,7 +12,7 @@ import pandas as pd  # type: ignore
 from plotly import graph_objects as go, express as px  # type: ignore
 from radiantkit import const, exception, image, io, path, report
 from radiantkit.scripts.common import argtools
-from typing import DefaultDict, Dict
+from typing import Any, DefaultDict, Dict, Optional
 
 
 @exception.enable_rich_exceptions
@@ -130,12 +130,36 @@ class Report(report.ReportBase):
         self._log = {"log": ("oof.log.txt", False, [])}
         self._args = {"args": ("oof.args.pkl", True, [])}
 
+    def __add_vline(
+        self,
+        fig: go.Figure,
+        x: float,
+        yy: pd.Series,
+        line_props: Optional[Dict[str, Any]] = None,
+    ) -> go.Figure:
+        if line_props is None:
+            line_props = dict(
+                color="#323232",
+                width=1,
+                dash="dash",
+            )
+        fig.add_shape(
+            type="line",
+            x0=x,
+            x1=x,
+            y0=yy.min(),
+            y1=yy.max(),
+            line=line_props,
+        )
+        return fig
+
     def _plot(
-        self, data: DefaultDict[str, Dict[str, pd.DataFrame]]
+        self, data: DefaultDict[str, Dict[str, pd.DataFrame]], *args, **kwargs
     ) -> DefaultDict[str, Dict[str, go.Figure]]:
         logging.info(f"plotting '{self._stub}'.")
         fig_data: DefaultDict[str, Dict[str, go.Figure]] = defaultdict(lambda: {})
         assert "focus_data" in data
+        assert "arg_data" in kwargs
 
         for dirpath, dirdata in data["focus_data"].items():
             assert isinstance(dirdata, pd.DataFrame)
@@ -148,6 +172,14 @@ class Report(report.ReportBase):
                 line_dash="response",
                 labels={"path": "Image", "response": "Result"},
             )
+
+            mid_point = (
+                dirdata["Z-slice index"].max() - dirdata["Z-slice index"].min()
+            ) / 2
+            mid_range = mid_point * kwargs["arg_data"]["args"][dirpath].fraction
+            fig = self.__add_vline(fig, mid_point - mid_range, dirdata.iloc[:, 1])
+            fig = self.__add_vline(fig, mid_point + mid_range, dirdata.iloc[:, 1])
+
             fig.update_layout(
                 title=f"""Focus analysis<br>
 <sub>Condition: {os.path.basename(dirpath)}</sub>""",
