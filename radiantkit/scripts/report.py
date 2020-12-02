@@ -69,6 +69,7 @@ def init_parser(subparsers: argparse._SubParsersAction) -> argparse.ArgumentPars
 
 @enable_rich_exceptions
 def parse_arguments(args: argparse.Namespace) -> argparse.Namespace:
+    args.input = os.path.abspath(args.input)
     assert os.path.isdir(args.input)
     args.version = const.__version__
     return args
@@ -80,6 +81,11 @@ def run(args: argparse.Namespace) -> None:
 
     repmaker = report.ReportMaker(args.input)
     repmaker.is_root = args.is_root
+    repmaker.title = f"Radiant report - {args.input}"
+    repmaker.footer = (
+        f"Generated with <code>{' '.join(sys.argv)}</code> "
+        + f"(<code>v{const.__version__}</code>)."
+    )
     repmaker.make()
 
     logging.info("Done. :thumbs_up: :smiley:")

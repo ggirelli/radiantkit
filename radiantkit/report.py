@@ -272,9 +272,13 @@ class ReportMaker(OutputDirectories):
         "https://cdnjs.cloudflare.com/ajax/libs/skeleton/2.0.4/skeleton.min.css"
     )
     __reportable: List[ReportBase]
+    title: str
+    footer: str
 
     def __init__(self, *args, **kwargs):
         super(ReportMaker, self).__init__(*args, **kwargs)
+        self.title = ""
+        self.footer = ""
 
     def __get_report_instance(self, module_name: str) -> Optional[ReportBase]:
         """ReportMaker supports script modules with a defined 'Report' class that is a
@@ -303,10 +307,16 @@ class ReportMaker(OutputDirectories):
 
     def __make_head(self) -> str:
         return f"""<head>
+    <title>{self.title}</title>
     <script src="{self.plotly_src}"></script>
     <link rel="stylesheet" href="{self.skeleton_href}" />
     <script src="{self.jquery_src}"></script>
     <style type="text/css">
+        footer {{
+            display: float;
+            padding: .5em;
+            border-top: 1px solid #dadada;
+        }}
         .hidden {{
             display: none;
         }}
@@ -315,16 +325,18 @@ class ReportMaker(OutputDirectories):
 
     def __make_body(self) -> str:
         body = """<body>
-    <h2>Radiant report</h2>
-    <div class='row'>
-        <!--Headers-->
-        <div class='three columns'>
-            <h5>Index</h5>
+    <header>
+        <h2>Radiant report</h2>
+        <div class='row'>
+            <!--Headers-->
+            <div class='three columns'>
+                <h5>Index</h5>
+            </div>
+            <div class='nine columns'>
+                <h5>Report</h5>
+            </div>
         </div>
-        <div class='nine columns'>
-            <h5>Report</h5>
-        </div>
-    </div>
+    </header>
     <div class='row'>
         <!--Report index-->
         <div id='index-list' class='three columns'>"""
@@ -338,7 +350,7 @@ class ReportMaker(OutputDirectories):
         <div id='report-list' class='nine columns'>"""
         for report in self.__reportable:
             body += report.make().replace("\n", "\n\t\t\t") + "\n"
-        body += """
+        body += f"""
         </div>
     </div>
     <script type='text/javascript'>
@@ -364,6 +376,9 @@ class ReportMaker(OutputDirectories):
             show_report(selected_report);
         }});
     </script>
+    <footer class="u-full-width">
+        <small>{self.footer}</small>
+    </footer>
 </body>"""
         return body
 
