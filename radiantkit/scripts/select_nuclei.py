@@ -20,7 +20,7 @@ from radiantkit.report import ReportBase
 import radiantkit.scripts.common.series as ra_series
 from radiantkit.scripts.common import argtools
 from radiantkit.series import Series, SeriesList
-from radiantkit import path, stat, string
+from radiantkit import path, report, stat, string
 import re
 from rich.progress import track  # type: ignore
 from rich.prompt import Confirm  # type: ignore
@@ -346,18 +346,12 @@ def run(args: argparse.Namespace) -> None:
     ra_series.pickle_series_list(args, series_list)
 
 
-class Report(ReportBase):
-    def __init__(self, *args, **kwargs):
-        super(Report, self).__init__(*args, **kwargs)
-        self._idx = 1.0
-        self._stub = "select_nuclei"
-        self._title = "Nuclei selection"
-        self._files = {
-            "raw_data": ("select_nuclei.data.tsv", True, []),
-            "fit": ("select_nuclei.fit.pkl", True, []),
-        }
-        self._log = {"log": ("select_nuclei.log.txt", False, [])}
-        self._args = {"args": ("select_nuclei.args.pkl", False, [])}
+class ProfileSingleChannel(object):
+    _stub: str
+
+    def __init__(self, stub: str):
+        super(ProfileSingleChannel, self).__init__()
+        self._stub = stub
 
     def __make_scatter_trace(self, data: pd.DataFrame, name: str) -> go.Scatter:
         return go.Scatter(
@@ -517,7 +511,7 @@ class Report(ReportBase):
             )
         return fig
 
-    def _plot(
+    def plot(
         self, data: DefaultDict[str, Dict[str, pd.DataFrame]], *args, **kwargs
     ) -> DefaultDict[str, Dict[str, go.Figure]]:
         logging.info(f"plotting '{self._stub}'.")
@@ -566,9 +560,8 @@ class Report(ReportBase):
                 )
 
             fig.update_layout(
-                title_text=f"""Nuclei selection<br>
-<sub>Condition: {os.path.basename(dirpath)}; #nuclei: {dirdata.shape[0]};
- #selected: {dirdata['pass'].sum()}</sub>""",
+                title_text="Nuclei selection<br>"
+                + " #selected: {dirdata['pass'].sum()}</sub>",
                 xaxis=dict(domain=[0.19, 1], title="Size"),
                 yaxis=dict(
                     domain=[0, 0.82],
@@ -586,3 +579,83 @@ class Report(ReportBase):
 
             fig_data[self._stub][dirpath] = fig
         return fig_data
+
+
+class Report(ReportBase):
+    def __init__(self, *args, **kwargs):
+        super(Report, self).__init__(*args, **kwargs)
+        self._idx = 1.0
+        self._stub = "select_nuclei"
+        self._title = "Nuclei selection"
+        self._files = {
+            "raw_data": ("select_nuclei.data.tsv", True, []),
+            "fit": ("select_nuclei.fit.pkl", True, []),
+        }
+        self._log = {"log": ("select_nuclei.log.txt", False, [])}
+        self._args = {"args": ("select_nuclei.args.pkl", False, [])}
+
+    def _plot(
+        self, data: DefaultDict[str, Dict[str, pd.DataFrame]], *args, **kwargs
+    ) -> DefaultDict[str, Dict[str, go.Figure]]:
+        return ProfileSingleChannel(self._stub).plot(data, *args, **kwargs)
+
+    # def _make_html(
+    #     self,
+    #     fig_data: Optional[Dict[str, Dict[str, go.Figure]]] = None,
+    #     log_data: Optional[DefaultDict[str, Dict[str, Any]]] = None,
+    #     arg_data: Optional[DefaultDict[str, Dict[str, Any]]] = None,
+    #     **kwargs,
+    # ) -> str:
+    #     logging.info(fig_data)
+    #     page = report.ReportPage(self._stub, 0)
+    #     assert "output_data" in kwargs
+
+    #     plot_page = report.ReportPage(f"{self._stub}-plots", 1)
+
+    #     fig_data = ProfileSingleChannel(self._stub).plot(
+    #         kwargs["output_data"], arg_data=arg_data
+    #     )
+    #     plot_page.add_panel(
+    #         "single_channel",
+    #         "Single channel",
+    #         self._make_panel_page(
+    #             "plot",
+    #             "\n\t".join(
+    #                 [
+    #                     self.figure_to_html(
+    #                         fig,
+    #                         classes=[self._stub, "plot-panel", "hidden"],
+    #                         data=dict(condition=os.path.basename(dpath)),
+    #                     )
+    #                     for dpath, fig in sorted(
+    #                         fig_data[self._stub].items(), key=lambda x: x[0]
+    #                     )
+    #                 ]
+    #             ),
+    #             sorted(fig_data[self._stub].keys()),
+    #             "Select a condition to update the plot below.",
+    #         ),
+    #     )
+    #     page.add_panel("plot", "Plots", plot_page.make())
+
+    #     if fig_data is not None:
+    #         page.add_panel("plot", "Plots", self._make_plot_panels(fig_data))
+    #     if log_data is not None:
+    #         page.add_panel("log", "Log", self._make_log_panels(log_data))
+    #     if arg_data is not None:
+    #         page.add_panel("arg", "Args", self._make_arg_panels(arg_data))
+    #     return page.make()
+
+    # def make(self) -> str:
+    #     logging.info(1)
+    #     logging.info(f"reading output files of '{self._stub}'.")
+    #     output_data = self._read(self._search(self._files))
+    #     logging.info(f"reading logs and args of '{self._stub}'.")
+    #     log_data = self._read(self._search(self._log))
+    #     arg_data = self._read(self._search(self._args))
+    #     return self._make_html(
+    #         fig_data=None,
+    #         log_data=log_data,
+    #         arg_data=arg_data,
+    #         output_data=output_data,
+    #     )
