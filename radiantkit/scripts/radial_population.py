@@ -7,20 +7,19 @@ import argparse
 from collections import defaultdict
 from joblib import cpu_count  # type: ignore
 import logging
-from numpy.polynomial.polynomial import Polynomial  # type: ignore
 import numpy as np  # type: ignore
 import os
 import pandas as pd  # type: ignore
 import plotly.graph_objects as go  # type: ignore
 from plotly.subplots import make_subplots  # type: ignore
 import pickle
-from radiantkit import const, distance, particle, report, series, string
+from radiantkit import const, distance, particle, report, series, stat, string
 from radiantkit.scripts.common import series as ra_series
 from radiantkit.scripts.common import argtools
 import re
 from rich.prompt import Confirm  # type: ignore
 import sys
-from typing import Any, DefaultDict, Dict, List
+from typing import Any, DefaultDict, Dict, List, Tuple
 
 __OUTPUT__: Dict[str, str] = {
     "poly_fit": "radial_population.profile.poly_fit.pkl",
@@ -382,52 +381,85 @@ class Report(report.ReportBase):
         self._args = {"args": ("radial_population.args.pkl", False, [])}
 
     def __make_scatter_trace(
-        self, name: str, data: pd.DataFrame, pfit: Polynomial
+        self,
+        name: str,
+        data: pd.DataFrame,
+        pfit_data: List[Dict[str, Any]],
     ) -> go.Scatter:
-        x, y = pfit.linspace(200)
-        xx, yy = pfit.deriv().linspace(200)
-        xxx, yyy = pfit.deriv().deriv().linspace(200)
-        return [
-            go.Scatter(
-                name=f"raw_{name}",
-                xaxis="x",
-                yaxis="y",
-                x=data["x"],
-                y=data["median_raw"],
-                mode="markers",
-                legendgroup=name,
-                marker=dict(size=4, opacity=0.5, color="#989898"),
+        panel_data = []
+        for stat_type in stat.ProfileStatType:
+            pfit = [x for x in pfit_data if x["stat"] == stat_type]
+            assert 1 == len(pfit), pfit
+            assert "pfit" in pfit[0]
+            x, y = pfit[0]["pfit"].linspace(200)
+            xx, yy = pfit[0]["pfit"].deriv().linspace(200)
+            xxx, yyy = pfit[0]["pfit"].deriv().deriv().linspace(200)
+            panel_data.append(
+                go.Scatter(
+                    name=f"{name}_{stat_type.value}_raw",
+                    xaxis="x",
+                    yaxis="y",
+                    x=data["x"],
+                    y=data[f"{stat_type.value}_raw"],
+                    mode="markers",
+                    legendgroup=stat_type.value,
+                    marker=dict(size=4, opacity=0.5, color="#989898"),
+                )
+            )
+            panel_data.append(
+                go.Scatter(
+                    name=f"{name}_{stat_type.value}",
+                    x=x,
+                    y=y,
+                    xaxis="x",
+                    yaxis="y",
+                    mode="lines",
+                    legendgroup=stat_type.value,
+                )
+            )
+            panel_data.append(
+                go.Scatter(
+                    name=f"{name}_{stat_type.value}_der1",
+                    x=xx,
+                    y=yy,
+                    xaxis="x",
+                    yaxis="y2",
+                    mode="lines",
+                    legendgroup=stat_type.value,
+                )
+            )
+            panel_data.append(
+                go.Scatter(
+                    name=f"{name}_{stat_type.value}_der2",
+                    x=xxx,
+                    y=yyy,
+                    xaxis="x",
+                    yaxis="y3",
+                    mode="lines",
+                    legendgroup=stat_type.value,
+                )
+            )
+        return panel_data
+
+    def __get_axis_range(
+        self, trace_list: List[go.Figure], axis_type: str, axis_label: str
+    ) -> Tuple[float, float]:
+        return (
+            np.min(
+                [
+                    trace[axis_type].min()
+                    for trace in trace_list
+                    if axis_label == trace[f"{axis_type}axis"]
+                ]
             ),
-            go.Scatter(
-                name=name,
-                x=x,
-                y=y,
-                xaxis="x",
-                yaxis="y",
-                mode="lines",
-                legendgroup=name,
+            np.max(
+                [
+                    trace[axis_type].max()
+                    for trace in trace_list
+                    if axis_label == trace[f"{axis_type}axis"]
+                ]
             ),
-            go.Scatter(
-                name=f"der1_{name}",
-                x=xx,
-                y=yy,
-                xaxis="x",
-                yaxis="y2",
-                mode="lines",
-                legendgroup=name,
-                showlegend=False,
-            ),
-            go.Scatter(
-                name=f"der2_{name}",
-                x=xxx,
-                y=yyy,
-                xaxis="x",
-                yaxis="y3",
-                mode="lines",
-                legendgroup=name,
-                showlegend=False,
-            ),
-        ]
+        )
 
     def __make_single_panel(
         self,
@@ -438,54 +470,28 @@ class Report(report.ReportBase):
         channel_lab: str,
         dtype: distance.DistanceType,
     ) -> go.Figure:
-        pfit = [
-            x
-            for x in pfit_data[dirpath]
-            if x["cname"] == channel_lab
-            and x["distance_type"] == dtype.value
-            and x["stat"].value == "median"
-        ]
-        assert 1 == len(pfit), pfit
-        assert "pfit" in pfit[0]
-
         channel_data = data.loc[channel_lab == data["channel"]]
         fig = make_subplots(rows=3, cols=1)
 
         plot_data = self.__make_scatter_trace(
-            channel_lab, channel_data, pfit[0]["pfit"]
+            channel_lab,
+            channel_data,
+            [
+                x
+                for x in pfit_data[dirpath]
+                if x["cname"] == channel_lab and x["distance_type"] == dtype.value
+            ],
         )
         for panel in plot_data:
             fig.add_trace(panel)
 
         yranges = dict(
-            y=(
-                np.min(
-                    [trace["y"].min() for trace in plot_data if "y" == trace["yaxis"]]
-                ),
-                np.max(
-                    [trace["y"].max() for trace in plot_data if "y" == trace["yaxis"]]
-                ),
-            ),
-            y2=(
-                np.min(
-                    [trace["y"].min() for trace in plot_data if "y2" == trace["yaxis"]]
-                ),
-                np.max(
-                    [trace["y"].max() for trace in plot_data if "y2" == trace["yaxis"]]
-                ),
-            ),
-            y3=(
-                np.min(
-                    [trace["y"].min() for trace in plot_data if "y3" == trace["yaxis"]]
-                ),
-                np.max(
-                    [trace["y"].max() for trace in plot_data if "y3" == trace["yaxis"]]
-                ),
-            ),
+            y=self.__get_axis_range(plot_data, "y", "y"),
+            y2=self.__get_axis_range(plot_data, "y", "y2"),
+            y3=self.__get_axis_range(plot_data, "y", "y3"),
         )
-
         fig.update_layout(
-            title=f"""Median signal profile<br>
+            title=f"""Signal profile<br>
 <sub>Condition: {condition_lab};
 Channel: {channel_lab}</sub>""",
             xaxis=dict(title=dtype.label, anchor="y3"),
