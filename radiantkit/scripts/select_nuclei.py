@@ -12,7 +12,6 @@ import numpy as np  # type: ignore
 import os
 import pandas as pd  # type: ignore
 import plotly.graph_objects as go  # type: ignore
-from plotly.subplots import make_subplots  # type: ignore
 import pickle
 from radiantkit import const, io
 from radiantkit.image import ImageBinary, ImageLabeled
@@ -21,12 +20,12 @@ from radiantkit.report import ReportBase
 import radiantkit.scripts.common.series as ra_series
 from radiantkit.scripts.common import argtools
 from radiantkit.series import Series, SeriesList
-from radiantkit import path, string
+from radiantkit import path, stat, string
 import re
 from rich.progress import track  # type: ignore
 from rich.prompt import Confirm  # type: ignore
 from scipy.stats import gaussian_kde  # type: ignore
-from typing import Any, DefaultDict, Dict, List, Pattern
+from typing import Any, DefaultDict, Dict, List, Optional, Pattern, Tuple
 
 
 def init_parser(subparsers: argparse._SubParsersAction) -> argparse.ArgumentParser:
@@ -377,6 +376,7 @@ class Report(ReportBase):
             hovertemplate="Size=%{x}<br>Intensity sum=%{y}<br>"
             + "Label=%{customdata[0]}<br>"
             + 'Image="%{customdata[1]}"',
+            legendgroup="datapoints",
         )
 
     def __add_density_contours(
@@ -392,7 +392,8 @@ class Report(ReportBase):
                 y=size_kde(size_linsp),
                 xaxis="x",
                 yaxis="y3",
-            ),
+                legendgroup="Size",
+            )
         )
         assert "isum_dapi" in data
         isum_linsp = np.linspace(data["isum_dapi"].min(), data["isum_dapi"].max(), 200)
@@ -404,21 +405,186 @@ class Report(ReportBase):
                 y=isum_linsp,
                 xaxis="x2",
                 yaxis="y",
+                legendgroup="Intensity sum",
             ),
         )
         return fig
 
+    def __add_fit_contours_x(
+        self,
+        fig: go.Figure,
+        name: str,
+        data_series: np.ndarray,
+        fit: Tuple[np.ndarray, stat.FitType],
+        xref: str = "x",
+        yref: str = "y",
+    ) -> go.Figure:
+        params, fit_type = fit
+        line_props = dict(
+            line_color="#323232",
+            line_width=1,
+            line_dash="dot",
+        )
+        if stat.FitType.FWHM != fit_type:
+            data = dict(x=data_series, y=stat.gaussian(data_series, *params[:3]))
+            fig.add_trace(
+                go.Scatter(
+                    name=f"{name}_gaussian_1",
+                    **data,
+                    xaxis=xref,
+                    yaxis=yref,
+                    legendgroup=name,
+                )
+            )
+            fig.add_vline(x=params[1], **line_props)
+            fig.add_shape(
+                type="line",
+                x0=params[1],
+                x1=params[1],
+                y0=fig.data[2].y.min(),
+                y1=fig.data[2].y.max(),
+                xref=xref,
+                xsizemode="scaled",
+                yref=yref,
+                ysizemode="scaled",
+                **line_props,
+            )
+        if stat.FitType.SOG == fit_type:
+            data = dict(x=data_series, y=stat.gaussian(data_series, *params[3:]))
+            fig.add_trace(
+                go.Scatter(
+                    name=f"{name}_gaussian_2",
+                    **data,
+                    xaxis=xref,
+                    yaxis=yref,
+                    legendgroup=name,
+                )
+            )
+        return fig
+
+    def __add_fit_contours_y(
+        self,
+        fig: go.Figure,
+        name: str,
+        data_series: np.ndarray,
+        fit: Tuple[np.ndarray, stat.FitType],
+        xref: str = "x",
+        yref: str = "y",
+    ) -> go.Figure:
+        params, fit_type = fit
+        line_props = dict(
+            line_color="#323232",
+            line_width=1,
+            line_dash="dot",
+        )
+        if stat.FitType.FWHM != fit_type:
+            data = dict(y=data_series, x=stat.gaussian(data_series, *params[:3]))
+            fig.add_trace(
+                go.Scatter(
+                    name=f"{name}_gaussian_1",
+                    **data,
+                    xaxis=xref,
+                    yaxis=yref,
+                    legendgroup=name,
+                )
+            )
+            fig.add_hline(y=params[1], **line_props)
+            fig.add_shape(
+                type="line",
+                x0=fig.data[3].x.min(),
+                x1=fig.data[3].x.max(),
+                y0=params[1],
+                y1=params[1],
+                xref="x2",
+                xsizemode="scaled",
+                yref="y",
+                ysizemode="scaled",
+                **line_props,
+            )
+        if stat.FitType.SOG == fit_type:
+            data = dict(y=data_series, x=stat.gaussian(data_series, *params[3:]))
+            fig.add_trace(
+                go.Scatter(
+                    name=f"{name}_gaussian_2",
+                    **data,
+                    xaxis=xref,
+                    yaxis=yref,
+                    legendgroup=name,
+                )
+            )
+        return fig
+
+    def __add_fit_contours(
+        self,
+        fig: go.Figure,
+        name: str,
+        data_series: np.ndarray,
+        data_type: str,
+        fit: Tuple[np.ndarray, stat.FitType],
+        xref: str = "x",
+        yref: str = "y",
+    ) -> go.Figure:
+        assert data_type in ["x", "y"]
+        params, fit_type = fit
+        if "x" == data_type:
+            fig = self.__add_fit_contours_x(fig, name, data_series, fit, xref, yref)
+        else:
+            fig = self.__add_fit_contours_y(fig, name, data_series, fit, xref, yref)
+        return fig
+
+    def __add_range_lines(
+        self,
+        fig: go.Figure,
+        xx: List[float],
+        yy: List[float],
+        line_props: Optional[Dict[str, Any]] = None,
+    ) -> go.Figure:
+        if line_props is None:
+            line_props = dict(
+                line_color="#323232",
+                line_width=1,
+                line_dash="dash",
+            )
+        for x0 in xx:
+            fig.add_vline(x=x0, **line_props)
+            fig.add_shape(
+                type="line",
+                x0=x0,
+                x1=x0,
+                y0=fig.data[2].y.min(),
+                y1=fig.data[2].y.max(),
+                xref="x",
+                xsizemode="scaled",
+                yref="y3",
+                ysizemode="scaled",
+                **line_props,
+            )
+        for y0 in yy:
+            fig.add_hline(y=y0, **line_props)
+            fig.add_shape(
+                type="line",
+                x0=fig.data[3].x.min(),
+                x1=fig.data[3].x.max(),
+                y0=y0,
+                y1=y0,
+                xref="x2",
+                xsizemode="scaled",
+                yref="y",
+                ysizemode="scaled",
+                **line_props,
+            )
+        return fig
+
     def _plot(
-        self, data: DefaultDict[str, Dict[str, pd.DataFrame]]
+        self, data: DefaultDict[str, Dict[str, pd.DataFrame]], *args, **kwargs
     ) -> DefaultDict[str, Dict[str, go.Figure]]:
         logging.info(f"plotting '{self._stub}'.")
         fig_data: DefaultDict[str, Dict[str, go.Figure]] = defaultdict(lambda: {})
         assert "raw_data" in data
+        assert "arg_data" in kwargs
         for dirpath, dirdata in data["raw_data"].items():
             assert isinstance(dirdata, pd.DataFrame)
-            fig = make_subplots(
-                rows=2, cols=2, column_widths=[0.3, 0.7], row_heights=[0.3, 0.7]
-            )
+            fig = go.Figure()
 
             fig.add_trace(
                 self.__make_scatter_trace(dirdata.loc[dirdata["pass"]], "Selected")
@@ -431,6 +597,31 @@ class Report(ReportBase):
 
             if dirpath in data["fit"]:
                 fig = self.__add_density_contours(fig, dirdata, data["fit"][dirpath])
+                fig = self.__add_fit_contours(
+                    fig,
+                    "Size",
+                    np.linspace(dirdata["size"].min(), dirdata["size"].max(), 200),
+                    "x",
+                    data["fit"][dirpath]["size"]["fit"],
+                    "x",
+                    "y3",
+                )
+                fig = self.__add_fit_contours(
+                    fig,
+                    "Intensity sum",
+                    np.linspace(
+                        dirdata["isum_dapi"].min(), dirdata["isum_dapi"].max(), 200
+                    ),
+                    "y",
+                    data["fit"][dirpath]["isum"]["fit"],
+                    "x2",
+                    "y",
+                )
+                fig = self.__add_range_lines(
+                    fig,
+                    xx=data["fit"][dirpath]["size"]["range"],
+                    yy=data["fit"][dirpath]["isum"]["range"],
+                )
 
             fig.update_layout(
                 title_text=f"""Nuclei selection<br>
@@ -449,5 +640,6 @@ class Report(ReportBase):
                 width=1000,
                 height=1000,
             )
+
             fig_data[self._stub][dirpath] = fig
         return fig_data
