@@ -13,7 +13,7 @@ import plotly.graph_objects as go  # type: ignore
 from radiantkit import const, scripts
 from radiantkit.output import Output, OutputDirectories, OutputReader
 from types import ModuleType
-from typing import Any, DefaultDict, Dict, List, Optional
+from typing import Any, DefaultDict, Dict, List, Optional, Tuple
 
 
 class ReportBase(OutputDirectories):
@@ -100,14 +100,15 @@ class ReportBase(OutputDirectories):
     ) -> Dict[str, Dict[str, go.Figure]]:
         ...
 
-    def __make_panel_page(
+    def _make_panel_page(
         self, panel_type: str, panels: str, keys: List[str], msg: str = ""
     ) -> str:
         page = f"""
     <small>{msg}</small>
     <select class='{self._stub} {panel_type}-panel u-full-width'>"""
         for d in keys:
-            page += f"\n\t\t\t<option>{os.path.basename(d)}</option>"
+            page += f"""
+        <option>{os.path.basename(d)}</option>"""
         page += f"""
     </select>
     {panels}
@@ -136,7 +137,7 @@ class ReportBase(OutputDirectories):
             ]
         )
 
-        return self.__make_panel_page(
+        return self._make_panel_page(
             "log",
             panels,
             sorted(log_data["log"].keys()),
@@ -156,7 +157,7 @@ class ReportBase(OutputDirectories):
             ]
         )
 
-        return self.__make_panel_page(
+        return self._make_panel_page(
             "args",
             panels,
             sorted(arg_data["args"].keys()),
@@ -179,7 +180,7 @@ class ReportBase(OutputDirectories):
             ]
         )
 
-        return self.__make_panel_page(
+        return self._make_panel_page(
             "plot",
             panels,
             sorted(fig_data[self._stub].keys()),
@@ -191,68 +192,16 @@ class ReportBase(OutputDirectories):
         fig_data: Optional[Dict[str, Dict[str, go.Figure]]] = None,
         log_data: Optional[DefaultDict[str, Dict[str, Any]]] = None,
         arg_data: Optional[DefaultDict[str, Dict[str, Any]]] = None,
+        **kwargs,
     ) -> str:
-        page = f"""
-<!--Report for {self._stub}-->
-<div class='report hidden' data-report='{self._stub}'>"""
-
-        index = f"""
-    <div id='{self._stub}-wrapper-index' class='row'>"""
-        panels = ""
-
+        page = ReportPage(self._stub, 0)
         if fig_data is not None:
-            index += """
-        <div class='four columns'>
-            <a class='button button-primary u-full-width'
-            data-target='plot-panel' href='#'>Plots</a>
-        </div>"""
-            fig_panels = self._make_plot_panels(fig_data).replace("\n", "\n\t")
-            panels += f"""
-    <!--Plots-->
-    <div class='plot-panel wrapper'>{fig_panels}
-    </div>"""
-
+            page.add_panel("plot", "Plots", self._make_plot_panels(fig_data))
         if log_data is not None:
-            index += """
-        <div class='four columns'>
-            <a class='button u-full-width' data-target='log-panel' href='#'>Logs</a>
-        </div>"""
-            log_panels = self._make_log_panels(log_data)
-            panels += f"""
-    <!--Logs-->
-    <div class='log-panel wrapper hidden'>{log_panels}
-    </div>"""
-
+            page.add_panel("log", "Log", self._make_log_panels(log_data))
         if arg_data is not None:
-            index += """
-        <div class='four columns'>
-            <a class='button u-full-width' data-target='args-panel' href='#'>Args</a>
-        </div>"""
-            arg_panels = self._make_arg_panels(arg_data)
-            panels += f"""
-    <!--Args-->
-    <div class='args-panel wrapper hidden'>{arg_panels}
-    </div>"""
-
-        index += """
-    </div>"""
-        page += index
-        page += panels
-        page += f"""
-</div>
-<script type='text/javascript'>
-    // Select panel type
-    $('#{self._stub}-wrapper-index a.button').click(function(e) {{
-        e.preventDefault();
-        $('div.report[data-report="{self._stub}"] .wrapper:not(.hidden)')
-            .addClass('hidden');
-        $('div.report[data-report="{self._stub}"] .wrapper.'+$(this).data('target'))
-            .removeClass('hidden');
-        $('#{self._stub}-wrapper-index a.button-primary').removeClass('button-primary');
-        $(this).addClass('button-primary');
-    }});
-</script>"""
-        return page
+            page.add_panel("arg", "Args", self._make_arg_panels(arg_data))
+        return page.make()
 
     def make(self) -> str:
         logging.info(f"reading output files of '{self._stub}'.")
@@ -265,6 +214,96 @@ class ReportBase(OutputDirectories):
             log_data=log_data,
             arg_data=arg_data,
         )
+
+
+class ReportPage(object):
+    _page_id: str
+    _nesting_level: int = 0
+    _panels: Dict[
+        str, Tuple[str, str]
+    ]  # Dict[panel_idx, Tuple[panel_label, panel_html]]
+
+    def __init__(self, pid: str, nesting_level: int):
+        super(ReportPage, self).__init__()
+        self._page_id = pid
+        self._nesting_level = max(0, nesting_level)
+        self._panels = {}
+
+    @property
+    def id(self) -> str:
+        return self._page_id
+
+    @property
+    def html_id(self):
+        return (
+            self._page_id
+            if 0 == self._nesting_level
+            else f"{self._page_id}-{self._nesting_level}"
+        )
+
+    def add_panel(self, idx: str, label: str, content: str) -> None:
+        if idx in self._panels:
+            logging.warning(f"replacing panel '{idx}'.")
+        self._panels[idx] = (label, content)
+
+    def __build_panel_index(self) -> str:
+        buttons = [
+            f"""
+            <div class='four columns'>
+                <a class='button u-full-width' data-target='{pidx}-panel' href='#'>
+                    {plab}</a>
+            </div>"""
+            for pidx, (plab, _) in self._panels.items()
+        ]
+        index = f"""
+    <div id='{self.html_id}-page-index-wrapper'>"""
+        for i in range(0, len(buttons), 3):
+            buttons_subset = "".join(buttons[slice(i, i + 3)])
+            index += f"""
+        <div class='row'>{buttons_subset}
+        </div>"""
+        index += """
+    </div>"""
+        return index
+
+    def __wrap_panels(self) -> str:
+        panels = ""
+        for pidx, (plab, phtml) in self._panels.items():
+            phtml = phtml.replace("\n", "\n\t")
+            panels += f"""
+    <!--{plab} panel-->
+    <div class='{pidx}-panel page-wrapper hidden'>{phtml}
+    </div>"""
+        return panels
+
+    def make(self) -> str:
+        page = f"""
+<!--Report for {self.html_id}-->
+<div class='page hidden' data-page='{self.html_id}'>"""
+        page += self.__build_panel_index()
+        page += self.__wrap_panels()
+        page += f"""
+    <!--Closure-->
+    <script type='text/javascript'>
+        // Show first panel
+        $('div.page[data-page="{self.html_id}"] .page-wrapper')
+            .first().removeClass('hidden');
+
+        // Select panel type
+        $('#{self.html_id}-page-index-wrapper a.button').click(function(e) {{
+            e.preventDefault();
+            $('div.page[data-page="{self.html_id}"] .page-wrapper:not(.hidden)')
+                .addClass('hidden');
+            $('div.page[data-page="{self.html_id}"] .page-wrapper.'
+                +$(this).data('target'))
+                .removeClass('hidden');
+            $('#{self.html_id}-page-index-wrapper a.button-primary')
+                .removeClass('button-primary');
+            $(this).addClass('button-primary');
+        }});
+    </script>
+</div>"""
+        return page
 
 
 class ReportMaker(OutputDirectories):
@@ -326,7 +365,8 @@ class ReportMaker(OutputDirectories):
 </head>"""
 
     def __make_body(self) -> str:
-        body = """<body>
+        body = """
+<body>
     <header>
         <h2>Radiant report</h2>
         <div class='row'>
@@ -345,7 +385,7 @@ class ReportMaker(OutputDirectories):
         for report in self.__reportable:
             body += f"""
             <a class='button u-full-width'
-                href='#' data-report='{report.stub}'>{report.title}</a>"""
+                href='#' data-page='{report.stub}'>{report.title}</a>"""
         body += """
         </div>
         <!--Report results-->
@@ -358,21 +398,21 @@ class ReportMaker(OutputDirectories):
     <script type='text/javascript'>
         // Report selection
         show_report = function(selected_report) {{
-            $('#report-list div.report:not(.hidden)')
+            $('#report-list div.page:not(.hidden)')
                 .addClass('hidden');
-            $('#report-list div.report[data-report="'+selected_report+'"]')
+            $('#report-list div.page[data-page="'+selected_report+'"]')
                 .removeClass('hidden');
         }}
 
         // Show the first report from the index
         $('#index-list a.button').first()
             .removeClass('hidden').addClass('button-primary');
-        show_report($('#index-list a.button.button-primary').data('report'));
+        show_report($('#index-list a.button.button-primary').data('page'));
 
         // Show the selected report
         $('#index-list a.button').click(function(e) {{
             e.preventDefault();
-            selected_report = $(this).data('report');
+            selected_report = $(this).data('page');
             $('#index-list a.button-primary').removeClass('button-primary');
             $(this).addClass('button-primary');
             show_report(selected_report);
