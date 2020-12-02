@@ -19,7 +19,7 @@ from radiantkit.scripts.common import argtools
 import re
 from rich.prompt import Confirm  # type: ignore
 import sys
-from typing import Any, DefaultDict, Dict, List, Tuple
+from typing import Any, DefaultDict, Dict, List, Optional, Tuple
 
 __OUTPUT__: Dict[str, str] = {
     "poly_fit": "radial_population.profile.poly_fit.pkl",
@@ -394,50 +394,46 @@ class Report(report.ReportBase):
             x, y = pfit[0]["pfit"].linspace(200)
             xx, yy = pfit[0]["pfit"].deriv().linspace(200)
             xxx, yyy = pfit[0]["pfit"].deriv().deriv().linspace(200)
-            panel_data.append(
-                go.Scatter(
-                    name=f"{name}_{stat_type.value}_raw",
-                    xaxis="x",
-                    yaxis="y",
-                    x=data["x"],
-                    y=data[f"{stat_type.value}_raw"],
-                    mode="markers",
-                    legendgroup=stat_type.value,
-                    marker=dict(size=4, opacity=0.5, color="#989898"),
-                )
-            )
-            panel_data.append(
-                go.Scatter(
-                    name=f"{name}_{stat_type.value}",
-                    x=x,
-                    y=y,
-                    xaxis="x",
-                    yaxis="y",
-                    mode="lines",
-                    legendgroup=stat_type.value,
-                )
-            )
-            panel_data.append(
-                go.Scatter(
-                    name=f"{name}_{stat_type.value}_der1",
-                    x=xx,
-                    y=yy,
-                    xaxis="x",
-                    yaxis="y2",
-                    mode="lines",
-                    legendgroup=stat_type.value,
-                )
-            )
-            panel_data.append(
-                go.Scatter(
-                    name=f"{name}_{stat_type.value}_der2",
-                    x=xxx,
-                    y=yyy,
-                    xaxis="x",
-                    yaxis="y3",
-                    mode="lines",
-                    legendgroup=stat_type.value,
-                )
+            panel_data.extend(
+                [
+                    go.Scatter(
+                        name=f"{name}_{stat_type.value}_raw",
+                        xaxis="x",
+                        yaxis="y",
+                        x=data["x"],
+                        y=data[f"{stat_type.value}_raw"],
+                        mode="markers",
+                        legendgroup=stat_type.value,
+                        marker=dict(size=4, opacity=0.5, color="#989898"),
+                    ),
+                    go.Scatter(
+                        name=f"{name}_{stat_type.value}",
+                        x=x,
+                        y=y,
+                        xaxis="x",
+                        yaxis="y",
+                        mode="lines",
+                        legendgroup=stat_type.value,
+                    ),
+                    go.Scatter(
+                        name=f"{name}_{stat_type.value}_der1",
+                        x=xx,
+                        y=yy,
+                        xaxis="x",
+                        yaxis="y2",
+                        mode="lines",
+                        legendgroup=stat_type.value,
+                    ),
+                    go.Scatter(
+                        name=f"{name}_{stat_type.value}_der2",
+                        x=xxx,
+                        y=yyy,
+                        xaxis="x",
+                        yaxis="y3",
+                        mode="lines",
+                        legendgroup=stat_type.value,
+                    ),
+                ]
             )
         return panel_data
 
@@ -461,29 +457,114 @@ class Report(report.ReportBase):
             ),
         )
 
+    def __add_line_shape(
+        self,
+        fig: go.Figure,
+        x0: Optional[float],
+        x1: Optional[float],
+        y0: Optional[float],
+        y1: Optional[float],
+        line_color: str = "#969696",
+        **kwargs,
+    ) -> go.Figure:
+        fig.add_shape(
+            type="line",
+            x0=x0,
+            x1=x1,
+            y0=y0,
+            y1=y1,
+            xsizemode="scaled",
+            ysizemode="scaled",
+            line_color=line_color,
+            **kwargs,
+        )
+        return fig
+
+    def __add_derivative_xaxis(self, fig: go.Figure) -> go.Figure:
+        fig = self.__add_line_shape(
+            fig, 0, 1, 0, 0, xref="x", yref="y2", line_dash="dash"
+        )
+        fig = self.__add_line_shape(
+            fig, 0, 1, 0, 0, xref="x", yref="y3", line_dash="dash"
+        )
+        return fig
+
+    __panel_list: List[Dict[str, str]] = [
+        {"xref": "x", "yref": "y"},
+        {"xref": "x", "yref": "y2"},
+        {"xref": "x", "yref": "y3"},
+    ]
+
+    def __add_der1_zeros(
+        self, fig: go.Figure, pfit_data: List[Dict[str, Any]]
+    ) -> go.Figure:
+        for pfit in pfit_data:
+            root_der1, _ = stat.get_radial_profile_roots(pfit["pfit"])
+            if np.isnan(root_der1):
+                continue
+            for panel in self.__panel_list[:2]:
+                panel_trace_y = np.concatenate(
+                    [p["y"] for p in fig["data"] if p["yaxis"] == panel["yref"]]
+                )
+                fig = self.__add_line_shape(
+                    fig,
+                    root_der1,
+                    root_der1,
+                    panel_trace_y.min(),
+                    panel_trace_y.max(),
+                    **panel,
+                    line_dash="dash",
+                )
+        return fig
+
+    def __add_der2_zeros(
+        self, fig: go.Figure, pfit_data: List[Dict[str, Any]]
+    ) -> go.Figure:
+        for pfit in pfit_data:
+            _, root_der2 = stat.get_radial_profile_roots(pfit["pfit"])
+            if np.isnan(root_der2):
+                continue
+            for panel in self.__panel_list:
+                panel_trace_y = np.concatenate(
+                    [p["y"] for p in fig["data"] if p["yaxis"] == panel["yref"]]
+                )
+                fig = self.__add_line_shape(
+                    fig,
+                    root_der2,
+                    root_der2,
+                    panel_trace_y.min(),
+                    panel_trace_y.max(),
+                    **panel,
+                    line_dash="dot",
+                )
+        return fig
+
     def __make_single_panel(
         self,
         data: pd.DataFrame,
-        pfit_data: Dict[str, List[Dict[str, Any]]],
-        dirpath: str,
+        pfit_data: List[Dict[str, Any]],
         condition_lab: str,
         channel_lab: str,
         dtype: distance.DistanceType,
     ) -> go.Figure:
-        channel_data = data.loc[channel_lab == data["channel"]]
-        fig = make_subplots(rows=3, cols=1)
+        pfit = [
+            x
+            for x in pfit_data
+            if x["cname"] == channel_lab and x["distance_type"] == dtype.value
+        ]
 
+        fig = make_subplots(rows=3, cols=1)
         plot_data = self.__make_scatter_trace(
             channel_lab,
-            channel_data,
-            [
-                x
-                for x in pfit_data[dirpath]
-                if x["cname"] == channel_lab and x["distance_type"] == dtype.value
-            ],
+            data.loc[channel_lab == data["channel"]],
+            pfit,
         )
         for panel in plot_data:
             fig.add_trace(panel)
+
+        fig = self.__add_derivative_xaxis(fig)
+        fig = self.__add_der1_zeros(fig, pfit)
+        fig = self.__add_der2_zeros(fig, pfit)
 
         yranges = dict(
             y=self.__get_axis_range(plot_data, "y", "y"),
@@ -518,7 +599,7 @@ Channel: {channel_lab}</sub>""",
         return fig
 
     def _plot(
-        self, data: DefaultDict[str, Dict[str, pd.DataFrame]]
+        self, data: DefaultDict[str, Dict[str, pd.DataFrame]], *args, **kwargs
     ) -> DefaultDict[str, Dict[str, go.Figure]]:
         fig_data: DefaultDict[str, Dict[str, go.Figure]] = defaultdict(lambda: {})
         assert "raw_data" in data
@@ -537,8 +618,7 @@ Channel: {channel_lab}</sub>""",
                     f"{channel_lab}-{condition_lab}"
                 ] = self.__make_single_panel(
                     distdata,
-                    data["poly_fit"],
-                    dirpath,
+                    data["poly_fit"][dirpath],
                     condition_lab,
                     channel_lab,
                     distance_type,
