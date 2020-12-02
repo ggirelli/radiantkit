@@ -26,6 +26,15 @@ class ProfileStatType(Enum):
     MEAN: str = "mean"
     Q3: str = "q3"
 
+    @property
+    def id(self) -> str:
+        return dict(
+            q1=0,
+            median=1,
+            mean=2,
+            q3=3,
+        )[self.value]
+
 
 class DistanceMode(Enum):
     EDT = "edt"

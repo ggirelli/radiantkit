@@ -11,6 +11,7 @@ import numpy as np  # type: ignore
 import os
 import pandas as pd  # type: ignore
 import plotly.graph_objects as go  # type: ignore
+import plotly.express as px  # type: ignore
 from plotly.subplots import make_subplots  # type: ignore
 import pickle
 from radiantkit import const, distance, particle, report, series, stat, string
@@ -404,7 +405,11 @@ class Report(report.ReportBase):
                         y=data[f"{stat_type.value}_raw"],
                         mode="markers",
                         legendgroup=stat_type.value,
-                        marker=dict(size=4, opacity=0.5, color="#989898"),
+                        marker=dict(
+                            size=4,
+                            opacity=0.5,
+                            color=px.colors.qualitative.Pastel2[stat_type.id],
+                        ),
                     ),
                     go.Scatter(
                         name=f"{name}_{stat_type.value}",
@@ -414,6 +419,7 @@ class Report(report.ReportBase):
                         yaxis="y",
                         mode="lines",
                         legendgroup=stat_type.value,
+                        line_color=px.colors.qualitative.Dark2[stat_type.id],
                     ),
                     go.Scatter(
                         name=f"{name}_{stat_type.value}_der1",
@@ -423,6 +429,8 @@ class Report(report.ReportBase):
                         yaxis="y2",
                         mode="lines",
                         legendgroup=stat_type.value,
+                        showlegend=False,
+                        line_color=px.colors.qualitative.Dark2[stat_type.id],
                     ),
                     go.Scatter(
                         name=f"{name}_{stat_type.value}_der2",
@@ -432,6 +440,8 @@ class Report(report.ReportBase):
                         yaxis="y3",
                         mode="lines",
                         legendgroup=stat_type.value,
+                        showlegend=False,
+                        line_color=px.colors.qualitative.Dark2[stat_type.id],
                     ),
                 ]
             )
@@ -512,8 +522,9 @@ class Report(report.ReportBase):
                     root_der1,
                     panel_trace_y.min(),
                     panel_trace_y.max(),
-                    **panel,
                     line_dash="dash",
+                    line_color=px.colors.qualitative.Set2[pfit["stat"].id],
+                    **panel,
                 )
         return fig
 
@@ -534,8 +545,9 @@ class Report(report.ReportBase):
                     root_der2,
                     panel_trace_y.min(),
                     panel_trace_y.max(),
-                    **panel,
                     line_dash="dot",
+                    line_color=px.colors.qualitative.Set2[pfit["stat"].id],
+                    **panel,
                 )
         return fig
 
@@ -572,6 +584,7 @@ class Report(report.ReportBase):
             y3=self.__get_axis_range(plot_data, "y", "y3"),
         )
         fig.update_layout(
+            template="plotly_dark",
             title=f"""Signal profile<br>
 <sub>Condition: {condition_lab};
 Channel: {channel_lab}</sub>""",
