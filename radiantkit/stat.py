@@ -336,22 +336,18 @@ def get_polynomial_real_roots(
     inWindow: bool = False,
 ) -> np.ndarray:
     assert mode in RootType
-
     roots = poly.roots()
     roots = roots[np.logical_not(np.iscomplex(roots))]
-
     if inWindow:
         roots = roots[roots >= poly.window[0]]
         roots = roots[roots <= poly.window[1]]
     if inDomain:
         roots = roots[roots >= poly.domain[0]]
         roots = roots[roots <= poly.domain[1]]
-
     if RootType.MAXIMA == mode:
         roots = select_maxima_roots(roots, poly, npoints)
     elif RootType.MINIMA == mode:
         roots = select_minima_roots(roots, poly, npoints)
-
     return np.real(roots)
 
 
@@ -359,8 +355,16 @@ def get_radial_profile_roots(
     profile: Polynomial, npoints: int = 1000
 ) -> Tuple[np.ndarray, np.ndarray]:
 
-    roots_der1 = get_polynomial_real_roots(profile.deriv(), RootType.MAXIMA)
-    roots_der2 = get_polynomial_real_roots(profile.deriv().deriv(), RootType.MINIMA)
+    roots_der1 = (
+        np.array([])
+        if any(np.isnan(profile.deriv().coef))
+        else get_polynomial_real_roots(profile.deriv(), RootType.MAXIMA)
+    )
+    roots_der2 = (
+        np.array([])
+        if any(np.isnan(profile.deriv().coef))
+        else get_polynomial_real_roots(profile.deriv().deriv(), RootType.MINIMA)
+    )
 
     if 0 == len(roots_der1):
         x, y = profile.linspace(npoints)
