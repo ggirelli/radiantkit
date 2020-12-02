@@ -153,6 +153,24 @@ class Report(report.ReportBase):
         )
         return fig
 
+    def __add_trace(
+        self,
+        fig: go.Figure,
+        data: pd.DataFrame,
+        line_color: str = "#000000",
+        line_dash: str = "solid",
+    ) -> go.Figure:
+        fig.add_trace(
+            go.Scatter(
+                x=data["Z-slice index"],
+                y=data.iloc[:, 1],
+                line_color=line_color,
+                line_dash=line_dash,
+                name=data["path"].tolist()[0],
+            )
+        )
+        return fig
+
     def _plot(
         self, data: DefaultDict[str, Dict[str, pd.DataFrame]], *args, **kwargs
     ) -> DefaultDict[str, Dict[str, go.Figure]]:
@@ -164,14 +182,22 @@ class Report(report.ReportBase):
         for dirpath, dirdata in data["focus_data"].items():
             assert isinstance(dirdata, pd.DataFrame)
             dirdata.sort_values(["path", "Z-slice index"], inplace=True)
-            fig = px.line(
-                dirdata,
-                x="Z-slice index",
-                y=dirdata.columns[1],
-                color="path",
-                line_dash="response",
-                labels={"path": "Image", "response": "Result"},
+            fig = go.Figure()
+            path_set = list(
+                set(dirdata.loc["out-of-focus" == dirdata["response"], "path"])
             )
+            for pi in range(len(path_set)):
+                pathdata = dirdata.loc[path_set[pi] == dirdata["path"], :]
+                fig = self.__add_trace(
+                    fig, pathdata, px.colors.qualitative.Bold[pi % 10], "dash"
+                )
+
+            path_set = list(set(dirdata.loc["in-focus" == dirdata["response"], "path"]))
+            for pi in range(len(path_set)):
+                pathdata = dirdata.loc[path_set[pi] == dirdata["path"], :]
+                fig = self.__add_trace(
+                    fig, pathdata, px.colors.qualitative.Bold[pi % 10], "solid"
+                )
 
             mid_point = (
                 dirdata["Z-slice index"].max() - dirdata["Z-slice index"].min()
