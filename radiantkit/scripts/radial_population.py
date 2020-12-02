@@ -410,6 +410,7 @@ class Report(report.ReportBase):
                             opacity=0.5,
                             color=px.colors.qualitative.Pastel2[stat_type.id],
                         ),
+                        showlegend=False,
                     ),
                     go.Scatter(
                         name=f"{name}_{stat_type.value}",
@@ -467,7 +468,7 @@ class Report(report.ReportBase):
             ),
         )
 
-    def __add_line_shape(
+    def __add_line_trace(
         self,
         fig: go.Figure,
         x0: Optional[float],
@@ -477,78 +478,78 @@ class Report(report.ReportBase):
         line_color: str = "#969696",
         **kwargs,
     ) -> go.Figure:
-        fig.add_shape(
-            type="line",
-            x0=x0,
-            x1=x1,
-            y0=y0,
-            y1=y1,
-            xsizemode="scaled",
-            ysizemode="scaled",
-            line_color=line_color,
-            **kwargs,
+        fig.add_trace(
+            go.Scatter(
+                x=[x0, x1],
+                y=[y0, y1],
+                mode="lines",
+                line_color=line_color,
+                **kwargs,
+            )
         )
         return fig
 
     def __add_derivative_xaxis(self, fig: go.Figure) -> go.Figure:
-        fig = self.__add_line_shape(
-            fig, 0, 1, 0, 0, xref="x", yref="y2", line_dash="dash"
+        fig.add_shape(
+            type="line",
+            x0=0,
+            x1=1,
+            y0=0,
+            y1=0,
+            xsizemode="scaled",
+            ysizemode="scaled",
+            line_color="#969696",
+            xref="x",
+            yref="y2",
+            line_dash="dash",
         )
-        fig = self.__add_line_shape(
-            fig, 0, 1, 0, 0, xref="x", yref="y3", line_dash="dash"
+        fig.add_shape(
+            type="line",
+            x0=0,
+            x1=1,
+            y0=0,
+            y1=0,
+            xsizemode="scaled",
+            ysizemode="scaled",
+            line_color="#969696",
+            xref="x",
+            yref="y3",
+            line_dash="dash",
         )
         return fig
 
-    __panel_list: List[Dict[str, str]] = [
-        {"xref": "x", "yref": "y"},
-        {"xref": "x", "yref": "y2"},
-        {"xref": "x", "yref": "y3"},
-    ]
+    def __axis(self, axis: str, aid: int) -> str:
+        return f"y{aid+1}" if aid > 0 else "y"
 
-    def __add_der1_zeros(
+    def __add_der_zeros(
         self, fig: go.Figure, pfit_data: List[Dict[str, Any]]
     ) -> go.Figure:
         for pfit in pfit_data:
-            root_der1, _ = stat.get_radial_profile_roots(pfit["pfit"])
-            if np.isnan(root_der1):
-                continue
-            for panel in self.__panel_list[:2]:
-                panel_trace_y = np.concatenate(
-                    [p["y"] for p in fig["data"] if p["yaxis"] == panel["yref"]]
-                )
-                fig = self.__add_line_shape(
-                    fig,
-                    root_der1,
-                    root_der1,
-                    panel_trace_y.min(),
-                    panel_trace_y.max(),
-                    line_dash="dash",
-                    line_color=px.colors.qualitative.Set2[pfit["stat"].id],
-                    **panel,
-                )
-        return fig
-
-    def __add_der2_zeros(
-        self, fig: go.Figure, pfit_data: List[Dict[str, Any]]
-    ) -> go.Figure:
-        for pfit in pfit_data:
-            _, root_der2 = stat.get_radial_profile_roots(pfit["pfit"])
-            if np.isnan(root_der2):
-                continue
-            for panel in self.__panel_list:
-                panel_trace_y = np.concatenate(
-                    [p["y"] for p in fig["data"] if p["yaxis"] == panel["yref"]]
-                )
-                fig = self.__add_line_shape(
-                    fig,
-                    root_der2,
-                    root_der2,
-                    panel_trace_y.min(),
-                    panel_trace_y.max(),
-                    line_dash="dot",
-                    line_color=px.colors.qualitative.Set2[pfit["stat"].id],
-                    **panel,
-                )
+            der_roots = stat.get_radial_profile_roots(pfit["pfit"])
+            for rid in range(len(der_roots)):
+                if np.isnan(der_roots[rid]):
+                    continue
+                for pid in range(min(rid + 2, 3)):
+                    panel_trace_y = np.concatenate(
+                        [
+                            p["y"]
+                            for p in fig["data"]
+                            if p["yaxis"] == self.__axis("y", pid)
+                        ]
+                    )
+                    fig = self.__add_line_trace(
+                        fig,
+                        der_roots[rid],
+                        der_roots[rid],
+                        panel_trace_y.min(),
+                        panel_trace_y.max(),
+                        line_dash="dot" if rid == 1 else "dash",
+                        line_color=px.colors.qualitative.Set2[pfit["stat"].id],
+                        legendgroup=pfit["stat"].value,
+                        showlegend=False,
+                        xaxis="x",
+                        yaxis=self.__axis("y", pid),
+                    )
         return fig
 
     def __make_single_panel(
@@ -575,8 +576,7 @@ class Report(report.ReportBase):
             fig.add_trace(panel)
 
         fig = self.__add_derivative_xaxis(fig)
-        fig = self.__add_der1_zeros(fig, pfit)
-        fig = self.__add_der2_zeros(fig, pfit)
+        fig = self.__add_der_zeros(fig, pfit)
 
         yranges = dict(
             y=self.__get_axis_range(plot_data, "y", "y"),
