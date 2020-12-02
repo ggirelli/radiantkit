@@ -376,7 +376,7 @@ class Report(ReportBase):
             hovertemplate="Size=%{x}<br>Intensity sum=%{y}<br>"
             + "Label=%{customdata[0]}<br>"
             + 'Image="%{customdata[1]}"',
-            legendgroup="datapoints",
+            legendgroup=name,
         )
 
     def __add_density_contours(
@@ -410,109 +410,22 @@ class Report(ReportBase):
         )
         return fig
 
-    def __add_fit_contours_x(
-        self,
-        fig: go.Figure,
-        name: str,
-        data_series: np.ndarray,
-        fit: Tuple[np.ndarray, stat.FitType],
-        xref: str = "x",
-        yref: str = "y",
-    ) -> go.Figure:
-        params, fit_type = fit
-        line_props = dict(
-            line_color="#323232",
-            line_width=1,
-            line_dash="dot",
-        )
-        if stat.FitType.FWHM != fit_type:
-            data = dict(x=data_series, y=stat.gaussian(data_series, *params[:3]))
-            fig.add_trace(
-                go.Scatter(
-                    name=f"{name}_gaussian_1",
-                    **data,
-                    xaxis=xref,
-                    yaxis=yref,
-                    legendgroup=name,
-                )
+    def __prep_fit_contours_data(
+        self, data_type: str, data_series: np.ndarray, params: List[float]
+    ) -> Tuple[Dict[str, np.ndarray], Dict[str, np.ndarray], Dict[str, List[float]]]:
+        assert data_type in ["x", "y"]
+        if "x" in data_type:
+            return (
+                dict(x=data_series, y=stat.gaussian(data_series, *params[:3])),
+                dict(x=data_series, y=stat.gaussian(data_series, *params[3:])),
+                dict(xx=[params[1]], yy=[]),
             )
-            fig.add_vline(x=params[1], **line_props)
-            fig.add_shape(
-                type="line",
-                x0=params[1],
-                x1=params[1],
-                y0=fig.data[2].y.min(),
-                y1=fig.data[2].y.max(),
-                xref=xref,
-                xsizemode="scaled",
-                yref=yref,
-                ysizemode="scaled",
-                **line_props,
+        else:
+            return (
+                dict(y=data_series, x=stat.gaussian(data_series, *params[:3])),
+                dict(y=data_series, x=stat.gaussian(data_series, *params[3:])),
+                dict(xx=[], yy=[params[1]]),
             )
-        if stat.FitType.SOG == fit_type:
-            data = dict(x=data_series, y=stat.gaussian(data_series, *params[3:]))
-            fig.add_trace(
-                go.Scatter(
-                    name=f"{name}_gaussian_2",
-                    **data,
-                    xaxis=xref,
-                    yaxis=yref,
-                    legendgroup=name,
-                )
-            )
-        return fig
-
-    def __add_fit_contours_y(
-        self,
-        fig: go.Figure,
-        name: str,
-        data_series: np.ndarray,
-        fit: Tuple[np.ndarray, stat.FitType],
-        xref: str = "x",
-        yref: str = "y",
-    ) -> go.Figure:
-        params, fit_type = fit
-        line_props = dict(
-            line_color="#323232",
-            line_width=1,
-            line_dash="dot",
-        )
-        if stat.FitType.FWHM != fit_type:
-            data = dict(y=data_series, x=stat.gaussian(data_series, *params[:3]))
-            fig.add_trace(
-                go.Scatter(
-                    name=f"{name}_gaussian_1",
-                    **data,
-                    xaxis=xref,
-                    yaxis=yref,
-                    legendgroup=name,
-                )
-            )
-            fig.add_hline(y=params[1], **line_props)
-            fig.add_shape(
-                type="line",
-                x0=fig.data[3].x.min(),
-                x1=fig.data[3].x.max(),
-                y0=params[1],
-                y1=params[1],
-                xref="x2",
-                xsizemode="scaled",
-                yref="y",
-                ysizemode="scaled",
-                **line_props,
-            )
-        if stat.FitType.SOG == fit_type:
-            data = dict(y=data_series, x=stat.gaussian(data_series, *params[3:]))
-            fig.add_trace(
-                go.Scatter(
-                    name=f"{name}_gaussian_2",
-                    **data,
-                    xaxis=xref,
-                    yaxis=yref,
-                    legendgroup=name,
-                )
-            )
-        return fig
 
     def __add_fit_contours(
         self,
@@ -526,10 +439,39 @@ class Report(ReportBase):
     ) -> go.Figure:
         assert data_type in ["x", "y"]
         params, fit_type = fit
-        if "x" == data_type:
-            fig = self.__add_fit_contours_x(fig, name, data_series, fit, xref, yref)
-        else:
-            fig = self.__add_fit_contours_y(fig, name, data_series, fit, xref, yref)
+        data_g1, data_g2, line_data = self.__prep_fit_contours_data(
+            data_type, data_series, params
+        )
+        if stat.FitType.FWHM != fit_type:
+            fig.add_trace(
+                go.Scatter(
+                    name=f"{name}_gaussian_1",
+                    **data_g1,
+                    xaxis=xref,
+                    yaxis=yref,
+                    legendgroup=name,
+                )
+            )
+            self.__add_range_lines(
+                fig,
+                line_data["xx"],
+                line_data["yy"],
+                line_props=dict(
+                    line_color="#323232",
+                    line_width=1,
+                    line_dash="dot",
+                ),
+            )
+        if stat.FitType.SOG == fit_type:
+            fig.add_trace(
+                go.Scatter(
+                    name=f"{name}_gaussian_2",
+                    **data_g2,
+                    xaxis=xref,
+                    yaxis=yref,
+                    legendgroup=name,
+                )
+            )
         return fig
 
     def __add_range_lines(
@@ -625,7 +567,8 @@ class Report(ReportBase):
 
             fig.update_layout(
                 title_text=f"""Nuclei selection<br>
-<sub>Condition: {os.path.basename(dirpath)}; #nuclei: {dirdata.shape[0]}</sub>""",
+<sub>Condition: {os.path.basename(dirpath)}; #nuclei: {dirdata.shape[0]};
+ #selected: {dirdata['pass'].sum()}</sub>""",
                 xaxis=dict(domain=[0.19, 1], title="Size"),
                 yaxis=dict(
                     domain=[0, 0.82],
