@@ -120,9 +120,9 @@ def run(args: argparse.Namespace) -> None:
     logging.info("Done. :thumbs_up: :smiley:")
 
 
-class Report(report.ReportBase):
+class ReportTIFFFindOOF(report.ReportBase):
     def __init__(self, *args, **kwargs):
-        super(Report, self).__init__(*args, **kwargs)
+        super(ReportTIFFFindOOF, self).__init__(*args, **kwargs)
         self._idx = 0.0
         self._stub = "tiff_findoof"
         self._title = "Focus analysis"

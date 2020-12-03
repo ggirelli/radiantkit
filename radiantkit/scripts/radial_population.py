@@ -368,9 +368,9 @@ def run(args: argparse.Namespace) -> None:
     ra_series.pickle_series_list(args, series_list)
 
 
-class Report(report.ReportBase):
+class ReportRadialPopulation(report.ReportBase):
     def __init__(self, *args, **kwargs):
-        super(Report, self).__init__(*args, **kwargs)
+        super(ReportRadialPopulation, self).__init__(*args, **kwargs)
         self._idx = 3.0
         self._stub = "radial_population"
         self._title = "Radiality (population)"

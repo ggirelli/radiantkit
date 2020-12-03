@@ -6,13 +6,13 @@
 from abc import abstractmethod
 from collections import defaultdict
 from importlib import import_module
+import inspect
 import logging
 import os
 import pandas as pd  # type: ignore
 import plotly.graph_objects as go  # type: ignore
 from radiantkit import const, scripts
 from radiantkit.output import Output, OutputDirectories, OutputReader
-from types import ModuleType
 from typing import Any, DefaultDict, Dict, List, Optional, Tuple
 
 
@@ -325,14 +325,14 @@ class ReportMaker(OutputDirectories):
         """ReportMaker supports script modules with a defined 'Report' class that is a
         subclass of ReportBase"""
         try:
-            script_module: ModuleType = import_module(
-                f"radiantkit.scripts.{module_name}"
-            )
-            if "Report" in dir(script_module):
-                if issubclass(script_module.Report, ReportBase):  # type: ignore
-                    report = script_module.Report(self._dirpath)  # type: ignore
-                    report.is_root = self.is_root
-                    return report
+            script_module = import_module(f"radiantkit.scripts.{module_name}")
+            for name, obj in inspect.getmembers(
+                script_module,
+                lambda x: inspect.isclass(x) and issubclass(x, ReportBase),
+            ):
+                report = obj(self._dirpath)  # type: ignore
+                report.is_root = self.is_root
+                return report
         except ModuleNotFoundError:
             pass
         return None
@@ -348,40 +348,44 @@ class ReportMaker(OutputDirectories):
 
     def __make_head(self) -> str:
         return f"""<head>
-    <title>{self.title}</title>
-    <script src="{self.plotly_src}"></script>
-    <link rel="stylesheet" href="{self.skeleton_href}" />
-    <script src="{self.jquery_src}"></script>
-    <style type="text/css">
-        footer {{
-            display: float;
-            padding: .5em;
-            border-top: 1px solid #dadada;
-        }}
-        .hidden {{
-            display: none;
-        }}
-    </style>
-</head>"""
+            <title>{self.title}</title>
+            <script src="{self.plotly_src}"></script>
+            <link rel="stylesheet" href="{self.skeleton_href}" />
+            <script src="{self.jquery_src}"></script>
+            <style type="text/css">
+                footer {{
+                    display: float;
+                    padding: .5em;
+                    border-top: 1px solid #dadada;
+                }}
+                .hidden {{
+                    display: none;
+                }}
+            </style>
+        </head>""".replace(
+            "\n\t\t", "\n"
+        )
 
     def __make_body(self) -> str:
         body = """
-<body>
-    <header>
-        <h2>Radiant report</h2>
-        <div class='row'>
-            <!--Headers-->
-            <div class='three columns'>
-                <h5>Index</h5>
-            </div>
-            <div class='nine columns'>
-                <h5>Report</h5>
-            </div>
-        </div>
-    </header>
-    <div class='row'>
-        <!--Report index-->
-        <div id='index-list' class='three columns'>"""
+        <body>
+            <header>
+                <h2>Radiant report</h2>
+                <div class='row'>
+                    <!--Headers-->
+                    <div class='three columns'>
+                        <h5>Index</h5>
+                    </div>
+                    <div class='nine columns'>
+                        <h5>Report</h5>
+                    </div>
+                </div>
+            </header>
+            <div class='row'>
+                <!--Report index-->
+                <div id='index-list' class='three columns'>""".replace(
+            "\n\t\t", "\n"
+        )
         for report in self.__reportable:
             body += f"""
             <a class='button u-full-width'
@@ -393,35 +397,37 @@ class ReportMaker(OutputDirectories):
         for report in self.__reportable:
             body += report.make().replace("\n", "\n\t\t\t") + "\n"
         body += f"""
-        </div>
-    </div>
-    <script type='text/javascript'>
-        // Report selection
-        show_report = function(selected_report) {{
-            $('#report-list div.page:not(.hidden)')
-                .addClass('hidden');
-            $('#report-list div.page[data-page="'+selected_report+'"]')
-                .removeClass('hidden');
-        }}
+                </div>
+            </div>
+            <script type='text/javascript'>
+                // Report selection
+                show_report = function(selected_report) {{
+                    $('#report-list div.page:not(.hidden)')
+                        .addClass('hidden');
+                    $('#report-list div.page[data-page="'+selected_report+'"]')
+                        .removeClass('hidden');
+                }}
 
-        // Show the first report from the index
-        $('#index-list a.button').first()
-            .removeClass('hidden').addClass('button-primary');
-        show_report($('#index-list a.button.button-primary').data('page'));
+                // Show the first report from the index
+                $('#index-list a.button').first()
+                    .removeClass('hidden').addClass('button-primary');
+                show_report($('#index-list a.button.button-primary').data('page'));
 
-        // Show the selected report
-        $('#index-list a.button').click(function(e) {{
-            e.preventDefault();
-            selected_report = $(this).data('page');
-            $('#index-list a.button-primary').removeClass('button-primary');
-            $(this).addClass('button-primary');
-            show_report(selected_report);
-        }});
-    </script>
-    <footer class="u-full-width">
-        <small>{self.footer}</small>
-    </footer>
-</body>"""
+                // Show the selected report
+                $('#index-list a.button').click(function(e) {{
+                    e.preventDefault();
+                    selected_report = $(this).data('page');
+                    $('#index-list a.button-primary').removeClass('button-primary');
+                    $(this).addClass('button-primary');
+                    show_report(selected_report);
+                }});
+            </script>
+            <footer class="u-full-width">
+                <small>{self.footer}</small>
+            </footer>
+        </body>""".replace(
+            "\n\t\t", "\n"
+        )
         return body
 
     def make(self) -> None:
