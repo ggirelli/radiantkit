@@ -7,7 +7,7 @@ license = "MIT"
 readme = "README.md"
 homepage = "https://github.com/ggirelli/radiantkit"
 repository = "https://github.com/ggirelli/radiantkit"
-keywords = ["microscopy", "image", "analysis", "bioimaging", "biology", "cell", "DNA"]
+keywords = ["microscopy", "image", "analysis", "bioimaging", "nucleus", "segmentation", "conversion"]
 classifiers = [
     "Development Status :: 4 - Beta",
     "Environment :: Console",
@@ -28,7 +28,7 @@ nd2reader = {git = "https://github.com/ggirelli/nd2reader"}
 numpy = "^1.19.2"
 pandas = "^1.1.2"
 pims = "^0.5"
-plotly = "^4.10.0"
+plotly = "^4.13.0"
 pytest = "^6.1.2"
 rich = "^9.0"
 scikit-image = "^0.17.2"
@@ -40,4 +40,3 @@ tifffile = "^2020.9.29"
 [build-system]
 requires = ["poetry>=0.12"]
 build-backend = "poetry.masonry.api"
-

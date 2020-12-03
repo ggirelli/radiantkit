@@ -3,6 +3,6 @@
 @contact: gigi.ga90@gmail.com
 """
 
-from radiantkit.scripts.common import args, series
+from radiantkit.scripts.common import argtools, series
 
-__all__ = ["args", "series"]
+__all__ = ["argtools", "series"]

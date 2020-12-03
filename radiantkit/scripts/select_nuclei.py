@@ -4,28 +4,27 @@
 """
 
 import argparse
-from joblib import cpu_count, delayed, Parallel  # type: ignore
+from collections import defaultdict
+from joblib import delayed, Parallel  # type: ignore
 import itertools
 import logging
 import numpy as np  # type: ignore
 import os
 import pandas as pd  # type: ignore
+import plotly.graph_objects as go  # type: ignore
 import pickle
-from radiantkit import const
+from radiantkit import const, io
 from radiantkit.image import ImageBinary, ImageLabeled
 from radiantkit.particle import NucleiList, Nucleus
-from radiantkit.scripts.common import series as ra_series
+import radiantkit.scripts.common.series as ra_series
+from radiantkit.scripts.common import argtools
 from radiantkit.series import Series, SeriesList
-from radiantkit import path, string
+from radiantkit import path, report, stat, string
 import re
 from rich.progress import track  # type: ignore
 from rich.prompt import Confirm  # type: ignore
-import sys
-from typing import Dict, List, Pattern
-
-__OUTPUT__ = {"raw_data": "select_nuclei.data.tsv", "fit": "select_nuclei.fit.pkl"}
-__OUTPUT_CONDITION__ = all
-__LABEL__ = "Nuclei selection"
+from scipy.stats import gaussian_kde  # type: ignore
+from typing import Any, DefaultDict, Dict, List, Optional, Pattern, Tuple
 
 
 def init_parser(subparsers: argparse._SubParsersAction) -> argparse.ArgumentParser:
@@ -64,6 +63,7 @@ interactive data visualization.
     parser.add_argument(
         "ref_channel", type=str, help="Name of channel with DNA staining intensity."
     )
+    parser = argtools.add_version_argument(parser)
 
     critical = parser.add_argument_group("critical arguments")
     critical.add_argument(
@@ -89,16 +89,6 @@ interactive data visualization.
         help="""Suffix for output binarized images name.
         Default: 'mask'.""",
         default="mask",
-    )
-
-    parser.add_argument(
-        "--version",
-        action="version",
-        version="%s %s"
-        % (
-            sys.argv[0],
-            const.__version__,
-        ),
     )
 
     pickler = parser.add_argument_group("pickle arguments")
@@ -168,23 +158,8 @@ interactive data visualization.
         default=True,
         help="Generate uncompressed TIFF binary masks.",
     )
-    advanced.add_argument(
-        "--inreg",
-        type=str,
-        metavar="REGEXP",
-        help=f"""Regular expression to identify input TIFF images.
-        Must contain 'channel_name' and 'series_id' fields.
-        Default: '{const.default_inreg}'""",
-        default=const.default_inreg,
-    )
-    advanced.add_argument(
-        "--threads",
-        type=int,
-        metavar="NUMBER",
-        dest="threads",
-        default=1,
-        help="""Number of threads for parallelization. Default: 1""",
-    )
+    advanced = argtools.add_pattern_argument(advanced)
+    advanced = argtools.add_threads_argument(advanced)
     advanced.add_argument(
         "-y",
         "--do-all",
@@ -200,8 +175,6 @@ interactive data visualization.
 
 
 def parse_arguments(args: argparse.Namespace) -> argparse.Namespace:
-    args.version = const.__version__
-
     assert "(?P<channel_name>" in args.inreg
     assert "(?P<series_id>" in args.inreg
     args.inreg = re.compile(args.inreg)
@@ -216,13 +189,13 @@ def parse_arguments(args: argparse.Namespace) -> argparse.Namespace:
         )
         args.block_side += 1
 
-    args.threads = cpu_count() if args.threads > cpu_count() else args.threads
+    args.threads = argtools.check_threads(args.threads)
 
     return args
 
 
 def print_settings(args: argparse.Namespace, clear: bool = True) -> str:
-    s = f"""# Nuclei selection v{args.version}
+    s = f"""# Nuclei selection v{const.__version__}
 
     ---------- SETTING : VALUE ----------
 
@@ -253,15 +226,11 @@ def print_settings(args: argparse.Namespace, clear: bool = True) -> str:
 
 
 def confirm_arguments(args: argparse.Namespace) -> None:
-    # settings_string =
     print_settings(args)
     if not args.do_all:
         assert Confirm.ask("Confirm settings and proceed?")
 
     assert os.path.isdir(args.input), f"image folder not found: {args.input}"
-
-    # with open(os.path.join(args.input, "select_nuclei.config.txt"), "w+") as OH:
-    #     ggc.args.export_settings(OH, settings_string)
 
 
 def extract_passing_nuclei_per_series(
@@ -337,6 +306,8 @@ def remove_labels_from_series_list_masks(
 
 def run(args: argparse.Namespace) -> None:
     confirm_arguments(args)
+    argtools.dump_args(args, "select_nuclei.args.pkl")
+    io.add_log_file_handler(os.path.join(args.input, "select_nuclei.log.txt"))
     args, series_list = ra_series.init_series_list(args)
 
     logging.info("extracting nuclei")
@@ -362,13 +333,254 @@ def run(args: argparse.Namespace) -> None:
     np.set_printoptions(formatter={"float_kind": "{:.2E}".format})
     logging.info(f"intensity sum range: {details['isum']['range']}")
 
-    tsv_path = os.path.join(args.input, __OUTPUT__["raw_data"])
+    tsv_path = os.path.join(args.input, ReportSelectNuclei().files["raw_data"][0])
     logging.info(f"writing nuclear data to:\n{tsv_path}")
     nuclei_data.to_csv(tsv_path, sep="\t", index=False)
 
-    pkl_path = os.path.join(args.input, __OUTPUT__["fit"])
+    pkl_path = os.path.join(args.input, ReportSelectNuclei().files["fit"][0])
     logging.info(f"writing fit data to:\n{pkl_path}")
     with open(pkl_path, "wb") as POH:
         pickle.dump(details, POH)
 
     ra_series.pickle_series_list(args, series_list)
+
+
+class ReportSelectNuclei(report.ReportBase):
+    def __init__(self, *args, **kwargs):
+        super(ReportSelectNuclei, self).__init__(*args, **kwargs)
+        self._idx = 1.0
+        self._stub = "select_nuclei"
+        self._title = "Nuclei selection"
+        self._files = {
+            "raw_data": ("select_nuclei.data.tsv", True, []),
+            "fit": ("select_nuclei.fit.pkl", True, []),
+        }
+        self._log = {"log": ("select_nuclei.log.txt", False, [])}
+        self._args = {"args": ("select_nuclei.args.pkl", False, [])}
+
+    def __make_scatter_trace(self, data: pd.DataFrame, name: str) -> go.Scatter:
+        return go.Scatter(
+            x=data["size"],
+            y=data["isum_dapi"],
+            mode="markers",
+            name=name,
+            xaxis="x",
+            yaxis="y",
+            customdata=np.dstack(
+                (
+                    data["label"],
+                    data["image"],
+                )
+            )[0],
+            hovertemplate="Size=%{x}<br>Intensity sum=%{y}<br>"
+            + "Label=%{customdata[0]}<br>"
+            + 'Image="%{customdata[1]}"',
+            legendgroup=name,
+        )
+
+    def __add_density_contours(
+        self, fig: go.Figure, data: pd.DataFrame, fit: Dict[str, Dict[str, Any]]
+    ) -> go.Figure:
+        assert "size" in data
+        size_linsp = np.linspace(data["size"].min(), data["size"].max(), 200)
+        size_kde = gaussian_kde(data["size"])
+        fig.add_trace(
+            go.Scatter(
+                name="Size",
+                x=size_linsp,
+                y=size_kde(size_linsp),
+                xaxis="x",
+                yaxis="y3",
+                legendgroup="Size",
+            )
+        )
+        assert "isum_dapi" in data
+        isum_linsp = np.linspace(data["isum_dapi"].min(), data["isum_dapi"].max(), 200)
+        isum_kde = gaussian_kde(data["isum_dapi"])
+        fig.add_trace(
+            go.Scatter(
+                name="Intensity sum",
+                x=isum_kde(isum_linsp),
+                y=isum_linsp,
+                xaxis="x2",
+                yaxis="y",
+                legendgroup="Intensity sum",
+            ),
+        )
+        return fig
+
+    def __prep_fit_contours_data(
+        self, data_type: str, data_series: np.ndarray, params: List[float]
+    ) -> Tuple[Dict[str, np.ndarray], Dict[str, np.ndarray], Dict[str, List[float]]]:
+        assert data_type in ["x", "y"]
+        if "x" in data_type:
+            return (
+                dict(x=data_series, y=stat.gaussian(data_series, *params[:3])),
+                dict(x=data_series, y=stat.gaussian(data_series, *params[3:])),
+                dict(xx=[params[1]], yy=[]),
+            )
+        else:
+            return (
+                dict(y=data_series, x=stat.gaussian(data_series, *params[:3])),
+                dict(y=data_series, x=stat.gaussian(data_series, *params[3:])),
+                dict(xx=[], yy=[params[1]]),
+            )
+
+    def __add_fit_contours(
+        self,
+        fig: go.Figure,
+        name: str,
+        data_series: np.ndarray,
+        data_type: str,
+        fit: Tuple[np.ndarray, stat.FitType],
+        xref: str = "x",
+        yref: str = "y",
+    ) -> go.Figure:
+        assert data_type in ["x", "y"]
+        params, fit_type = fit
+        data_g1, data_g2, line_data = self.__prep_fit_contours_data(
+            data_type, data_series, params
+        )
+        if stat.FitType.FWHM != fit_type:
+            fig.add_trace(
+                go.Scatter(
+                    name=f"{name}_gaussian_1",
+                    **data_g1,
+                    xaxis=xref,
+                    yaxis=yref,
+                    legendgroup=name,
+                )
+            )
+            self.__add_range_lines(
+                fig,
+                line_data["xx"],
+                line_data["yy"],
+                line_props=dict(
+                    line_color="#323232",
+                    line_width=1,
+                    line_dash="dot",
+                ),
+            )
+        if stat.FitType.SOG == fit_type:
+            fig.add_trace(
+                go.Scatter(
+                    name=f"{name}_gaussian_2",
+                    **data_g2,
+                    xaxis=xref,
+                    yaxis=yref,
+                    legendgroup=name,
+                )
+            )
+        return fig
+
+    def __add_range_lines(
+        self,
+        fig: go.Figure,
+        xx: List[float],
+        yy: List[float],
+        line_props: Optional[Dict[str, Any]] = None,
+    ) -> go.Figure:
+        if line_props is None:
+            line_props = dict(
+                line_color="#323232",
+                line_width=1,
+                line_dash="dash",
+            )
+        for x0 in xx:
+            fig.add_vline(x=x0, **line_props)
+            fig.add_shape(
+                type="line",
+                x0=x0,
+                x1=x0,
+                y0=fig.data[2].y.min(),
+                y1=fig.data[2].y.max(),
+                xref="x",
+                xsizemode="scaled",
+                yref="y3",
+                ysizemode="scaled",
+                **line_props,
+            )
+        for y0 in yy:
+            fig.add_hline(y=y0, **line_props)
+            fig.add_shape(
+                type="line",
+                x0=fig.data[3].x.min(),
+                x1=fig.data[3].x.max(),
+                y0=y0,
+                y1=y0,
+                xref="x2",
+                xsizemode="scaled",
+                yref="y",
+                ysizemode="scaled",
+                **line_props,
+            )
+        return fig
+
+    def _plot(
+        self, data: DefaultDict[str, Dict[str, pd.DataFrame]], *args, **kwargs
+    ) -> DefaultDict[str, Dict[str, go.Figure]]:
+        logging.info(f"plotting '{self._stub}'.")
+        fig_data: DefaultDict[str, Dict[str, go.Figure]] = defaultdict(lambda: {})
+        assert "raw_data" in data
+        assert "arg_data" in kwargs
+        for dirpath, dirdata in data["raw_data"].items():
+            assert isinstance(dirdata, pd.DataFrame)
+            fig = go.Figure()
+
+            fig.add_trace(
+                self.__make_scatter_trace(dirdata.loc[dirdata["pass"]], "Selected")
+            )
+            fig.add_trace(
+                self.__make_scatter_trace(
+                    dirdata.loc[np.logical_not(dirdata["pass"])], "Discarded"
+                )
+            )
+
+            if dirpath in data["fit"]:
+                fig = self.__add_density_contours(fig, dirdata, data["fit"][dirpath])
+                fig = self.__add_fit_contours(
+                    fig,
+                    "Size",
+                    np.linspace(dirdata["size"].min(), dirdata["size"].max(), 200),
+                    "x",
+                    data["fit"][dirpath]["size"]["fit"],
+                    "x",
+                    "y3",
+                )
+                fig = self.__add_fit_contours(
+                    fig,
+                    "Intensity sum",
+                    np.linspace(
+                        dirdata["isum_dapi"].min(), dirdata["isum_dapi"].max(), 200
+                    ),
+                    "y",
+                    data["fit"][dirpath]["isum"]["fit"],
+                    "x2",
+                    "y",
+                )
+                fig = self.__add_range_lines(
+                    fig,
+                    xx=data["fit"][dirpath]["size"]["range"],
+                    yy=data["fit"][dirpath]["isum"]["range"],
+                )
+
+            fig.update_layout(
+                title_text="Nuclei selection<br>"
+                + f" #selected: {dirdata['pass'].sum()}</sub>",
+                xaxis=dict(domain=[0.19, 1], title="Size"),
+                yaxis=dict(
+                    domain=[0, 0.82],
+                    anchor="x2",
+                    title="Intensity sum",
+                ),
+                xaxis2=dict(domain=[0, 0.18], autorange="reversed", title="Density"),
+                yaxis2=dict(domain=[0, 0.82]),
+                xaxis3=dict(domain=[0.19, 1]),
+                yaxis3=dict(domain=[0.83, 1], title="Density"),
+                autosize=False,
+                width=1000,
+                height=1000,
+            )
+
+            fig_data[self._stub][dirpath] = fig
+        return fig_data

@@ -3,9 +3,11 @@
 @contact: gigi.ga90@gmail.com
 """
 
+from enum import Enum
 import logging
 import numpy as np  # type: ignore
 import os
+import pandas as pd  # type: ignore
 from radiantkit.const import __version__, default_axes, ProjectionType
 from radiantkit.deconvolution import get_deconvolution_rescaling_factor
 from radiantkit import stat
@@ -476,6 +478,11 @@ class ImageBinary(Image):
         return s
 
 
+class SliceDescriptorMode(Enum):
+    GRADIENT_OF_MAGNITUDE = "Gradient of magnitude"
+    INTENSITY_SUM = "Intensity integral over slice"
+
+
 class ImageGrayScale(Image):
     _rescale_factor: float = 1.0
     _background: Optional[float] = None
@@ -553,6 +560,45 @@ class ImageGrayScale(Image):
         if self.background is not None:
             s += f"; Back/foreground: {(self.background, self.foreground)}"
         return s
+
+    def describe_slices(
+        self, mode: SliceDescriptorMode = SliceDescriptorMode.GRADIENT_OF_MAGNITUDE
+    ) -> List[float]:
+        slice_descriptors = []
+        if SliceDescriptorMode.GRADIENT_OF_MAGNITUDE == mode:
+            for zi in range(self.shape[0]):
+                slice_descriptors.append(self.pixels[zi].sum())
+        elif SliceDescriptorMode.GRADIENT_OF_MAGNITUDE == mode:
+            for zi in range(self.shape[0]):
+                dx = stat.gpartial(self.pixels[zi, :, :], 1, 1)
+                dy = stat.gpartial(self.pixels[zi, :, :], 2, 1)
+                slice_descriptors.append(
+                    np.mean(np.mean((dx ** 2 + dy ** 2) ** (1 / 2)))
+                )
+        else:
+            slice_descriptors = []
+        return slice_descriptors
+
+    def is_in_focus(
+        self,
+        mode: SliceDescriptorMode = SliceDescriptorMode.GRADIENT_OF_MAGNITUDE,
+        fraction: float = 0.5,
+    ) -> Tuple[bool, pd.DataFrame]:
+        slice_descriptors = self.describe_slices()
+        profile = pd.DataFrame.from_dict(
+            {
+                "Z-slice index": np.array(range(self.shape[0])) + 1,
+                mode.value: slice_descriptors,
+            }
+        )
+        max_slice_id = slice_descriptors.index(max(slice_descriptors))
+        halfrange = self.shape[0] * fraction / 2.0
+        halfstack = self.shape[0] / 2.0
+        return (
+            max_slice_id >= (halfstack - halfrange)
+            and max_slice_id <= (halfstack + halfrange),
+            profile,
+        )
 
 
 def get_dtype(imax: Union[int, float]) -> str:

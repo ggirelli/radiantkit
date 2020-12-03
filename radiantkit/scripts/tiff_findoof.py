@@ -3,26 +3,19 @@
 @contact: gigi.ga90@gmail.com
 """
 
-
 import argparse
-from joblib import cpu_count, delayed, Parallel  # type: ignore
+from collections import defaultdict
+from joblib import delayed, Parallel  # type: ignore
 import logging
-import numpy as np  # type: ignore
 import os
 import pandas as pd  # type: ignore
-from radiantkit.const import __version__
-from radiantkit import channel, path, stat
-from radiantkit.exception import enable_rich_exceptions
-from radiantkit.io import add_log_file_handler
-import sys
-from typing import List
-
-__OUTPUT__ = {"focus_data": "oof.tsv"}
-__OUTPUT_CONDITION__ = all
-__LABEL__ = "TIFF focus analysis"
+from plotly import graph_objects as go, express as px  # type: ignore
+from radiantkit import const, exception, image, io, path, report
+from radiantkit.scripts.common import argtools
+from typing import Any, DefaultDict, Dict, Optional
 
 
-@enable_rich_exceptions
+@exception.enable_rich_exceptions
 def init_parser(subparsers: argparse._SubParsersAction) -> argparse.ArgumentParser:
     parser = subparsers.add_parser(
         __name__.split(".")[-1],
@@ -48,35 +41,18 @@ definition.
         help="Fraction of stack (middle-centered) for in-focus fields. Default: .5",
         default=0.5,
     )
-
-    parser.add_argument(
-        "--version",
-        action="version",
-        version="%s %s"
-        % (
-            sys.argv[0],
-            __version__,
-        ),
-    )
+    parser = argtools.add_version_argument(parser)
 
     advanced = parser.add_argument_group("advanced arguments")
-    default_inreg = "^.*\\.tiff?$"
     advanced.add_argument(
         "--inreg",
         type=str,
         metavar="REGEXP",
-        help="""Regular expression to identify input TIFF images.
-        Default: '%s'"""
-        % (default_inreg,),
-        default=default_inreg,
+        help=f"""Regular expression to identify input TIFF images.
+        Default: '{const.default_inreg}'""",
+        default=const.default_inreg,
     )
-    advanced.add_argument(
-        "--threads",
-        metavar="NUMBER",
-        type=int,
-        default=1,
-        help="""Number of threads for parallelization. Default: 1""",
-    )
+    advanced = argtools.add_threads_argument(advanced)
     advanced.add_argument(
         "--intensity-sum",
         action="store_const",
@@ -97,79 +73,146 @@ definition.
     return parser
 
 
-@enable_rich_exceptions
+@exception.enable_rich_exceptions
 def parse_arguments(args: argparse.Namespace) -> argparse.Namespace:
     if args.output is None:
         args.output = os.path.join(args.input, "oof.tsv")
-    args.threads = cpu_count() if args.threads > cpu_count() else args.threads
+    args.threads = argtools.check_threads(args.threads)
+    args.descriptor_mode = (
+        image.SliceDescriptorMode.INTENSITY_SUM
+        if args.intensity_sum
+        else image.SliceDescriptorMode.GRADIENT_OF_MAGNITUDE
+    )
     return args
 
 
-def describe_slices(
-    args: argparse.Namespace, img: channel.ImageGrayScale
-) -> List[float]:
-    slice_descriptors = []
-    for zi in range(img.shape[0]):
-        if args.intensity_sum:
-            slice_descriptors.append(img.pixels[zi].sum())
-        else:
-            dx = stat.gpartial(img.pixels[zi, :, :], 1, 1)
-            dy = stat.gpartial(img.pixels[zi, :, :], 2, 1)
-            slice_descriptors.append(np.mean(np.mean((dx ** 2 + dy ** 2) ** (1 / 2))))
-    return slice_descriptors
-
-
-def is_OOF(args: argparse.Namespace, ipath: str) -> pd.DataFrame:
-    img = channel.ImageGrayScale.from_tiff(os.path.join(args.input, ipath))
-
-    slice_descriptors = describe_slices(args, img)
-
-    profile_data = pd.DataFrame.from_dict(
-        dict(
-            path=np.repeat(ipath, img.shape[0]),
-            x=np.array(range(img.shape[0])) + 1,
-            y=slice_descriptors,
-        )
-    )
-
-    max_slice_id = slice_descriptors.index(max(slice_descriptors))
-    halfrange = img.shape[0] * args.fraction / 2.0
-    halfstack = img.shape[0] / 2.0
-
-    response = "out-of-focus"
-    if max_slice_id >= (halfstack - halfrange):
-        if max_slice_id <= (halfstack + halfrange):
-            response = "in-focus"
-    logging.info(f"{ipath} is {response}.")
-    profile_data["response"] = response
-
+def check_focus(args: argparse.Namespace, ipath: str) -> pd.DataFrame:
+    img = image.ImageGrayScale.from_tiff(os.path.join(args.input, ipath))
+    response, profile_data = img.is_in_focus(args.descriptor_mode, args.fraction)
+    profile_data["path"] = ipath
+    profile_data["response"] = "in-focus" if response else "out-of-focus"
     if "out-of-focus" == response and args.rename:
         os.rename(os.path.join(args.input, ipath), os.path.join(args.input, ipath))
-
     return profile_data
 
 
-@enable_rich_exceptions
+@exception.enable_rich_exceptions
 def run(args: argparse.Namespace) -> None:
     assert os.path.isdir(args.input), f"image directory not found: '{args.input}'"
-    add_log_file_handler(os.path.join(args.input, "oof.log.txt"))
+    argtools.dump_args(args, "oof.args.pkl")
+    io.add_log_file_handler(os.path.join(args.input, "oof.log.txt"))
+
     logging.info(f"Input:\t\t{args.input}")
     logging.info(f"Output:\t\t{args.output}")
     logging.info(f"Fraction:\t{args.fraction}")
     logging.info(f"Rename:\t\t{args.rename}")
-    if args.intensity_sum:
-        logging.info("Mode:\t\tintensity_sum")
-    else:
-        logging.info("Mode:\t\tgradient_of_magnitude")
+    logging.info(f"Mode:\t\t{args.descriptor_mode.value}")
     logging.info(f"Regexp:\t\t{args.inreg}")
     logging.info(f"Threads:\t{args.threads}")
 
     series_data = Parallel(n_jobs=args.threads, verbose=11)(
-        delayed(is_OOF)(args, impath) for impath in path.find_re(args.input, args.inreg)
+        delayed(check_focus)(args, impath)
+        for impath in path.find_re(args.input, args.inreg)
     )
 
     pd.concat(series_data).to_csv(args.output, "\t", index=False)
-    # if args.plot:
-    #     plot_profile(args, series_data, f"{os.path.splitext(args.output)[0]}.pdf")
 
     logging.info("Done. :thumbs_up: :smiley:")
+
+
+class ReportTIFFFindOOF(report.ReportBase):
+    def __init__(self, *args, **kwargs):
+        super(ReportTIFFFindOOF, self).__init__(*args, **kwargs)
+        self._idx = 0.0
+        self._stub = "tiff_findoof"
+        self._title = "Focus analysis"
+        self._files = {"focus_data": ("oof.tsv", True, [])}
+        self._log = {"log": ("oof.log.txt", False, [])}
+        self._args = {"args": ("oof.args.pkl", True, [])}
+
+    def __add_vline(
+        self,
+        fig: go.Figure,
+        x: float,
+        yy: pd.Series,
+        line_props: Optional[Dict[str, Any]] = None,
+    ) -> go.Figure:
+        if line_props is None:
+            line_props = dict(
+                color="#323232",
+                width=1,
+                dash="dash",
+            )
+        fig.add_shape(
+            type="line",
+            x0=x,
+            x1=x,
+            y0=yy.min(),
+            y1=yy.max(),
+            line=line_props,
+        )
+        return fig
+
+    def __add_trace(
+        self,
+        fig: go.Figure,
+        data: pd.DataFrame,
+        line_color: str = "#000000",
+        line_dash: str = "solid",
+    ) -> go.Figure:
+        fig.add_trace(
+            go.Scatter(
+                x=data["Z-slice index"],
+                y=data.iloc[:, 1],
+                line_color=line_color,
+                line_dash=line_dash,
+                name=data["path"].tolist()[0],
+            )
+        )
+        return fig
+
+    def _plot(
+        self, data: DefaultDict[str, Dict[str, pd.DataFrame]], *args, **kwargs
+    ) -> DefaultDict[str, Dict[str, go.Figure]]:
+        logging.info(f"plotting '{self._stub}'.")
+        fig_data: DefaultDict[str, Dict[str, go.Figure]] = defaultdict(lambda: {})
+        assert "focus_data" in data
+        assert "arg_data" in kwargs
+
+        for dirpath, dirdata in data["focus_data"].items():
+            assert isinstance(dirdata, pd.DataFrame)
+            dirdata.sort_values(["path", "Z-slice index"], inplace=True)
+            fig = go.Figure()
+            path_set = list(
+                set(dirdata.loc["out-of-focus" == dirdata["response"], "path"])
+            )
+            for pi in range(len(path_set)):
+                pathdata = dirdata.loc[path_set[pi] == dirdata["path"], :]
+                fig = self.__add_trace(
+                    fig, pathdata, px.colors.qualitative.Bold[pi % 10], "dash"
+                )
+
+            path_set = list(set(dirdata.loc["in-focus" == dirdata["response"], "path"]))
+            for pi in range(len(path_set)):
+                pathdata = dirdata.loc[path_set[pi] == dirdata["path"], :]
+                fig = self.__add_trace(
+                    fig, pathdata, px.colors.qualitative.Bold[pi % 10], "solid"
+                )
+
+            mid_point = (
+                dirdata["Z-slice index"].max() - dirdata["Z-slice index"].min()
+            ) / 2
+            mid_range = mid_point * kwargs["arg_data"]["args"][dirpath].fraction
+            fig = self.__add_vline(fig, mid_point - mid_range, dirdata.iloc[:, 1])
+            fig = self.__add_vline(fig, mid_point + mid_range, dirdata.iloc[:, 1])
+
+            fig.update_layout(
+                title=f"""Focus analysis<br>
+<sub>Condition: {os.path.basename(dirpath)}</sub>""",
+                autosize=False,
+                width=1000,
+                height=800,
+            )
+            fig_data[self._stub][dirpath] = fig
+
+        return fig_data

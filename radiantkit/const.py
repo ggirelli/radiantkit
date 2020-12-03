@@ -3,12 +3,13 @@
 @contact: gigi.ga90@gmail.com
 """
 
-__version__ = "0.0.1.24Nov2020"
+__version__ = "0.0.1.03Dec2020"
 
 from enum import Enum
+from typing import Dict, List, Tuple
 
 default_inreg = (
-    "^([^\\.]*\\.)?(?P<channel_name>[^/]*)_(?P<series_id>[0-9]+)"
+    "^(?P<dw_flag>dw_)?([^\\.]*\\.)?(?P<channel_name>[^/]*)_(?P<series_id>[0-9]+)"
     + "(?P<ext>(_cmle)?(\\.[^\\.]*)?\\.tiff?)$"
 )
 default_axes = "VCTZYX"
@@ -52,3 +53,13 @@ class LaminaDistanceType(Enum):
     @staticmethod
     def get_default():
         return LaminaDistanceType.CENTER_TOP_QUANTILE
+
+
+# Types
+
+stub = str
+required = bool
+filename = str
+DirectoryPathList = List[str]
+OutputFileDetails = Tuple[filename, required, DirectoryPathList]
+OutputFileDirpath = Dict[stub, OutputFileDetails]
