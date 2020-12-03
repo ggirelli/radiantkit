@@ -14,7 +14,7 @@ import plotly.graph_objects as go  # type: ignore
 import plotly.express as px  # type: ignore
 from plotly.subplots import make_subplots  # type: ignore
 import pickle
-from radiantkit import const, distance, particle, plot, report, series, stat, string
+from radiantkit import const, distance, io, particle, plot, report, series, stat, string
 from radiantkit.scripts.common import series as ra_series
 from radiantkit.scripts.common import argtools
 import re
@@ -25,6 +25,8 @@ from typing import Any, DefaultDict, Dict, List, Optional, Tuple
 __OUTPUT__: Dict[str, str] = {
     "poly_fit": "radial_population.profile.poly_fit.pkl",
     "raw_data": "radial_population.profile.raw_data.tsv",
+    "args": "radial_population.args.pkl",
+    "log": "radial_population.log.txt",
 }
 
 
@@ -352,6 +354,8 @@ def export_profiles(
 
 def run(args: argparse.Namespace) -> None:
     confirm_arguments(args)
+    argtools.dump_args(args, __OUTPUT__["args"])
+    io.add_log_file_handler(os.path.join(args.input, __OUTPUT__["log"]))
     args, series_list = ra_series.init_series_list(args)
 
     logging.info("extracting nuclei")
@@ -366,6 +370,217 @@ def run(args: argparse.Namespace) -> None:
 
     export_profiles(args, profiles)
     ra_series.pickle_series_list(args, series_list)
+
+
+class ProfileMultiConditionNorm(object):
+    html_class: str = "plot-multi-condition-normalized"
+    _stub: str
+
+    def __init__(self, stub: str):
+        super(ProfileMultiConditionNorm, self).__init__()
+        self._stub = stub
+
+    def __make_scatter_trace(
+        self,
+        channel_data: pd.DataFrame,
+        pfit: Dict[str, Dict[str, Any]],
+    ) -> go.Scatter:
+        condition_list: List[str] = sorted(list(set(channel_data["condition"])))
+        panel_data = []
+        for condition_idx in range(len(condition_list)):
+            condition_lab = condition_list[condition_idx]
+            condition_data = channel_data.loc[
+                condition_lab == channel_data["condition"], :
+            ]
+            assert condition_lab in pfit
+            assert "pfit" in pfit[condition_lab]
+            x, y = pfit[condition_lab]["pfit"].linspace(200)
+            xx, yy = pfit[condition_lab]["pfit"].deriv().linspace(200)
+            xxx, yyy = pfit[condition_lab]["pfit"].deriv().deriv().linspace(200)
+            stat_lab = pfit[condition_lab]["stat"].value
+            panel_data.extend(
+                [
+                    go.Scatter(
+                        name=f"{condition_lab}_{stat_lab}_raw",
+                        xaxis="x",
+                        yaxis=plot.get_axis_label("y", condition_idx),
+                        x=condition_data["x"],
+                        y=condition_data[f"{stat_lab}_raw"],
+                        mode="markers",
+                        legendgroup=condition_lab,
+                        marker=dict(
+                            size=4,
+                            opacity=0.5,
+                            color=px.colors.qualitative.Pastel2[condition_idx],
+                        ),
+                        showlegend=False,
+                    ),
+                    go.Scatter(
+                        name=f"{condition_lab}_{stat_lab}",
+                        x=x,
+                        y=y,
+                        xaxis="x",
+                        yaxis=plot.get_axis_label("y", condition_idx),
+                        mode="lines",
+                        legendgroup=condition_lab,
+                        line_color=px.colors.qualitative.Dark2[condition_idx],
+                    ),
+                ]
+            )
+        return panel_data
+
+    def __add_der_zeros(
+        self, fig: go.Figure, pfit_data: Dict[str, Dict[str, Any]]
+    ) -> go.Figure:
+        pfit_sorted = sorted(pfit_data.items(), key=lambda x: x[0])
+        for pfit_idx in range(len(pfit_sorted)):
+            condition_lab, pfit = pfit_sorted[pfit_idx]
+            der_roots = stat.get_radial_profile_roots(pfit["pfit"])
+            for rid in range(len(der_roots)):
+                if np.isnan(der_roots[rid]):
+                    continue
+                pid = 0
+                panel_trace_y = np.concatenate(
+                    [
+                        p["y"]
+                        for p in fig["data"]
+                        if p["yaxis"] == plot.get_axis_label("y", pid)
+                    ]
+                )
+                fig = plot.add_line_trace(
+                    fig,
+                    der_roots[rid],
+                    der_roots[rid],
+                    panel_trace_y.min(),
+                    panel_trace_y.max(),
+                    line_dash="dot" if rid == 1 else "dash",
+                    line_color=px.colors.qualitative.Set2[pfit_idx],
+                    legendgroup=condition_lab,
+                    showlegend=False,
+                    xaxis="x",
+                    yaxis=plot.get_axis_label("y", pid),
+                )
+        return fig
+
+    def __secondary_yaxes_props(
+        self, pfit_data: Dict[str, List[Dict[str, Any]]]
+    ) -> Dict[str, Any]:
+        yaxes_props: Dict[str, Any] = {}
+        for ii in range(1, len(pfit_data)):
+            yaxes_props[plot.get_axis_label("yaxis", ii)] = dict(
+                domain=[0, 1],
+                side="left",
+                showgrid=False,
+                zeroline=False,
+                visible=False,
+            )
+            if "y" != plot.get_axis_label("y", ii):
+                yaxes_props[plot.get_axis_label("yaxis", ii)]["overlaying"] = "y"
+        return yaxes_props
+
+    def __make_panel(
+        self,
+        data: pd.DataFrame,
+        pfit_data: Dict[str, List[Dict[str, Any]]],
+        stat_type: stat.ProfileStatType,
+        dtype: distance.DistanceType,
+    ) -> go.Figure:
+        channel_lab = data["channel"].tolist()[0]
+        selected_pfits: Dict[str, Dict[str, Any]] = {}
+        for condition_lab, pfit_list in pfit_data.items():
+            for pfit in pfit_list:
+                if (
+                    pfit["stat"] == stat_type
+                    and pfit["distance_type"] == dtype.value
+                    and pfit["cname"] == channel_lab
+                ):
+                    selected_pfits[
+                        os.path.basename(os.path.dirname(condition_lab))
+                    ] = pfit
+
+        fig = make_subplots(specs=[[{"secondary_y": True}]])
+        plot_data = self.__make_scatter_trace(
+            data,
+            selected_pfits,
+        )
+        for panel in plot_data:
+            fig.add_trace(panel)
+
+        fig = self.__add_der_zeros(fig, selected_pfits)
+
+        fig.update_layout(
+            template="plotly_dark",
+            title=f"""Signal profile (y-axis not comparable across curves)<br>
+            <sub>Channel: {channel_lab}; Stat: {stat_type.value}</sub>""".replace(
+                f"\n{' '*4*3}", "\n"
+            ),
+            xaxis=dict(title=dtype.label, anchor="y"),
+            yaxis=dict(
+                showgrid=True,
+                zeroline=False,
+                visible=False,
+            ),
+            **self.__secondary_yaxes_props(pfit_data),
+            autosize=False,
+            width=1000,
+            height=500,
+        )
+
+        return fig
+
+    def _plot(
+        self, data: DefaultDict[str, Dict[str, pd.DataFrame]], *args, **kwargs
+    ) -> DefaultDict[str, Dict[str, go.Figure]]:
+        distance_type = distance.DistanceType.LAMINA_NORM
+        fig_data: DefaultDict[str, Dict[str, go.Figure]] = defaultdict(lambda: {})
+        assert "raw_data" in data
+        assert "poly_fit" in data
+
+        condition_data = []
+        for dirpath, dirdata in data["raw_data"].items():
+            assert isinstance(dirdata, pd.DataFrame)
+            assert dirpath in data["poly_fit"]
+            condition_lab = os.path.basename(os.path.dirname(dirpath))
+            distdata = dirdata.loc[
+                distance_type.value == dirdata["distance_type"], :
+            ].copy()
+            distdata["condition"] = condition_lab
+            condition_data.append(distdata)
+
+        plottable_data = pd.concat(condition_data)
+        for channel_lab in list(set(plottable_data["channel"])):
+            channel_data = plottable_data.loc[
+                channel_lab == plottable_data["channel"], :
+            ]
+            for stat_type in stat.ProfileStatType:
+                fig_data[self._stub][
+                    f"{channel_lab}-{stat_type.value}"
+                ] = self.__make_panel(
+                    channel_data,
+                    data["poly_fit"],
+                    stat_type,
+                    distance_type,
+                )
+
+        return fig_data
+
+    def make(
+        self, output_data: DefaultDict[str, Dict[str, Any]]
+    ) -> Tuple[str, List[str]]:
+        fig_data = self._plot(output_data)
+        panels = "\n\t".join(
+            [
+                report.ReportBase.figure_to_html(
+                    fig,
+                    classes=[self._stub, f"{self.html_class}-panel", "hidden"],
+                    data=dict(condition=os.path.basename(dpath)),
+                )
+                for dpath, fig in sorted(
+                    fig_data[self._stub].items(), key=lambda x: x[0]
+                )
+            ]
+        )
+        return (panels, sorted(fig_data[self._stub].keys()))
 
 
 class ProfileMultiCondition(object):
@@ -823,16 +1038,16 @@ class ReportRadialPopulation(report.ReportBase):
             "poly_fit": (__OUTPUT__["poly_fit"], True, []),
             "raw_data": (__OUTPUT__["raw_data"], True, []),
         }
-        self._log = {"log": ("radial_population.log.txt", False, [])}
-        self._args = {"args": ("radial_population.args.pkl", False, [])}
+        self._log = {"log": (__OUTPUT__["log"], False, [])}
+        self._args = {"args": (__OUTPUT__["args"], False, [])}
 
     def _make_plot_page(
         self, data: DefaultDict[str, Dict[str, pd.DataFrame]]
     ) -> report.ReportPage:
         page = report.ReportPage("plot-subpage", 1)
         page.add_panel(
-            "plot-multiple-condition",
-            "Multi-conditions",
+            ProfileMultiCondition.html_class,
+            "Multi-condition",
             self._make_panel_page(
                 ProfileMultiCondition.html_class,
                 *ProfileMultiCondition(self._stub).make(data),
@@ -840,7 +1055,16 @@ class ReportRadialPopulation(report.ReportBase):
             ),
         )
         page.add_panel(
-            "plot-single-condition",
+            ProfileMultiConditionNorm.html_class,
+            "Multi-condition (norm)",
+            self._make_panel_page(
+                ProfileMultiConditionNorm.html_class,
+                *ProfileMultiConditionNorm(self._stub).make(data),
+                "Select a channel-stat to update the plot below.",
+            ),
+        )
+        page.add_panel(
+            ProfileSingleCondition.html_class,
             "Single condition",
             self._make_panel_page(
                 ProfileSingleCondition.html_class,
