@@ -368,18 +368,12 @@ def run(args: argparse.Namespace) -> None:
     ra_series.pickle_series_list(args, series_list)
 
 
-class ReportRadialPopulation(report.ReportBase):
-    def __init__(self, *args, **kwargs):
-        super(ReportRadialPopulation, self).__init__(*args, **kwargs)
-        self._idx = 3.0
-        self._stub = "radial_population"
-        self._title = "Radiality (population)"
-        self._files = {
-            "poly_fit": (__OUTPUT__["poly_fit"], True, []),
-            "raw_data": (__OUTPUT__["raw_data"], True, []),
-        }
-        self._log = {"log": ("radial_population.log.txt", False, [])}
-        self._args = {"args": ("radial_population.args.pkl", False, [])}
+class ProfileSingleCondition(object):
+    _stub: str
+
+    def __init__(self, stub: str):
+        super(ProfileSingleCondition, self).__init__()
+        self._stub = stub
 
     def __make_scatter_trace(
         self,
@@ -586,8 +580,10 @@ class ReportRadialPopulation(report.ReportBase):
         fig.update_layout(
             template="plotly_dark",
             title=f"""Signal profile<br>
-<sub>Condition: {condition_lab};
-Channel: {channel_lab}</sub>""",
+            <sub>Condition: {condition_lab};
+            Channel: {channel_lab}</sub>""".replace(
+                "\t\t\t", ""
+            ),
             xaxis=dict(title=dtype.label, anchor="y3"),
             yaxis=dict(
                 domain=[0.66, 1],
@@ -638,3 +634,81 @@ Channel: {channel_lab}</sub>""",
                 )
 
         return fig_data
+
+    def make(
+        self, output_data: DefaultDict[str, Dict[str, Any]]
+    ) -> Tuple[str, List[str]]:
+        fig_data = self._plot(output_data)
+        panels = "\n\t".join(
+            [
+                report.ReportBase.figure_to_html(
+                    fig,
+                    classes=[self._stub, "plot-single-condition-panel", "hidden"],
+                    data=dict(condition=os.path.basename(dpath)),
+                )
+                for dpath, fig in sorted(
+                    fig_data[self._stub].items(), key=lambda x: x[0]
+                )
+            ]
+        )
+        return (panels, sorted(fig_data[self._stub].keys()))
+
+
+class ReportRadialPopulation(report.ReportBase):
+    def __init__(self, *args, **kwargs):
+        super(ReportRadialPopulation, self).__init__(*args, **kwargs)
+        self._idx = 3.0
+        self._stub = "radial_population"
+        self._title = "Radiality (population)"
+        self._files = {
+            "poly_fit": (__OUTPUT__["poly_fit"], True, []),
+            "raw_data": (__OUTPUT__["raw_data"], True, []),
+        }
+        self._log = {"log": ("radial_population.log.txt", False, [])}
+        self._args = {"args": ("radial_population.args.pkl", False, [])}
+
+    def _make_plot_page(
+        self, data: DefaultDict[str, Dict[str, pd.DataFrame]]
+    ) -> report.ReportPage:
+        page = report.ReportPage("plot-subpage", 1)
+        page.add_panel(
+            "plot-single-condition",
+            "Single condition",
+            self._make_panel_page(
+                "plot-single-condition",
+                *ProfileSingleCondition(self._stub).make(data),
+                "Select a condition to update the plot below.",
+            ),
+        )
+        return page
+
+    def _make_html(
+        self,
+        fig_data: Optional[Dict[str, Dict[str, go.Figure]]] = None,
+        log_data: Optional[DefaultDict[str, Dict[str, Any]]] = None,
+        arg_data: Optional[DefaultDict[str, Dict[str, Any]]] = None,
+        **kwargs,
+    ) -> str:
+        assert "output_data" in kwargs
+        page = report.ReportPage(self._stub, 0)
+        page.add_panel(
+            "plot", "Plots", self._make_plot_page(kwargs["output_data"]).make()
+        )
+        if log_data is not None:
+            page.add_panel("log", "Log", self._make_log_panels(log_data))
+        if arg_data is not None:
+            page.add_panel("arg", "Args", self._make_arg_panels(arg_data))
+        return page.make()
+
+    def make(self) -> str:
+        logging.info(f"reading output files of '{self._stub}'.")
+        output_data = self._read(self._search(self._files))
+        logging.info(f"reading logs and args of '{self._stub}'.")
+        log_data = self._read(self._search(self._log))
+        arg_data = self._read(self._search(self._args))
+        return self._make_html(
+            fig_data=None,
+            log_data=log_data,
+            arg_data=arg_data,
+            output_data=output_data,
+        )

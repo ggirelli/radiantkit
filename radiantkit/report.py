@@ -104,35 +104,41 @@ class ReportBase(OutputDirectories):
         self, panel_type: str, panels: str, keys: List[str], msg: str = ""
     ) -> str:
         page = f"""
-    <small>{msg}</small>
-    <select class='{self._stub} {panel_type}-panel u-full-width'>"""
+        <small>{msg}</small>
+        <select class='{self._stub} {panel_type}-panel u-full-width'>""".replace(
+            f"\n{' '*4}", "\n"
+        )
         for d in keys:
             page += f"""
         <option>{os.path.basename(d)}</option>"""
         page += f"""
-    </select>
-    {panels}
-    <script type='text/javascript'>
-        // Condition selection
-        $('div.{self.stub}.{panel_type}-panel[data-condition='+
-            $('select.{panel_type}-panel.{self.stub}').val()+']').removeClass('hidden');
-        $('select.{panel_type}-panel.{self.stub}').change(function(e) {{
-            $('div.{self.stub}.{panel_type}-panel:not(.hidden)').addClass('hidden');
-            $('div.{self.stub}.{panel_type}-panel[data-condition='+$(this).val()+']')
-                .removeClass('hidden');
-        }})
-    </script>"""
+        </select>
+        {panels}
+        <script type='text/javascript'>
+            // Condition selection
+            $('div.{self.stub}.{panel_type}-panel[data-condition='+
+                $('select.{panel_type}-panel.{self.stub}').val()+']').removeClass('hidden');
+            $('select.{panel_type}-panel.{self.stub}').change(function(e) {{
+                $('div.{self.stub}.{panel_type}-panel:not(.hidden)').addClass('hidden');
+                $('div.{self.stub}.{panel_type}-panel[data-condition='+$(this).val()+']')
+                    .removeClass('hidden');
+            }})
+        </script>""".replace(
+            f"\n{' '*4}", "\n"
+        )
         return page
 
     def _make_log_panels(self, log_data: DefaultDict[str, Dict[str, Any]]) -> str:
         panels: str = "\n\t".join(
             [
                 f"""<div class='{self._stub} log-panel hidden'
-        data-condition='{os.path.basename(dpath)}'>
-        <pre style='overflow: auto;'><code>
-    {log.strip()}
-        </code></pre>
-    </div>"""
+                    data-condition='{os.path.basename(dpath)}'>
+                    <pre style='overflow: auto;'><code>
+                {log.strip()}
+                    </code></pre>
+                </div>""".replace(
+                    f"\n{' '*4*3}", "\n"
+                )
                 for dpath, log in sorted(log_data["log"].items(), key=lambda x: x[0])
             ]
         )
@@ -148,11 +154,13 @@ class ReportBase(OutputDirectories):
         panels: str = "\n\t".join(
             [
                 f"""<div class='{self._stub} args-panel hidden'
-        data-condition='{os.path.basename(dpath)}'>
-        <pre style='overflow: auto;'><code>
-    {args}
-        </code></pre>
-    </div>"""
+                    data-condition='{os.path.basename(dpath)}'>
+                    <pre style='overflow: auto;'><code>
+                {args}
+                    </code></pre>
+                </div>""".replace(
+                    f"\n{' '*4*3}", "\n"
+                )
                 for dpath, args in sorted(arg_data["args"].items(), key=lambda x: x[0])
             ]
         )
@@ -241,6 +249,10 @@ class ReportPage(object):
             else f"{self._page_id}-{self._nesting_level}"
         )
 
+    @property
+    def html_class(self):
+        return "page" if 0 == self._nesting_level else f"page-{self._nesting_level}"
+
     def add_panel(self, idx: str, label: str, content: str) -> None:
         if idx in self._panels:
             logging.warning(f"replacing panel '{idx}'.")
@@ -252,18 +264,21 @@ class ReportPage(object):
             <div class='four columns'>
                 <a class='button u-full-width' data-target='{pidx}-panel' href='#'>
                     {plab}</a>
-            </div>"""
+            </div>""".replace(
+                "\n", f"\n{' '*4*2}"
+            )
             for pidx, (plab, _) in self._panels.items()
         ]
-        index = f"""
-    <div id='{self.html_id}-page-index-wrapper'>"""
+        index = f"""\n    <div id='{self.html_id}-page-index-wrapper'
+        class='panel-index'>"""
         for i in range(0, len(buttons), 3):
             buttons_subset = "".join(buttons[slice(i, i + 3)])
             index += f"""
-        <div class='row'>{buttons_subset}
-        </div>"""
-        index += """
-    </div>"""
+                <div class='row'>{buttons_subset}
+                </div>""".replace(
+                f"\n{' '*4*2}", "\n"
+            )
+        index += """\n    </div>"""
         return index
 
     def __wrap_panels(self) -> str:
@@ -271,38 +286,58 @@ class ReportPage(object):
         for pidx, (plab, phtml) in self._panels.items():
             phtml = phtml.replace("\n", "\n\t")
             panels += f"""
-    <!--{plab} panel-->
-    <div class='{pidx}-panel page-wrapper hidden'>{phtml}
-    </div>"""
+            <!--{plab} panel-->
+            <div class='{pidx}-panel page-wrapper hidden'>{phtml}
+            </div>""".replace(
+                f"\n{' '*4*2}", "\n"
+            )
         return panels
 
     def make(self) -> str:
+        subclass = " subpage" if self._nesting_level > 0 else ""
         page = f"""
-<!--Report for {self.html_id}-->
-<div class='page hidden' data-page='{self.html_id}'>"""
+        <!--Report for {self.html_id}-->
+        <div class='{self.html_class}{subclass} hidden'
+            data-page='{self.html_id}'>""".replace(
+            f"\n{' '*4*2}", "\n"
+        )
         page += self.__build_panel_index()
         page += self.__wrap_panels()
         page += f"""
-    <!--Closure-->
-    <script type='text/javascript'>
-        // Show first panel
-        $('div.page[data-page="{self.html_id}"] .page-wrapper')
-            .first().removeClass('hidden');
+            <!--Closure-->
+            <script type='text/javascript'>
+                // Show first panel
+                $('div.{self.html_class}[data-page="{self.html_id}"] .page-wrapper')
+                    .first().removeClass('hidden');
+                $('div.{self.html_class}[data-page="{self.html_id}"] '+
+                    '.page-wrapper .subpage').first().removeClass('hidden');
+                $('#{self.html_id}-page-index-wrapper a.button')
+                    .first().addClass('button-primary');
 
-        // Select panel type
-        $('#{self.html_id}-page-index-wrapper a.button').click(function(e) {{
-            e.preventDefault();
-            $('div.page[data-page="{self.html_id}"] .page-wrapper:not(.hidden)')
-                .addClass('hidden');
-            $('div.page[data-page="{self.html_id}"] .page-wrapper.'
-                +$(this).data('target'))
-                .removeClass('hidden');
-            $('#{self.html_id}-page-index-wrapper a.button-primary')
-                .removeClass('button-primary');
-            $(this).addClass('button-primary');
-        }});
-    </script>
-</div>"""
+                // Select panel type
+                $('#{self.html_id}-page-index-wrapper a.button').click(function(e) {{
+                    e.preventDefault();
+                    $('div.{self.html_class}[data-page="{self.html_id}"] '
+                        +'.page-wrapper:not(.hidden)').addClass('hidden');
+                    $('#{self.html_id}-page-index-wrapper a.button-primary')
+                        .removeClass('button-primary');
+                    $(this).addClass('button-primary');
+
+                    selected_page = $(
+                        'div.{self.html_class}[data-page="{self.html_id}"]'
+                        +' .page-wrapper.'+$(this).data('target')
+                    );
+                    selected_page.removeClass('hidden');
+
+                    first_subpage = selected_page.children('.subpage').first();
+                    first_subpage.removeClass('hidden');
+                    first_subpage.children('.panel-index').find('a.button')
+                        .first().click();
+                }});
+            </script>
+        </div>""".replace(
+            f"\n{' '*4*2}", "\n"
+        )
         return page
 
 
@@ -348,6 +383,7 @@ class ReportMaker(OutputDirectories):
 
     def __make_head(self) -> str:
         return f"""<head>
+            <meta charset="utf-8">
             <title>{self.title}</title>
             <script src="{self.plotly_src}"></script>
             <link rel="stylesheet" href="{self.skeleton_href}" />
@@ -363,7 +399,7 @@ class ReportMaker(OutputDirectories):
                 }}
             </style>
         </head>""".replace(
-            "\n\t\t", "\n"
+            f"\n{' '*4*2}", "\n"
         )
 
     def __make_body(self) -> str:
@@ -384,7 +420,7 @@ class ReportMaker(OutputDirectories):
             <div class='row'>
                 <!--Report index-->
                 <div id='index-list' class='three columns'>""".replace(
-            "\n\t\t", "\n"
+            f"\n{' '*4*2}", "\n"
         )
         for report in self.__reportable:
             body += f"""
@@ -395,7 +431,7 @@ class ReportMaker(OutputDirectories):
         <!--Report results-->
         <div id='report-list' class='nine columns'>"""
         for report in self.__reportable:
-            body += report.make().replace("\n", "\n\t\t\t") + "\n"
+            body += report.make().replace("\n", f"\n{' '*4*3}") + "\n"
         body += f"""
                 </div>
             </div>
@@ -426,7 +462,7 @@ class ReportMaker(OutputDirectories):
                 <small>{self.footer}</small>
             </footer>
         </body>""".replace(
-            "\n\t\t", "\n"
+            f"\n{' '*4*2}", "\n"
         )
         return body
 
