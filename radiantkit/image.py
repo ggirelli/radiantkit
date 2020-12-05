@@ -616,9 +616,9 @@ def get_bundle_axes_from_metadata(t: tf.TiffFile) -> str:
     for metadata_field in metadata_field_list:
         metadata = getattr(t, metadata_field)
         if metadata is not None:
-            if "axes" in metadata:
-                logging.debug(f"read axes field from {metadata_field}")
-                bundle_axes = metadata['axes']
+            if "axes" in metadata[0]:
+                bundle_axes = metadata[0]['axes']
+                logging.info(f"read axes field ({bundle_axes}) from {metadata_field}")
                 break
     return bundle_axes
 
