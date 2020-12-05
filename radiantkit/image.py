@@ -612,6 +612,7 @@ def get_dtype(imax: Union[int, float]) -> str:
 def read_tiff(
     path: str, axes_order: str = "TZCYX", select_axes: Optional[str] = "ZYX"
 ) -> np.ndarray:
+    logging.info(f"Reading tiff: {path}")
     assert os.path.isfile(path), f"file not found: '{path}'"
     try:
         with warnings.catch_warnings(record=True) as warning_list:
@@ -676,12 +677,13 @@ def remove_unexpected_axes(
             slicing.append(slice(0, img.shape[aidx]))
         else:
             if verbose:
-                logging.warning(f"dropped axis {a} [i:{aidx}].")
+                logging.warning(f"dropped axis {a} (i:{aidx}).")
             slicing.append(0)
             new_aidx = bundle_axes.index(a)
             bundle_axes = "".join(
                 list(bundle_axes)[:new_aidx] + list(bundle_axes)[(new_aidx + 1) :]
             )
+    logging.info(img.shape, bundle_axes)
     return (img[tuple(slicing)], bundle_axes)
 
 
