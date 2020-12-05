@@ -527,6 +527,7 @@ class ImageGrayScale(Image):
     def from_tiff(
         path: str, axes: Optional[str] = None, do_rescale: bool = False
     ) -> "ImageGrayScale":
+        logging.info(axes)
         img = ImageGrayScale(read_tiff(path), path, axes, do_rescale)
         return img
 
