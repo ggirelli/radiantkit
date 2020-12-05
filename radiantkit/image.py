@@ -610,6 +610,7 @@ def get_dtype(imax: Union[int, float]) -> str:
 
 
 def get_bundle_axes_from_metadata(t: tf.TiffFile) -> str:
+    logging.info([(x, getattr(t, x)) for x in dir(t) if "metadata" in x])
     bundle_axes = "TCZYX"
     metadata_read = False
     if t.imagej_metadata is not None:
