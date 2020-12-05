@@ -610,15 +610,14 @@ def get_dtype(imax: Union[int, float]) -> str:
 
 
 def get_bundle_axes_from_metadata(t: tf.TiffFile) -> str:
-    logging.info([(x, getattr(t, x)) for x in dir(t) if "metadata" in x])
     bundle_axes = "TCZYX"
     metadata_field_list = [x for x in dir(t) if "metadata" in x]
     for metadata_field in metadata_field_list:
         metadata = getattr(t, metadata_field)
         if metadata is not None:
             if "axes" in metadata[0]:
-                bundle_axes = metadata[0]['axes']
-                logging.info(f"read axes field ({bundle_axes}) from {metadata_field}")
+                bundle_axes = metadata[0]["axes"]
+                logging.debug(f"read axes field from {metadata_field}: {bundle_axes}")
                 break
     return bundle_axes
 
@@ -632,10 +631,7 @@ def read_tiff(path: str, expected_axes: Optional[str] = "ZYX") -> np.ndarray:
     except (ValueError, TypeError) as e:
         logging.critical(f"cannot read image '{path}', file seems corrupted.\n{e}")
         raise
-    logging.info((bundle_axes, bundle_axes[-len(img.shape) :]))
-    img, _ = remove_unexpected_axes(
-        img, bundle_axes[-len(img.shape) :], expected_axes
-    )
+    img, _ = remove_unexpected_axes(img, bundle_axes[-len(img.shape) :], expected_axes)
     return img
 
 
@@ -677,11 +673,9 @@ def remove_unexpected_axes(
     img: np.ndarray,
     bundle_axes: str,
     expected_axes: Optional[str] = None,
-    verbose: bool = True,
 ) -> Tuple[np.ndarray, str]:
     if expected_axes is None or expected_axes == bundle_axes:
         return (img, bundle_axes)
-    logging.info((bundle_axes, expected_axes))
     bundle_axes_list = list(bundle_axes.upper())
     slicing: List[Union[slice, int]] = []
     for aidx in range(len(bundle_axes_list)):
@@ -689,16 +683,12 @@ def remove_unexpected_axes(
         if a in expected_axes:
             slicing.append(slice(0, img.shape[aidx]))
         else:
-            if verbose:
-                logging.warning(f"dropped axis {a} (i:{aidx}).")
+            logging.debug(f"dropped axis {a} (i:{aidx}).")
             slicing.append(0)
             new_aidx = bundle_axes.index(a)
             bundle_axes = "".join(
                 list(bundle_axes)[:new_aidx] + list(bundle_axes)[(new_aidx + 1) :]
             )
-    logging.info((slicing, img.shape, img[tuple(slicing)].shape, img[tuple(slicing)].squeeze().shape))
-    logging.info(("".join(bundle_axes_list), bundle_axes))
-    logging.info((img.min(), img.max()))
     return (img[tuple(slicing)].squeeze(), bundle_axes)
 
 
