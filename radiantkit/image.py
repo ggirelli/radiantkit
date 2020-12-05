@@ -678,8 +678,10 @@ def remove_unexpected_axes(
             if verbose:
                 logging.warning(f"dropped axis {a} [i:{aidx}].")
             slicing.append(0)
-            bundle_axes_list.pop(aidx)
-            bundle_axes = "".join(bundle_axes_list)
+            new_aidx = bundle_axes.index(a)
+            bundle_axes = "".join(
+                list(bundle_axes)[:new_aidx] + list(bundle_axes)[(new_aidx + 1) :]
+            )
     return (img[tuple(slicing)], bundle_axes)
 
 
