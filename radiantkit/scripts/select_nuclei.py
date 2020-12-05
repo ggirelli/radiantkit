@@ -340,11 +340,11 @@ def run(args: argparse.Namespace) -> None:
     np.set_printoptions(formatter={"float_kind": "{:.2E}".format})
     logging.info(f"intensity sum range: {details['isum']['range']}")
 
-    tsv_path = os.path.join(args.input, ReportSelectNuclei().files["raw_data"][0])
+    tsv_path = os.path.join(args.input, __OUTPUT__["raw_data"])
     logging.info(f"writing nuclear data to:\n{tsv_path}")
     nuclei_data.to_csv(tsv_path, sep="\t", index=False)
 
-    pkl_path = os.path.join(args.input, ReportSelectNuclei().files["fit"][0])
+    pkl_path = os.path.join(args.input, __OUTPUT__["fit"])
     logging.info(f"writing fit data to:\n{pkl_path}")
     with open(pkl_path, "wb") as POH:
         pickle.dump(details, POH)
