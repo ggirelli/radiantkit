@@ -695,7 +695,6 @@ def remove_unexpected_axes(
             bundle_axes = "".join(
                 list(bundle_axes)[:new_aidx] + list(bundle_axes)[(new_aidx + 1) :]
             )
-    img = img[tuple(slicing)].squeeze()
     logging.info((slicing, img.shape, img[tuple(slicing)].shape, img[tuple(slicing)].squeeze().shape))
     logging.info(("".join(bundle_axes_list), bundle_axes))
     logging.info((img.min(), img.max()))
