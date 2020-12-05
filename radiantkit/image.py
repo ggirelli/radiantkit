@@ -617,8 +617,8 @@ def get_bundle_axes_from_metadata(t: tf.TiffFile) -> str:
             bundle_axes = t.imagej_metadata
             metadata_read = True
     if t.shaped_metadata is not None and not metadata_read:
-        if "axes" in t.imagej_metadata:
-            bundle_axes = t.imagej_metadata
+        if "axes" in t.shaped_metadata:
+            bundle_axes = t.shaped_metadata
             metadata_read = True
     return bundle_axes
 
