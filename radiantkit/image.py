@@ -612,11 +612,11 @@ def get_dtype(imax: Union[int, float]) -> str:
 def get_bundle_axes_from_metadata(t: tf.TiffFile) -> str:
     bundle_axes = "TCZYX"
     metadata_read = False
-    if t.imagej_metadata:
+    if t.imagej_metadata is not None:
         if "axes" in t.imagej_metadata:
             bundle_axes = t.imagej_metadata
             metadata_read = True
-    if t.shaped_metadata and not metadata_read:
+    if t.shaped_metadata is not None and not metadata_read:
         if "axes" in t.imagej_metadata:
             bundle_axes = t.imagej_metadata
             metadata_read = True
