@@ -19,7 +19,6 @@ from skimage.morphology import dilation, erosion
 from skimage.segmentation import clear_border  # type: ignore
 import tifffile as tf  # type: ignore
 from typing import Any, Dict, List, Optional, Tuple, Union
-import warnings
 
 
 class ImageBase(object):

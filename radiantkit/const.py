@@ -12,7 +12,7 @@ default_inreg = (
     "^(?P<dw_flag>dw_)?([^\\.]*\\.)?(?P<channel_name>[^/]*)_(?P<series_id>[0-9]+)"
     + "(?P<ext>(_cmle)?(\\.[^\\.]*)?\\.tiff?)$"
 )
-default_axes = "VCTZYX"
+default_axes = "VTZCYX"
 
 default_pickle = "radiant.pkl"
 default_subfolder = "objects"
