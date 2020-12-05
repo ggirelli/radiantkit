@@ -669,6 +669,7 @@ def remove_unexpected_axes(
     expected_axes: str = "TZCYX",
     verbose: bool = True,
 ) -> Tuple[np.ndarray, str]:
+    logging.info((bundle_axes, expected_axes))
     bundle_axes_list = list(bundle_axes.upper())
     slicing: List[Union[slice, int]] = []
     for aidx in range(len(bundle_axes_list)):
