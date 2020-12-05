@@ -26,6 +26,13 @@ from rich.prompt import Confirm  # type: ignore
 from scipy.stats import gaussian_kde  # type: ignore
 from typing import Any, DefaultDict, Dict, List, Optional, Pattern, Tuple
 
+__OUTPUT__: Dict[str, str] = {
+    "raw_data": "select_nuclei.data.tsv",
+    "fit": "select_nuclei.fit.pkl",
+    "log": "select_nuclei.log.txt",
+    "args": "select_nuclei.args.pkl",
+}
+
 
 def init_parser(subparsers: argparse._SubParsersAction) -> argparse.ArgumentParser:
     parser = subparsers.add_parser(
@@ -352,11 +359,11 @@ class ReportSelectNuclei(report.ReportBase):
         self._stub = "select_nuclei"
         self._title = "Nuclei selection"
         self._files = {
-            "raw_data": ("select_nuclei.data.tsv", True, []),
-            "fit": ("select_nuclei.fit.pkl", True, []),
+            "raw_data": (__OUTPUT__["raw_data"], True, []),
+            "fit": (__OUTPUT__["fit"], True, []),
         }
-        self._log = {"log": ("select_nuclei.log.txt", False, [])}
-        self._args = {"args": ("select_nuclei.args.pkl", False, [])}
+        self._log = {"log": (__OUTPUT__["log"], False, [])}
+        self._args = {"args": (__OUTPUT__["args"], False, [])}
 
     def __make_scatter_trace(self, data: pd.DataFrame, name: str) -> go.Scatter:
         return go.Scatter(
