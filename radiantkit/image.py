@@ -624,7 +624,7 @@ def read_tiff(
         logging.critical(f"cannot read image '{path}', file seems corrupted.")
         raise
     if select_axes is not None:
-        img, _ = remove_unexpected_axes(img, axes_order[-len(img.shape):], select_axes)
+        img, _ = remove_unexpected_axes(img, axes_order[-len(img.shape) :], select_axes)
     return img
 
 
@@ -663,17 +663,24 @@ def add_missing_axes(
 
 
 def remove_unexpected_axes(
-    img: np.ndarray, bundle_axes: str, expected_axes: str = "TZCYX"
+    img: np.ndarray,
+    bundle_axes: str,
+    expected_axes: str = "TZCYX",
+    verbose: bool = True,
 ) -> Tuple[np.ndarray, str]:
     bundle_axes_list = list(bundle_axes.upper())
-    for a in bundle_axes_list:
-        if a not in expected_axes:
-            axis_index = bundle_axes_list.index(a)
-            logging.warning(f"dropped axis {a} [{axis_index}].")
-            img = np.delete(img, axis_index, 1)
-            bundle_axes_list.pop(axis_index)
+    slicing: List[Union[slice, int]] = []
+    for aidx in range(len(bundle_axes_list)):
+        a = bundle_axes[aidx]
+        if a in expected_axes:
+            slicing.append(slice(0, img.shape[aidx]))
+        else:
+            if verbose:
+                logging.warning(f"dropped axis {a} [i:{aidx}].")
+            slicing.append(0)
+            bundle_axes_list.pop(aidx)
             bundle_axes = "".join(bundle_axes_list)
-    return (img, bundle_axes)
+    return (img[tuple(slicing)], bundle_axes)
 
 
 def reorder_axes(
