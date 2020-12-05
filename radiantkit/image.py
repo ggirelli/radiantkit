@@ -609,14 +609,25 @@ def get_dtype(imax: Union[int, float]) -> str:
     return "uint"
 
 
+def get_bundle_axes_from_metadata(t: tf.TiffFile) -> str:
+    bundle_axes = "TCZYX"
+    metadata_read = False
+    if t.imagej_metadata:
+        if "axes" in t.imagej_metadata:
+            bundle_axes = t.imagej_metadata
+            metadata_read = True
+    if t.shaped_metadata and not metadata_read:
+        if "axes" in t.imagej_metadata:
+            bundle_axes = t.imagej_metadata
+            metadata_read = True
+    return bundle_axes
+
+
 def read_tiff(path: str, expected_axes: Optional[str] = "ZYX") -> np.ndarray:
     assert os.path.isfile(path), f"file not found: '{path}'"
     try:
         t = tf.TiffFile(path)
-        bundle_axes = "TCZYX"
-        if t.imagej_metadata:
-            if "axes" in t.imagej_metadata:
-                bundle_axes = t.imagej_metadata
+        bundle_axes = get_bundle_axes_from_metadata(t)
         img = t.asarray()
     except (ValueError, TypeError):
         logging.critical(f"cannot read image '{path}', file seems corrupted.")
