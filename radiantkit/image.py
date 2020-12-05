@@ -609,7 +609,9 @@ def get_dtype(imax: Union[int, float]) -> str:
     return "uint"
 
 
-def read_tiff(path: str, axes_order: str = "TCZYX") -> np.ndarray:
+def read_tiff(
+    path: str, axes_order: str = "TZCYX", select_axes: Optional[str] = "ZYX"
+) -> np.ndarray:
     assert os.path.isfile(path), f"file not found: '{path}'"
     try:
         with warnings.catch_warnings(record=True) as warning_list:
@@ -621,6 +623,8 @@ def read_tiff(path: str, axes_order: str = "TCZYX") -> np.ndarray:
     except (ValueError, TypeError):
         logging.critical(f"cannot read image '{path}', file seems corrupted.")
         raise
+    if select_axes is not None:
+        img = remove_unexpected_axes(img, axes_order[-len(img.shape):], select_axes)
     return img
 
 
