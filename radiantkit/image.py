@@ -671,7 +671,7 @@ def remove_unexpected_axes(
     bundle_axes_list = list(bundle_axes.upper())
     slicing: List[Union[slice, int]] = []
     for aidx in range(len(bundle_axes_list)):
-        a = bundle_axes[aidx]
+        a = bundle_axes_list[aidx]
         if a in expected_axes:
             slicing.append(slice(0, img.shape[aidx]))
         else:
