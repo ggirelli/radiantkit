@@ -446,9 +446,9 @@ class ReportSelectNuclei(report.ReportBase):
         assert data_type in ["x", "y"]
         line_data: Dict[str, List[float]]
         if "x" == data_type:
-            line_data = dict(xx=[], yy=[params[1]])
-        else:
             line_data = dict(yy=[], xx=[params[1]])
+        else:
+            line_data = dict(xx=[], yy=[params[1]])
 
         if stat.FitType.FWHM != fit_type:
             fig = self.__add_range_lines(
