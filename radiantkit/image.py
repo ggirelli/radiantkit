@@ -624,7 +624,7 @@ def read_tiff(
         logging.critical(f"cannot read image '{path}', file seems corrupted.")
         raise
     if select_axes is not None:
-        img = remove_unexpected_axes(img, axes_order[-len(img.shape):], select_axes)
+        img, _ = remove_unexpected_axes(img, axes_order[-len(img.shape):], select_axes)
     return img
 
 
