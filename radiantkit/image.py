@@ -667,7 +667,7 @@ def remove_unexpected_axes(
     expected_axes: Optional[str] = None,
     verbose: bool = True,
 ) -> Tuple[np.ndarray, str]:
-    if expected_axes is None:
+    if expected_axes is None or expected_axes == bundle_axes:
         return (img, bundle_axes)
     logging.info((bundle_axes, expected_axes))
     bundle_axes_list = list(bundle_axes.upper())
@@ -685,22 +685,23 @@ def remove_unexpected_axes(
                 list(bundle_axes)[:new_aidx] + list(bundle_axes)[(new_aidx + 1) :]
             )
     logging.info((img.shape, bundle_axes))
-    return (img[tuple(slicing)], bundle_axes)
+    return (img[tuple(slicing)].squeeze(), bundle_axes)
 
 
 def reorder_axes(
     img: np.ndarray, bundle_axes: str, expected_axes: str = "TZCYX"
 ) -> Tuple[np.ndarray, str]:
-    bundle_axes_list = list(bundle_axes.upper())
-    while bundle_axes != expected_axes:
-        for i in range(len(expected_axes)):
-            if bundle_axes[i] != expected_axes[i]:
-                a1 = (bundle_axes[i], i)
-                a2 = (expected_axes[i], bundle_axes.index(expected_axes[i]))
-                bundle_axes_list[a1[1]] = a2[0]
-                bundle_axes_list[a2[1]] = a1[0]
-                bundle_axes = "".join(bundle_axes_list)
-                img = np.swapaxes(img, a1[1], a2[1])
+    if bundle_axes != expected_axes:
+        bundle_axes_list = list(bundle_axes.upper())
+        while bundle_axes != expected_axes:
+            for i in range(len(expected_axes)):
+                if bundle_axes[i] != expected_axes[i]:
+                    a1 = (bundle_axes[i], i)
+                    a2 = (expected_axes[i], bundle_axes.index(expected_axes[i]))
+                    bundle_axes_list[a1[1]] = a2[0]
+                    bundle_axes_list[a2[1]] = a1[0]
+                    bundle_axes = "".join(bundle_axes_list)
+                    img = np.swapaxes(img, a1[1], a2[1])
     return (img, bundle_axes)
 
 
