@@ -629,8 +629,8 @@ def read_tiff(path: str, expected_axes: Optional[str] = "ZYX") -> np.ndarray:
         t = tf.TiffFile(path)
         bundle_axes = get_bundle_axes_from_metadata(t)
         img = t.asarray()
-    except (ValueError, TypeError):
-        logging.critical(f"cannot read image '{path}', file seems corrupted.")
+    except (ValueError, TypeError) as e:
+        logging.critical(f"cannot read image '{path}', file seems corrupted.\n{e}")
         raise
     img, _ = remove_unexpected_axes(
         img, bundle_axes[-len(img.shape) :], expected_axes
