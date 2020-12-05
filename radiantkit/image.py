@@ -609,7 +609,7 @@ def get_dtype(imax: Union[int, float]) -> str:
     return "uint"
 
 
-def read_tiff(path: str) -> np.ndarray:
+def read_tiff(path: str, axes_order: str = "TCZYX") -> np.ndarray:
     assert os.path.isfile(path), f"file not found: '{path}'"
     try:
         with warnings.catch_warnings(record=True) as warning_list:
@@ -716,8 +716,10 @@ def save_tiff(
         img, bundle_axes = enforce_default_axis_bundle(img, bundle_axes, "TZCYX")
 
     metadata: Dict[str, Any] = dict(axes=bundle_axes)
-    metadata["unit"] = "um" if inMicrons else None
-    metadata["spacing"] = z_resolution
+    if inMicrons:
+        metadata["unit"] = "um"
+    if z_resolution is not None:
+        metadata["spacing"] = z_resolution
     compressionLevel = 0 if not compressed else 9
     tifffile.imwrite(
         path,
