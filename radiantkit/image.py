@@ -711,8 +711,8 @@ def reorder_axes(
 def enforce_default_axis_bundle(
     img: np.ndarray, bundle_axes: str, expected_axes: str = "TZCYX"
 ) -> Tuple[np.ndarray, str]:
-    img, bundle_axes = add_missing_axes(img, bundle_axes, expected_axes)
     img, bundle_axes = remove_unexpected_axes(img, bundle_axes, expected_axes)
+    img, bundle_axes = add_missing_axes(img, bundle_axes, expected_axes)
     img, bundle_axes = reorder_axes(img, bundle_axes, expected_axes)
     return (img, bundle_axes)
 
@@ -741,6 +741,7 @@ def save_tiff(
     if z_resolution is not None:
         metadata["spacing"] = z_resolution
     compressionLevel = 0 if not compressed else 9
+
     tf.imwrite(
         path,
         img,
