@@ -26,6 +26,13 @@ from rich.prompt import Confirm  # type: ignore
 from scipy.stats import gaussian_kde  # type: ignore
 from typing import Any, DefaultDict, Dict, List, Optional, Pattern, Tuple
 
+__OUTPUT__: Dict[str, str] = {
+    "raw_data": "select_nuclei.data.tsv",
+    "fit": "select_nuclei.fit.pkl",
+    "log": "select_nuclei.log.txt",
+    "args": "select_nuclei.args.pkl",
+}
+
 
 def init_parser(subparsers: argparse._SubParsersAction) -> argparse.ArgumentParser:
     parser = subparsers.add_parser(
@@ -333,11 +340,11 @@ def run(args: argparse.Namespace) -> None:
     np.set_printoptions(formatter={"float_kind": "{:.2E}".format})
     logging.info(f"intensity sum range: {details['isum']['range']}")
 
-    tsv_path = os.path.join(args.input, ReportSelectNuclei().files["raw_data"][0])
+    tsv_path = os.path.join(args.input, __OUTPUT__["raw_data"])
     logging.info(f"writing nuclear data to:\n{tsv_path}")
     nuclei_data.to_csv(tsv_path, sep="\t", index=False)
 
-    pkl_path = os.path.join(args.input, ReportSelectNuclei().files["fit"][0])
+    pkl_path = os.path.join(args.input, __OUTPUT__["fit"])
     logging.info(f"writing fit data to:\n{pkl_path}")
     with open(pkl_path, "wb") as POH:
         pickle.dump(details, POH)
@@ -352,11 +359,11 @@ class ReportSelectNuclei(report.ReportBase):
         self._stub = "select_nuclei"
         self._title = "Nuclei selection"
         self._files = {
-            "raw_data": ("select_nuclei.data.tsv", True, []),
-            "fit": ("select_nuclei.fit.pkl", True, []),
+            "raw_data": (__OUTPUT__["raw_data"], True, []),
+            "fit": (__OUTPUT__["fit"], True, []),
         }
-        self._log = {"log": ("select_nuclei.log.txt", False, [])}
-        self._args = {"args": ("select_nuclei.args.pkl", False, [])}
+        self._log = {"log": (__OUTPUT__["log"], False, [])}
+        self._args = {"args": (__OUTPUT__["args"], False, [])}
 
     def __make_scatter_trace(self, data: pd.DataFrame, name: str) -> go.Scatter:
         return go.Scatter(
@@ -409,22 +416,53 @@ class ReportSelectNuclei(report.ReportBase):
         )
         return fig
 
-    def __prep_fit_contours_data(
-        self, data_type: str, data_series: np.ndarray, params: List[float]
-    ) -> Tuple[Dict[str, np.ndarray], Dict[str, np.ndarray], Dict[str, List[float]]]:
-        assert data_type in ["x", "y"]
-        if "x" in data_type:
-            return (
-                dict(x=data_series, y=stat.gaussian(data_series, *params[:3])),
-                dict(x=data_series, y=stat.gaussian(data_series, *params[3:])),
-                dict(xx=[params[1]], yy=[]),
-            )
-        else:
+    def __get_fit_gauss_data(
+        self,
+        data_series: np.ndarray,
+        params: List[float],
+        fit_type: stat.FitType,
+    ) -> Tuple[Optional[Dict[str, np.ndarray]], Optional[Dict[str, np.ndarray]]]:
+        if stat.FitType.SOG == fit_type:
             return (
                 dict(y=data_series, x=stat.gaussian(data_series, *params[:3])),
                 dict(y=data_series, x=stat.gaussian(data_series, *params[3:])),
-                dict(xx=[], yy=[params[1]]),
             )
+        elif stat.FitType.GAUSSIAN == fit_type:
+            return (
+                dict(y=data_series, x=stat.gaussian(data_series, *params[:3])),
+                None,
+            )
+        else:
+            return (None, None)
+
+    def __add_gaussian_mean_line(
+        self,
+        fig: go.Figure,
+        data_type: str,
+        data_series: np.ndarray,
+        params: List[float],
+        fit_type: stat.FitType,
+    ) -> go.Figure:
+        assert data_type in ["x", "y"]
+        line_data: Dict[str, List[float]]
+        if "x" == data_type:
+            line_data = dict(yy=[], xx=[params[1]])
+        else:
+            line_data = dict(xx=[], yy=[params[1]])
+
+        if stat.FitType.FWHM != fit_type:
+            fig = self.__add_range_lines(
+                fig,
+                line_data["xx"],
+                line_data["yy"],
+                line_props=dict(
+                    line_color="#323232",
+                    line_width=1,
+                    line_dash="dot",
+                ),
+            )
+
+        return fig
 
     def __add_fit_contours(
         self,
@@ -438,9 +476,7 @@ class ReportSelectNuclei(report.ReportBase):
     ) -> go.Figure:
         assert data_type in ["x", "y"]
         params, fit_type = fit
-        data_g1, data_g2, line_data = self.__prep_fit_contours_data(
-            data_type, data_series, params
-        )
+        data_g1, data_g2 = self.__get_fit_gauss_data(data_series, params, fit_type)
         if stat.FitType.FWHM != fit_type:
             fig.add_trace(
                 go.Scatter(
@@ -451,15 +487,8 @@ class ReportSelectNuclei(report.ReportBase):
                     legendgroup=name,
                 )
             )
-            self.__add_range_lines(
-                fig,
-                line_data["xx"],
-                line_data["yy"],
-                line_props=dict(
-                    line_color="#323232",
-                    line_width=1,
-                    line_dash="dot",
-                ),
+            fig = self.__add_gaussian_mean_line(
+                fig, data_type, data_series, params, fit_type
             )
         if stat.FitType.SOG == fit_type:
             fig.add_trace(

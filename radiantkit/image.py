@@ -17,9 +17,8 @@ from skimage.morphology import square, cube  # type: ignore
 from skimage.morphology import closing, opening
 from skimage.morphology import dilation, erosion
 from skimage.segmentation import clear_border  # type: ignore
-import tifffile  # type: ignore
+import tifffile as tf  # type: ignore
 from typing import Any, Dict, List, Optional, Tuple, Union
-import warnings
 
 
 class ImageBase(object):
@@ -609,18 +608,29 @@ def get_dtype(imax: Union[int, float]) -> str:
     return "uint"
 
 
-def read_tiff(path: str) -> np.ndarray:
+def get_bundle_axes_from_metadata(t: tf.TiffFile) -> str:
+    bundle_axes = "TCZYX"
+    metadata_field_list = [x for x in dir(t) if "metadata" in x]
+    for metadata_field in metadata_field_list:
+        metadata = getattr(t, metadata_field)
+        if metadata is not None:
+            if "axes" in metadata[0]:
+                bundle_axes = metadata[0]["axes"]
+                logging.debug(f"read axes field from {metadata_field}: {bundle_axes}")
+                break
+    return bundle_axes
+
+
+def read_tiff(path: str, expected_axes: Optional[str] = "ZYX") -> np.ndarray:
     assert os.path.isfile(path), f"file not found: '{path}'"
     try:
-        with warnings.catch_warnings(record=True) as warning_list:
-            img = ski.io.imread(path)
-            warnings_messages = [str(e) for e in warning_list]
-            if any(["axes do not match shape" in e for e in warnings_messages]):
-                logging.warning(f"image axes do not match metadata in '{path}'")
-                logging.warning("using the image axes.")
-    except (ValueError, TypeError):
-        logging.critical(f"cannot read image '{path}', file seems corrupted.")
+        t = tf.TiffFile(path)
+        bundle_axes = get_bundle_axes_from_metadata(t)
+        img = t.asarray()
+    except (ValueError, TypeError) as e:
+        logging.critical(f"cannot read image '{path}', file seems corrupted.\n{e}")
         raise
+    img, _ = remove_unexpected_axes(img, bundle_axes[-len(img.shape) :], expected_axes)
     return img
 
 
@@ -659,40 +669,50 @@ def add_missing_axes(
 
 
 def remove_unexpected_axes(
-    img: np.ndarray, bundle_axes: str, expected_axes: str = "TZCYX"
+    img: np.ndarray,
+    bundle_axes: str,
+    expected_axes: Optional[str] = None,
 ) -> Tuple[np.ndarray, str]:
+    if expected_axes is None or expected_axes == bundle_axes:
+        return (img, bundle_axes)
     bundle_axes_list = list(bundle_axes.upper())
-    for a in bundle_axes_list:
-        if a not in expected_axes:
-            axis_index = bundle_axes_list.index(a)
-            logging.warning(f"dropped axis {a} [{axis_index}].")
-            img = np.delete(img, axis_index, 1)
-            bundle_axes_list.pop(axis_index)
-            bundle_axes = "".join(bundle_axes_list)
-    return (img, bundle_axes)
+    slicing: List[Union[slice, int]] = []
+    for aidx in range(len(bundle_axes_list)):
+        a = bundle_axes_list[aidx]
+        if a in expected_axes:
+            slicing.append(slice(0, img.shape[aidx]))
+        else:
+            logging.debug(f"dropped axis {a} (i:{aidx}).")
+            slicing.append(0)
+            new_aidx = bundle_axes.index(a)
+            bundle_axes = "".join(
+                list(bundle_axes)[:new_aidx] + list(bundle_axes)[(new_aidx + 1) :]
+            )
+    return (img[tuple(slicing)].squeeze(), bundle_axes)
 
 
 def reorder_axes(
     img: np.ndarray, bundle_axes: str, expected_axes: str = "TZCYX"
 ) -> Tuple[np.ndarray, str]:
-    bundle_axes_list = list(bundle_axes.upper())
-    while bundle_axes != expected_axes:
-        for i in range(len(expected_axes)):
-            if bundle_axes[i] != expected_axes[i]:
-                a1 = (bundle_axes[i], i)
-                a2 = (expected_axes[i], bundle_axes.index(expected_axes[i]))
-                bundle_axes_list[a1[1]] = a2[0]
-                bundle_axes_list[a2[1]] = a1[0]
-                bundle_axes = "".join(bundle_axes_list)
-                img = np.swapaxes(img, a1[1], a2[1])
+    if bundle_axes != expected_axes:
+        bundle_axes_list = list(bundle_axes.upper())
+        while bundle_axes != expected_axes:
+            for i in range(len(expected_axes)):
+                if bundle_axes[i] != expected_axes[i]:
+                    a1 = (bundle_axes[i], i)
+                    a2 = (expected_axes[i], bundle_axes.index(expected_axes[i]))
+                    bundle_axes_list[a1[1]] = a2[0]
+                    bundle_axes_list[a2[1]] = a1[0]
+                    bundle_axes = "".join(bundle_axes_list)
+                    img = np.swapaxes(img, a1[1], a2[1])
     return (img, bundle_axes)
 
 
 def enforce_default_axis_bundle(
     img: np.ndarray, bundle_axes: str, expected_axes: str = "TZCYX"
 ) -> Tuple[np.ndarray, str]:
-    img, bundle_axes = add_missing_axes(img, bundle_axes, expected_axes)
     img, bundle_axes = remove_unexpected_axes(img, bundle_axes, expected_axes)
+    img, bundle_axes = add_missing_axes(img, bundle_axes, expected_axes)
     img, bundle_axes = reorder_axes(img, bundle_axes, expected_axes)
     return (img, bundle_axes)
 
@@ -716,10 +736,13 @@ def save_tiff(
         img, bundle_axes = enforce_default_axis_bundle(img, bundle_axes, "TZCYX")
 
     metadata: Dict[str, Any] = dict(axes=bundle_axes)
-    metadata["unit"] = "um" if inMicrons else None
-    metadata["spacing"] = z_resolution
+    if inMicrons:
+        metadata["unit"] = "um"
+    if z_resolution is not None:
+        metadata["spacing"] = z_resolution
     compressionLevel = 0 if not compressed else 9
-    tifffile.imwrite(
+
+    tf.imwrite(
         path,
         img,
         compress=compressionLevel,

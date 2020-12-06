@@ -3,7 +3,7 @@
 @contact: gigi.ga90@gmail.com
 """
 
-__version__ = "0.0.1.03Dec2020"
+__version__ = "0.0.1.06Dec2020"
 
 from enum import Enum
 from typing import Dict, List, Tuple
@@ -12,7 +12,7 @@ default_inreg = (
     "^(?P<dw_flag>dw_)?([^\\.]*\\.)?(?P<channel_name>[^/]*)_(?P<series_id>[0-9]+)"
     + "(?P<ext>(_cmle)?(\\.[^\\.]*)?\\.tiff?)$"
 )
-default_axes = "VCTZYX"
+default_axes = "VTZCYX"
 
 default_pickle = "radiant.pkl"
 default_subfolder = "objects"

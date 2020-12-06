@@ -18,7 +18,7 @@ from radiantkit.string import TIFFNameTemplateFields as TNTFields
 from radiantkit.string import TIFFNameTemplate as TNTemplate
 from rich.progress import track  # type: ignore
 import sys
-from typing import List, Optional, Tuple
+from typing import List, Optional, Tuple, Union
 
 
 @enable_rich_exceptions
@@ -162,25 +162,17 @@ def get_resolution_Z(nd2_image: ND2Reader2, field_id: int, enforce: float) -> fl
     return list(resolutionZ)[0]
 
 
-def get_field_from_2d_nd2(
-    nd2_image: ND2Reader2, field_id: int, channel_id: int
-) -> np.ndarray:
-    if 1 == nd2_image.channel_count():
-        return nd2_image[field_id][:, :].astype(nd2_image.dtype)
-    else:
-        return nd2_image[field_id][:, :, channel_id].astype(nd2_image.dtype)
-
-
-def get_field_from_3d_nd2(
-    nd2_image: ND2Reader2, field_id: int, channel_id: int
-) -> np.ndarray:
-    if 1 == nd2_image.channel_count():
-        return nd2_image[field_id][:, :, :].astype(nd2_image.dtype)
-    else:
-        return nd2_image[field_id][:, :, :, channel_id].astype(nd2_image.dtype)
-
-
-get_field_fun = {2: get_field_from_2d_nd2, 3: get_field_from_3d_nd2}
+def get_field(nd2_image: ND2Reader2, field_id: int, channel_id: int) -> np.ndarray:
+    slicing: List[Union[slice, int]] = []
+    field_of_view = nd2_image[field_id]
+    for a in nd2_image.bundle_axes:
+        axis_size = field_of_view.shape[nd2_image.bundle_axes.index(a)]
+        if "c" == a:
+            assert channel_id < axis_size
+            slicing.append(channel_id)
+        else:
+            slicing.append(slice(0, axis_size))
+    return field_of_view[tuple(slicing)]
 
 
 def export_single_channel(
@@ -189,6 +181,7 @@ def export_single_channel(
     xy_resolution: Tuple[float, float] = (0.0, 0.0),
     z_resolution: float = 0.0,
     compress: bool = False,
+    bundle_axes: str = "ZYX",
 ) -> None:
     x_pixels_per_um = 0 if 0 == xy_resolution[0] else 1 / xy_resolution[0]
     y_pixels_per_um = 0 if 0 == xy_resolution[1] else 1 / xy_resolution[1]
@@ -196,6 +189,7 @@ def export_single_channel(
         opath,
         field_of_view,
         compress,
+        bundle_axes=bundle_axes,
         inMicrons=True,
         z_resolution=z_resolution,
         resolution=(x_pixels_per_um, y_pixels_per_um, None),
@@ -207,23 +201,31 @@ def export_multiple_channels(
     field_id: int,
     args: argparse.Namespace,
     channels: Optional[List[str]] = None,
-    resolutionZ: float = 0.0,
+    z_resolution: float = 0.0,
 ) -> None:
     channels = list(nd2_image.get_channel_names()) if channels is None else channels
-    get_field = get_field_fun[3] if nd2_image.is3D() else get_field_fun[2]
     channels = nd2_image.select_channels(channels)
+    bundle_axes = nd2_image.bundle_axes.copy()
+    bundle_axes.pop(bundle_axes.index("c"))
+    bundle_axes = "".join(bundle_axes).upper()
     for channel_id in range(nd2_image.channel_count()):
         channel_name = nd2_image.metadata["channels"][channel_id].lower()
         if channel_name in channels:
-            export_single_channel(
-                get_field(nd2_image, field_id, channel_id),
+            imt.save_tiff(
                 os.path.join(
                     args.outdir,
                     nd2_image.get_tiff_path(args.template, channel_id, field_id),
                 ),
-                (nd2_image.xy_resolution, nd2_image.xy_resolution),
-                resolutionZ,
+                get_field(nd2_image, field_id, channel_id),
                 args.doCompress,
+                bundle_axes=bundle_axes,
+                inMicrons=True,
+                z_resolution=z_resolution,
+                resolution=(
+                    0 if 0 == nd2_image.xy_resolution else 1 / nd2_image.xy_resolution,
+                    0 if 0 == nd2_image.xy_resolution else 1 / nd2_image.xy_resolution,
+                    None,
+                ),
             )
 
 
@@ -233,9 +235,9 @@ def export_field(
     args: argparse.Namespace,
     channels: Optional[List[str]] = None,
 ) -> None:
-    resolutionZ = get_resolution_Z(nd2_image, field_id, args.deltaZ)
+    z_resolution = get_resolution_Z(nd2_image, field_id, args.deltaZ)
     try:
-        export_multiple_channels(nd2_image, field_id, args, channels, resolutionZ)
+        export_multiple_channels(nd2_image, field_id, args, channels, z_resolution)
     except ValueError as e:
         if "could not broadcast input array from shape" in e.args[0]:
             logging.error(
