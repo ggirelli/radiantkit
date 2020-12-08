@@ -183,7 +183,7 @@ interactive data visualization.
 
 def parse_arguments(args: argparse.Namespace) -> argparse.Namespace:
     assert "(?P<channel_name>" in args.inreg
-    assert "(?P<images_id>" in args.inreg
+    assert "(?P<series_id>" in args.inreg
     args.inreg = re.compile(args.inreg)
 
     args.mask_prefix = string.add_trailing_dot(args.mask_prefix)
