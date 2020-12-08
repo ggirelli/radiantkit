@@ -21,91 +21,74 @@ from skimage.morphology import convex_hull_image  # type: ignore
 from typing import Any, Dict, List, Optional, Tuple, Type
 
 
-class ParticleBase(object):
-    _mask: ImageBinary
+class ParticleBase(ImageBinary):
     _region_of_interest: BoundingElement
-    label: Optional[int] = None
+    idx: Optional[int] = None
     _total_size: Optional[int] = None
     _surface: Optional[int] = None
-    _shape: Optional[float] = None
 
-    def __init__(self, B: ImageBinary, region_of_interest: BoundingElement):
-        super(ParticleBase, self).__init__()
-        assert B.shape == region_of_interest.shape
-        self._mask = B
+    def __init__(
+        self,
+        pixels: np.ndarray,
+        region_of_interest: BoundingElement,
+        axes: Optional[str] = None,
+    ):
+        assert pixels.shape == region_of_interest.shape
+        super(ParticleBase, self).__init__(pixels, None, axes)
         self._region_of_interest = region_of_interest
 
     @property
-    def mask(self) -> ImageBinary:
-        return self._mask
-
-    @property
-    def aspect(self) -> np.ndarray:
-        return self.mask.aspect
-
-    def set_aspect(self, spacing: np.ndarray) -> None:
-        self._mask.aspect = spacing
-        self._surface = None
-
-    @property
-    def region_of_interest(self) -> BoundingElement:
+    def roi(self) -> BoundingElement:
         return self._region_of_interest
 
     @property
     def total_size(self) -> int:
         if self._total_size is None:
-            self._total_size = self._mask.foreground
+            self._total_size = self.foreground
         return self._total_size
 
     @property
     def volume(self) -> int:
-        return self.total_size * np.prod(self.mask.aspect)
-
-    @property
-    def sizeXY(self) -> int:
-        return self.size("XY")
-
-    @property
-    def sizeZ(self) -> int:
-        return self.size("Z")
+        return self.total_size * np.prod(self.aspect)
 
     @property
     def surface(self) -> float:
         if self._surface is None:
             verts, faces, ns, vs = marching_cubes_lewiner(
-                self._mask.offset(1).pixels, 0.0, self._mask.aspect
+                self.offset(1).pixels, 0.0, self.aspect
             )
             self._surface = mesh_surface_area(verts, faces)
         return self._surface
 
-    def shape(self, spacing: Optional[np.ndarray] = None) -> float:
-        if self._shape is None:
-            if spacing is None:
-                spacing = self.aspect
-            if 2 == len(self.mask.shape):
-                convex_size = convex_hull_image(self.mask.pixels).sum()
-                self._shape = self.total_size / convex_size
-            elif 3 == len(self.mask.shape):
-                sphere_surface = (np.pi * (6.0 * self.total_size) ** 2) ** (1 / 3.0)
-                self._shape = sphere_surface / self.surface
-            else:
-                self._shape = 0
-        return self._shape
+    def shape_descriptor(self) -> float:
+        if 2 == len(self.shape):
+            convex_size = convex_hull_image(self._pixels).sum()
+            return self.total_size / convex_size
+        elif 3 == len(self.shape):
+            sphere_surface = (np.pi * (6.0 * self.total_size) ** 2) ** (1 / 3.0)
+            return sphere_surface / self.surface
+        else:
+            return .0
 
-    def size(self, axes: str) -> int:
-        assert all([axis in self.mask.axes for axis in axes])
-        axes_ids = tuple(
-            [self.mask.axes.index(axis) for axis in self.mask.axes if axis not in axes]
+    def axis_size(self, axes_to_measure: str) -> int:
+        assert all([axis in self.axes for axis in axes_to_measure])
+        axes_idxs = tuple(
+            [self.axes.index(a) for a in self.axes if a not in axes_to_measure]
         )
-        return self.mask.pixels.max(axes_ids).sum()
+        return self._pixels.max(axes_idxs).sum()
 
 
 class Particle(ParticleBase):
     _intensity: Dict[str, Dict[str, float]]
     source: str
 
-    def __init__(self, B: ImageBinary, region_of_interest: BoundingElement):
-        super(Particle, self).__init__(B, region_of_interest)
+    def __init__(
+        self,
+        pixels: np.ndarray,
+        region_of_interest: BoundingElement,
+        axes: Optional[str] = None,
+    ):
+        super(Particle, self).__init__(pixels, region_of_interest, axes)
         self._intensity = {}
 
     @property
@@ -132,14 +115,14 @@ class Particle(ParticleBase):
         else:
             self._intensity[channel_name] = {}
 
-        pixels = self._region_of_interest.apply(img)[self._mask.pixels]
+        pixels = self._region_of_interest.apply(img)[self.pixels]
         if img.background is not None:
             pixels -= img.background
         self._intensity[channel_name]["mean"] = np.mean(pixels)
         self._intensity[channel_name]["sum"] = np.sum(pixels)
 
     def get_intensity_value_counts(self, img: ImageGrayScale) -> List[np.ndarray]:
-        pixels = self._region_of_interest.apply(img)[self._mask.pixels]
+        pixels = self._region_of_interest.apply(img)[self.pixels]
         img.unload()
         if img.background is not None:
             pixels -= img.background
@@ -153,8 +136,13 @@ class Nucleus(Particle):
     _center_dist: Optional[np.ndarray] = None
     _lamina_dist: Optional[np.ndarray] = None
 
-    def __init__(self, B: ImageBinary, region_of_interest: BoundingElement):
-        super(Nucleus, self).__init__(B, region_of_interest)
+    def __init__(
+        self,
+        pixels: np.ndarray,
+        region_of_interest: BoundingElement,
+        axes: Optional[str] = None,
+    ):
+        super(Nucleus, self).__init__(pixels, region_of_interest, axes)
 
     @property
     def distances(self) -> Tuple[Optional[np.ndarray], Optional[np.ndarray]]:
@@ -166,7 +154,7 @@ class Nucleus(Particle):
     def init_distances(
         self, rdc: RadialDistanceCalculator, C: Optional[Image] = None
     ) -> None:
-        distances = rdc.calc(self.mask, C)
+        distances = rdc.calc(self, C)
         assert distances is not None
         self._lamina_dist, self._center_dist = distances
 
@@ -177,9 +165,9 @@ class Nucleus(Particle):
 
         df = pd.DataFrame.from_dict(
             dict(
-                ivalue=self._region_of_interest.apply(img)[self._mask.pixels],
-                lamina_dist=self._lamina_dist[self._mask.pixels],
-                center_dist=self._center_dist[self._mask.pixels],
+                ivalue=self._region_of_interest.apply(img)[self.pixels],
+                lamina_dist=self._lamina_dist[self.pixels],
+                center_dist=self._center_dist[self.pixels],
             )
         )
 
@@ -189,7 +177,7 @@ class Nucleus(Particle):
         df["nucleus_label"] = self.label
 
         if ref is not None:
-            ref_value = self._region_of_interest.apply(ref)[self._mask.pixels]
+            ref_value = self._region_of_interest.apply(ref)[self.pixels]
             df["ivalue_norm"] = df["ivalue"].values / ref_value
 
         return df
@@ -332,7 +320,7 @@ class ParticleFinder(object):
             B.aspect = L.aspect
 
             particle = particleClass(B, region_of_interest)
-            particle.label = particle_label
+            particle.idx = particle_label
 
             boxed_particles.append(particle)
 

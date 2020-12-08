@@ -59,7 +59,7 @@ class Series(ChannelList):
             self._aspect = list(self._channels.values())[0].aspect
         if self._particles is not None:
             for particle in self._particles:
-                particle.set_aspect(spacing)
+                particle.aspect(spacing)
 
     def __init_particles_intensity_features(
         self, channel_names: Optional[List[str]] = None
@@ -121,7 +121,7 @@ class Series(ChannelList):
             for nucleus in self.particles:
                 basename = f"series{self.ID:03d}_nucleus{nucleus.label:03d}"
 
-                nucleus.mask.to_tiff(
+                nucleus.to_tiff(
                     os.path.join(path, f"mask_{basename}.tif"), compressed
                 )
 
@@ -136,7 +136,7 @@ class Series(ChannelList):
                     )
 
                 ImageGrayScale(
-                    nucleus.region_of_interest.apply(self[channel_name][1])
+                    nucleus.roi.apply(self[channel_name][1])
                 ).to_tiff(
                     os.path.join(path, f"{channel_name}_{basename}.tif"), compressed
                 )
@@ -351,7 +351,7 @@ class SeriesList(object):
                     total_size=[nucleus.total_size],
                     volume=[nucleus.volume],
                     surface=[nucleus.surface],
-                    shape=[nucleus.shape()],
+                    shape=[nucleus.shape_descriptor()],
                 )
 
                 for name in nucleus.channel_names:
