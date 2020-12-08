@@ -189,7 +189,7 @@ class Image(ImageBase):
             logging.info((axis_index, self._axes_order, self._axes_order[axis_index]))
             new_shape = list(self.pixels.shape)
             new_shape.pop(axis_index)
-            self.pixels = self.pixels.reshape(new_shape)
+            self._pixels = self.pixels.reshape(new_shape)
             self._axes_order = (
                 self._axes_order[:axis_index]
                 + self._axes_order[min(axis_index + 1, len(self._axes_order)) :]
