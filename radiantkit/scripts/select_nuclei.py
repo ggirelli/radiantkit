@@ -26,6 +26,8 @@ from rich.prompt import Confirm  # type: ignore
 from scipy.stats import gaussian_kde  # type: ignore
 from typing import Any, DefaultDict, Dict, List, Optional, Pattern, Tuple
 
+from memory_profiler import profile
+
 __OUTPUT__: Dict[str, str] = {
     "raw_data": "select_nuclei.data.tsv",
     "fit": "select_nuclei.fit.pkl",
@@ -245,7 +247,9 @@ def extract_passing_nuclei_per_series(
 ) -> Dict[int, List[int]]:
     passed = ndata.loc[ndata["pass"], ["image", "label"]]
     logging.info((ndata, passed))
-    import sys; sys.exit()
+    import sys
+
+    sys.exit()
     passed["series_id"] = np.nan
     for ii in passed.index:
         image_details = path.get_image_details(passed.loc[ii, "image"], inreg)
@@ -313,6 +317,7 @@ def remove_labels_from_series_list_masks(
     return series_list
 
 
+@profile
 def run(args: argparse.Namespace) -> None:
     confirm_arguments(args)
     argtools.dump_args(args, "select_nuclei.args.pkl")
