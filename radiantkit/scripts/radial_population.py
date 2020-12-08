@@ -15,8 +15,7 @@ import plotly.express as px  # type: ignore
 from plotly.subplots import make_subplots  # type: ignore
 import pickle
 from radiantkit import const, distance, io, particle, plot, report, series, stat, string
-from radiantkit.scripts.common import series as ra_series
-from radiantkit.scripts.common import argtools
+from radiantkit.scripts import argtools
 import re
 from rich.prompt import Confirm  # type: ignore
 import sys
@@ -356,7 +355,7 @@ def run(args: argparse.Namespace) -> None:
     confirm_arguments(args)
     argtools.dump_args(args, __OUTPUT__["args"])
     io.add_log_file_handler(os.path.join(args.input, __OUTPUT__["log"]))
-    args, series_list = ra_series.init_series_list(args)
+    args, series_list = series.init_series_list(args)
 
     logging.info("extracting nuclei")
     series_list.extract_particles(particle.Nucleus, threads=args.threads)
@@ -369,7 +368,7 @@ def run(args: argparse.Namespace) -> None:
     )
 
     export_profiles(args, profiles)
-    ra_series.pickle_series_list(args, series_list)
+    series.pickle_series_list(args, series_list)
 
 
 class ProfileMultiConditionNorm(object):
