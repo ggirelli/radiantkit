@@ -326,7 +326,7 @@ class ImageLabeled(Image):
         return self.size(lab, "Z")
 
     def size(self, lab: int, axes: str) -> int:
-        assert all([axis in self.axes for axis in axes])
+        assert all([axis in self.axes for axis in axes]), (self.axes, axes)
         axes_ids = tuple(
             [self.axes.index(axis) for axis in self.axes if axis not in axes]
         )
