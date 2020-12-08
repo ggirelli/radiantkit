@@ -8,9 +8,8 @@ import logging
 import numpy as np  # type: ignore
 import os
 import pandas as pd  # type: ignore
-from radiantkit.const import __version__, default_axes, ProjectionType
+from radiantkit import const, stat
 from radiantkit.deconvolution import get_deconvolution_rescaling_factor
-from radiantkit import stat
 from scipy import ndimage as ndi  # type: ignore
 import skimage as ski  # type: ignore
 from skimage.morphology import square, cube  # type: ignore
@@ -22,8 +21,8 @@ from typing import Any, Dict, List, Optional, Tuple, Union
 
 
 class ImageBase(object):
-    _ALLOWED_AXES: str = default_axes
-    _axes_order: str = default_axes
+    _ALLOWED_AXES: str = const.default_axes[1:]
+    _axes_order: str = const.default_axes[1:]
     _aspect: np.ndarray = np.ones(6)
 
     def __init__(self):
@@ -69,20 +68,20 @@ class Image(ImageBase):
     ):
         super(ImageBase, self).__init__()
         assert len(pixels.shape) <= len(self._ALLOWED_AXES)
-        self._pixels = pixels.copy()
-        self._remove_empty_axes()
-        self._shape = self._pixels.shape
         if axes is not None:
-            assert len(axes) == len(self.shape)
+            assert len(axes) == len(pixels.shape)
             assert all([c in self._ALLOWED_AXES for c in axes])
             assert all([1 == axes.count(c) for c in set(axes)])
             self._axes_order = axes
         else:
             self._axes_order = self._ALLOWED_AXES[
                 slice(
-                    len(self._ALLOWED_AXES) - len(self.shape), len(self._ALLOWED_AXES)
+                    len(self._ALLOWED_AXES) - len(pixels.shape), len(self._ALLOWED_AXES)
                 )
             ]
+        self._pixels = pixels.copy()
+        self._remove_empty_axes()
+        self._shape = self._pixels.shape
         self._aspect = self._aspect[
             slice(len(self.aspect) - len(self.shape), len(self.aspect))
         ]
@@ -179,11 +178,15 @@ class Image(ImageBase):
     def _remove_empty_axes(self) -> None:
         if len(self.pixels.shape) != self.nd:
             self._extract_nd()
-        while 1 == self.pixels.shape[0]:
+        while 1 in self.pixels.shape:
+            axis_index = self.pixels.shape.index(1)
             new_shape = list(self.pixels.shape)
-            new_shape.pop(0)
-            self.pixels.shape = new_shape
-            self._axes_order = self._axes_order[1:]
+            new_shape.pop(axis_index)
+            self._pixels = self.pixels.reshape(new_shape)
+            self._axes_order = (
+                self._axes_order[:axis_index]
+                + self._axes_order[min(axis_index + 1, len(self._axes_order)) :]
+            )
 
     def axis_shape(self, axis: str) -> Optional[int]:
         if axis not in self._axes_order:
@@ -191,20 +194,22 @@ class Image(ImageBase):
         return self.shape[self._axes_order.index(axis)]
 
     def flatten(
-        self, axes_to_keep: str, projection_type: ProjectionType = ProjectionType.SUM
+        self,
+        axes_to_keep: str,
+        projection_type: const.ProjectionType = const.ProjectionType.SUM,
     ) -> "Image":
         axes_to_flatten = tuple(
             [ai for ai in range(len(self.axes)) if self.axes[ai] not in axes_to_keep]
         )
-        if projection_type is ProjectionType.SUM:
+        if projection_type is const.ProjectionType.SUM:
             pixels = self.pixels.sum(axes_to_flatten, keepdims=True)
-        elif projection_type is ProjectionType.MAX:
+        elif projection_type is const.ProjectionType.MAX:
             pixels = self.pixels.max(axes_to_flatten, keepdims=True)
         else:
             raise ValueError
         return self.from_this(pixels)
 
-    def z_project(self, projection_type: ProjectionType) -> np.ndarray:
+    def z_project(self, projection_type: const.ProjectionType) -> np.ndarray:
         return z_project(self.pixels, projection_type)
 
     def tile_to(self, shape: Tuple[int, ...]) -> "Image":
@@ -318,7 +323,7 @@ class ImageLabeled(Image):
         return self.size(lab, "Z")
 
     def size(self, lab: int, axes: str) -> int:
-        assert all([axis in self.axes for axis in axes])
+        assert all([axis in self.axes for axis in axes]), (self.axes, axes)
         axes_ids = tuple(
             [self.axes.index(axis) for axis in self.axes if axis not in axes]
         )
@@ -524,9 +529,14 @@ class ImageGrayScale(Image):
 
     @staticmethod
     def from_tiff(
-        path: str, axes: Optional[str] = None, do_rescale: bool = False
+        path: str,
+        axes: Optional[str] = None,
+        do_rescale: bool = False,
+        default_axes: str = const.default_axes[1:],
     ) -> "ImageGrayScale":
-        img = ImageGrayScale(read_tiff(path), path, axes, do_rescale)
+        img = ImageGrayScale(
+            read_tiff(path, default_axes=default_axes), path, axes, do_rescale
+        )
         return img
 
     def get_deconvolution_rescaling_factor(self) -> float:
@@ -535,7 +545,7 @@ class ImageGrayScale(Image):
         return get_deconvolution_rescaling_factor(self._path_to_local)
 
     def threshold_global(self, thr: Union[int, float]) -> ImageBinary:
-        return ImageBinary(self.pixels > thr, doRebinarize=False)
+        return ImageBinary(self.pixels > thr, doRebinarize=False, axes=self.axes)
 
     def threshold_adaptive(
         self, block_size: int, method: str, mode: str, *args, **kwargs
@@ -543,6 +553,7 @@ class ImageGrayScale(Image):
         return ImageBinary(
             threshold_adaptive(self.pixels, block_size, method, mode, *args, **kwargs),
             doRebinarize=False,
+            axes=self.axes,
         )
 
     def update_ground(
@@ -608,29 +619,38 @@ def get_dtype(imax: Union[int, float]) -> str:
     return "uint"
 
 
-def get_bundle_axes_from_metadata(t: tf.TiffFile) -> str:
-    bundle_axes = "TCZYX"
+def get_bundle_axes_from_metadata(
+    t: tf.TiffFile, default_axes: str = const.default_axes[1:]
+) -> str:
+    bundle_axes = default_axes
     metadata_field_list = [x for x in dir(t) if "metadata" in x]
     for metadata_field in metadata_field_list:
         metadata = getattr(t, metadata_field)
         if metadata is not None:
             if "axes" in metadata[0]:
-                bundle_axes = metadata[0]["axes"]
-                logging.debug(f"read axes field from {metadata_field}: {bundle_axes}")
-                break
-    return bundle_axes
+                logging.debug(
+                    f"read axes field from {metadata_field}: {metadata[0]['axes']}"
+                )
+                return metadata[0]["axes"]
+    return bundle_axes[-len(t.asarray().shape) :]
 
 
-def read_tiff(path: str, expected_axes: Optional[str] = "ZYX") -> np.ndarray:
+def read_tiff(
+    path: str,
+    expected_axes: Optional[str] = "ZYX",
+    default_axes: str = const.default_axes[1:],
+) -> np.ndarray:
     assert os.path.isfile(path), f"file not found: '{path}'"
     try:
         t = tf.TiffFile(path)
-        bundle_axes = get_bundle_axes_from_metadata(t)
+        bundle_axes = get_bundle_axes_from_metadata(t, default_axes)
         img = t.asarray()
     except (ValueError, TypeError) as e:
         logging.critical(f"cannot read image '{path}', file seems corrupted.\n{e}")
         raise
-    img, _ = remove_unexpected_axes(img, bundle_axes[-len(img.shape) :], expected_axes)
+    img, bundle_axes = enforce_default_axis_bundle(
+        img, bundle_axes, const.default_axes[1:]
+    )
     return img
 
 
@@ -656,7 +676,7 @@ def get_sampleformat_tag(dtype):
 
 
 def add_missing_axes(
-    img: np.ndarray, bundle_axes: str, expected_axes: str = "TZCYX"
+    img: np.ndarray, bundle_axes: str, expected_axes: str = const.default_axes[1:]
 ) -> Tuple[np.ndarray, str]:
     new_shape = []
     for a in expected_axes:
@@ -673,7 +693,11 @@ def remove_unexpected_axes(
     bundle_axes: str,
     expected_axes: Optional[str] = None,
 ) -> Tuple[np.ndarray, str]:
-    if expected_axes is None or expected_axes == bundle_axes:
+    if (
+        expected_axes is None
+        or expected_axes == bundle_axes
+        or all([c in expected_axes for c in bundle_axes])
+    ):
         return (img, bundle_axes)
     bundle_axes_list = list(bundle_axes.upper())
     slicing: List[Union[slice, int]] = []
@@ -692,7 +716,7 @@ def remove_unexpected_axes(
 
 
 def reorder_axes(
-    img: np.ndarray, bundle_axes: str, expected_axes: str = "TZCYX"
+    img: np.ndarray, bundle_axes: str, expected_axes: str = const.default_axes[1:]
 ) -> Tuple[np.ndarray, str]:
     if bundle_axes != expected_axes:
         bundle_axes_list = list(bundle_axes.upper())
@@ -709,7 +733,7 @@ def reorder_axes(
 
 
 def enforce_default_axis_bundle(
-    img: np.ndarray, bundle_axes: str, expected_axes: str = "TZCYX"
+    img: np.ndarray, bundle_axes: str, expected_axes: str = const.default_axes[1:]
 ) -> Tuple[np.ndarray, str]:
     img, bundle_axes = remove_unexpected_axes(img, bundle_axes, expected_axes)
     img, bundle_axes = add_missing_axes(img, bundle_axes, expected_axes)
@@ -733,7 +757,9 @@ def save_tiff(
     ), f"shape mismatch between bundled axes ({bundle_axes}) and image ({img.shape})."
 
     if forceTZCYX:
-        img, bundle_axes = enforce_default_axis_bundle(img, bundle_axes, "TZCYX")
+        img, bundle_axes = enforce_default_axis_bundle(
+            img, bundle_axes, const.default_axes[1:]
+        )
 
     metadata: Dict[str, Any] = dict(axes=bundle_axes)
     if inMicrons:
@@ -748,16 +774,16 @@ def save_tiff(
         compress=compressionLevel,
         imagej=forImageJ,
         metadata=metadata,
-        software=f"radiant v{__version__}",
+        software=f"radiant v{const.__version__}",
         extratags=[(339, "i", 1, get_sampleformat_tag(img.dtype), False)],
         **kwargs,
     )
 
 
-def z_project(img: np.ndarray, projection_type: ProjectionType) -> np.ndarray:
-    if projection_type == ProjectionType.SUM:
+def z_project(img: np.ndarray, projection_type: const.ProjectionType) -> np.ndarray:
+    if projection_type == const.ProjectionType.SUM:
         img = img.sum(0).astype(img.dtype)
-    elif projection_type == ProjectionType.MAX:
+    elif projection_type == const.ProjectionType.MAX:
         img = img.max(0).astype(img.dtype)
     return img
 
