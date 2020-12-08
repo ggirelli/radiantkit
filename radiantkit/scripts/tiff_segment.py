@@ -316,7 +316,6 @@ def segment(
 
     img = channel.ImageGrayScale.from_tiff(
         os.path.join(imgdir, imgpath),
-        args.default_axes,
         do_rescale=args.do_rescaling,
         default_axes=args.default_axes,
     )
