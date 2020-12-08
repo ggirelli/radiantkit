@@ -277,6 +277,7 @@ def remove_labels_from_series_mask(
         else:
             L = series.mask.pixels
         L[np.logical_not(np.isin(L, labels))] = 0
+        logging.info((L.pixels != 0).sum())
         M = ImageBinary(L)
         M.to_tiff(path.add_suffix(series.mask.path, "selected"), compressed)
 
