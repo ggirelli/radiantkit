@@ -79,7 +79,6 @@ class Image(ImageBase):
                     len(self._ALLOWED_AXES) - len(pixels.shape), len(self._ALLOWED_AXES)
                 )
             ]
-        logging.info(self.axes)
         self._pixels = pixels.copy()
         self._remove_empty_axes()
         self._shape = self._pixels.shape
