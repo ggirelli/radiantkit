@@ -627,7 +627,7 @@ def get_bundle_axes_from_metadata(
                     f"read axes field from {metadata_field}: {metadata[0]['axes']}"
                 )
                 return metadata[0]["axes"]
-    return bundle_axes[-t.asarray().shape:]
+    return bundle_axes[-len(t.asarray().shape):]
 
 
 def read_tiff(
