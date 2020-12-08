@@ -67,6 +67,7 @@ class Image(ImageBase):
         self, pixels: np.ndarray, path: Optional[str] = None, axes: Optional[str] = None
     ):
         super(ImageBase, self).__init__()
+        logging.info((pixels.shape, path, axes))
         assert len(pixels.shape) <= len(self._ALLOWED_AXES)
         self._pixels = pixels.copy()
         self._remove_empty_axes()
