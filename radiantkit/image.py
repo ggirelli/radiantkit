@@ -73,15 +73,13 @@ class Image(ImageBase):
             assert all([c in self._ALLOWED_AXES for c in axes])
             assert all([1 == axes.count(c) for c in set(axes)])
             self._axes_order = axes
-            logging.info(1)
         else:
             self._axes_order = self._ALLOWED_AXES[
                 slice(
                     len(self._ALLOWED_AXES) - len(pixels.shape), len(self._ALLOWED_AXES)
                 )
             ]
-            logging.info(2)
-        logging.info(self._axes_order)
+        logging.info(self.axes)
         self._pixels = pixels.copy()
         self._remove_empty_axes()
         self._shape = self._pixels.shape
@@ -548,7 +546,7 @@ class ImageGrayScale(Image):
         return get_deconvolution_rescaling_factor(self._path_to_local)
 
     def threshold_global(self, thr: Union[int, float]) -> ImageBinary:
-        return ImageBinary(self.pixels > thr, doRebinarize=False)
+        return ImageBinary(self.pixels > thr, doRebinarize=False, axes=self.axes)
 
     def threshold_adaptive(
         self, block_size: int, method: str, mode: str, *args, **kwargs
@@ -556,6 +554,7 @@ class ImageGrayScale(Image):
         return ImageBinary(
             threshold_adaptive(self.pixels, block_size, method, mode, *args, **kwargs),
             doRebinarize=False,
+            axes=self.axes,
         )
 
     def update_ground(
