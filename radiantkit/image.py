@@ -618,14 +618,16 @@ def get_bundle_axes_from_metadata(
     t: tf.TiffFile, default_axes: str = const.default_axes
 ) -> str:
     bundle_axes = default_axes
+    logging.info(bundle_axes)
     metadata_field_list = [x for x in dir(t) if "metadata" in x]
     for metadata_field in metadata_field_list:
         metadata = getattr(t, metadata_field)
         if metadata is not None:
             if "axes" in metadata[0]:
-                bundle_axes = metadata[0]["axes"]
-                logging.debug(f"read axes field from {metadata_field}: {bundle_axes}")
-                break
+                logging.debug(
+                    f"read axes field from {metadata_field}: {metadata[0]['axes']}"
+                )
+                return metadata[0]["axes"]
     return bundle_axes
 
 
@@ -638,11 +640,12 @@ def read_tiff(
     try:
         t = tf.TiffFile(path)
         bundle_axes = get_bundle_axes_from_metadata(t, default_axes)
+        logging.info(bundle_axes)
         img = t.asarray()
     except (ValueError, TypeError) as e:
         logging.critical(f"cannot read image '{path}', file seems corrupted.\n{e}")
         raise
-    img, _ = remove_unexpected_axes(img, bundle_axes[-len(img.shape) :], expected_axes)
+    img, bundle_axes = enforce_default_axis_bundle(img, bundle_axes, const.default_axes)
     return img
 
 
