@@ -496,6 +496,7 @@ class ImageGrayScale(Image):
         do_rescale: bool = False,
     ):
         super(ImageGrayScale, self).__init__(pixels, path, axes)
+        logging.info((self, self.axes, self.pixels.shape, do_rescale))
         if do_rescale:
             self._rescale_factor = self.get_deconvolution_rescaling_factor()
 
