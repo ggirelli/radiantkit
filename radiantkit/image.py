@@ -181,6 +181,8 @@ class Image(ImageBase):
             ]
 
     def _remove_empty_axes(self) -> None:
+        logging.info((len(self.pixels.shape), self.nd))
+        logging.debug((len(self.pixels.shape), self.nd))
         if len(self.pixels.shape) != self.nd:
             self._extract_nd()
         while 1 == self.pixels.shape[0]:
