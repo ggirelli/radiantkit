@@ -68,7 +68,7 @@ class ParticleBase(ImageBinary):
             sphere_surface = (np.pi * (6.0 * self.total_size) ** 2) ** (1 / 3.0)
             return sphere_surface / self.surface
         else:
-            return .0
+            return 0.0
 
     def axis_size(self, axes_to_measure: str) -> int:
         assert all([axis in self.axes for axis in axes_to_measure])
@@ -313,15 +313,12 @@ class ParticleFinder(object):
         for particle_label in np.unique(L.pixels):
             if 0 == particle_label:
                 continue
-
             region_of_interest = BoundingElement.from_labeled_image(L, particle_label)
-
-            B = ImageBinary(region_of_interest.apply(L), axes=L.axes)
-            B.aspect = L.aspect
-
-            particle = particleClass(B.pixels, region_of_interest, B.axes)
+            particle = particleClass(
+                region_of_interest.apply(L), region_of_interest, L.axes
+            )
+            particle.aspect = L.aspect
             particle.idx = particle_label
-
             boxed_particles.append(particle)
             return boxed_particles
         return boxed_particles
