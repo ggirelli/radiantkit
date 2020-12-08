@@ -528,7 +528,7 @@ class ImageGrayScale(Image):
         path: str,
         axes: Optional[str] = None,
         do_rescale: bool = False,
-        default_axes: str = const.default_axes,
+        default_axes: str = const.default_axes[1:],
     ) -> "ImageGrayScale":
         img = ImageGrayScale(
             read_tiff(path, default_axes=default_axes), path, axes, do_rescale
@@ -615,7 +615,7 @@ def get_dtype(imax: Union[int, float]) -> str:
 
 
 def get_bundle_axes_from_metadata(
-    t: tf.TiffFile, default_axes: str = const.default_axes
+    t: tf.TiffFile, default_axes: str = const.default_axes[1:]
 ) -> str:
     bundle_axes = default_axes
     metadata_field_list = [x for x in dir(t) if "metadata" in x]
@@ -633,7 +633,7 @@ def get_bundle_axes_from_metadata(
 def read_tiff(
     path: str,
     expected_axes: Optional[str] = "ZYX",
-    default_axes: str = const.default_axes,
+    default_axes: str = const.default_axes[1:],
 ) -> np.ndarray:
     assert os.path.isfile(path), f"file not found: '{path}'"
     try:
@@ -643,7 +643,7 @@ def read_tiff(
     except (ValueError, TypeError) as e:
         logging.critical(f"cannot read image '{path}', file seems corrupted.\n{e}")
         raise
-    img, bundle_axes = enforce_default_axis_bundle(img, bundle_axes, const.default_axes)
+    img, bundle_axes = enforce_default_axis_bundle(img, bundle_axes, const.default_axes[1:])
     return img
 
 
@@ -734,6 +734,7 @@ def enforce_default_axis_bundle(
     img, bundle_axes = add_missing_axes(img, bundle_axes, expected_axes)
     logging.info(bundle_axes)
     img, bundle_axes = reorder_axes(img, bundle_axes, expected_axes)
+    logging.info((bundle_axes, "final"))
     return (img, bundle_axes)
 
 
