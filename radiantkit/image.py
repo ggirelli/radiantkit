@@ -69,13 +69,6 @@ class Image(ImageBase):
         super(ImageBase, self).__init__()
         logging.info((pixels.shape, path, axes))
         assert len(pixels.shape) <= len(self._ALLOWED_AXES)
-        self._pixels = pixels.copy()
-        logging.info(1)
-        self._remove_empty_axes()
-        logging.info(2)
-        logging.debug("test")
-        self._shape = self._pixels.shape
-        logging.info(3)
         if axes is not None:
             assert len(axes) == len(self.shape)
             assert all([c in self._ALLOWED_AXES for c in axes])
@@ -87,6 +80,9 @@ class Image(ImageBase):
                     len(self._ALLOWED_AXES) - len(self.shape), len(self._ALLOWED_AXES)
                 )
             ]
+        self._pixels = pixels.copy()
+        self._remove_empty_axes()
+        self._shape = self._pixels.shape
         self._aspect = self._aspect[
             slice(len(self.aspect) - len(self.shape), len(self.aspect))
         ]
