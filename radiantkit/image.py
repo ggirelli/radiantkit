@@ -533,6 +533,7 @@ class ImageGrayScale(Image):
         img = ImageGrayScale(
             read_tiff(path, default_axes=default_axes), path, axes, do_rescale
         )
+        logging.info((img.shape, img.axes))
         return img
 
     def get_deconvolution_rescaling_factor(self) -> float:
@@ -646,7 +647,6 @@ def read_tiff(
     img, bundle_axes = enforce_default_axis_bundle(
         img, bundle_axes, const.default_axes[1:]
     )
-    logging.info((img.shape, bundle_axes))
     return img
 
 
