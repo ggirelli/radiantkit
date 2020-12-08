@@ -63,7 +63,6 @@ class ImageBase(object):
 class Image(ImageBase):
     _path_to_local: Optional[str] = None
     _pixels: np.ndarray
-    _shape: Tuple[int]
 
     @profile
     def __init__(
@@ -82,7 +81,6 @@ class Image(ImageBase):
             ]
         self._pixels = pixels.copy()
         self._remove_empty_axes()
-        self._shape = self._pixels.shape
         self._aspect = self._aspect[
             slice(len(self.aspect) - len(self.shape), len(self.aspect))
         ]
@@ -92,7 +90,7 @@ class Image(ImageBase):
 
     @property
     def shape(self) -> Tuple[int]:
-        return self._shape
+        return self._pixels.shape
 
     @property
     def pixels(self) -> np.ndarray:
