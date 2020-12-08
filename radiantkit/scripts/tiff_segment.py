@@ -342,6 +342,7 @@ def segment(
     size_range = stat.radius_interval_to_size(args.radius, len(L.axes))
     logging.info(f"filtering total size: {size_range}")
     L.filter_total_size(size_range)
+    logging.info((args.min_Z, img.axis_shape("Z")))
     z_size_range = (args.min_Z * img.axis_shape("Z"), np.inf)
     logging.info(f"filtering Z size: {z_size_range}")
     L.filter_size("Z", z_size_range)
