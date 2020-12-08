@@ -646,7 +646,7 @@ def read_tiff(
     img, bundle_axes = enforce_default_axis_bundle(
         img, bundle_axes, const.default_axes[1:]
     )
-    logging.info((imag.shape, bundle_axes))
+    logging.info((img.shape, bundle_axes))
     return img
 
 
