@@ -70,14 +70,14 @@ class Image(ImageBase):
         logging.info((pixels.shape, path, axes))
         assert len(pixels.shape) <= len(self._ALLOWED_AXES)
         if axes is not None:
-            assert len(axes) == len(self.shape)
+            assert len(axes) == len(pixels.shape)
             assert all([c in self._ALLOWED_AXES for c in axes])
             assert all([1 == axes.count(c) for c in set(axes)])
             self._axes_order = axes
         else:
             self._axes_order = self._ALLOWED_AXES[
                 slice(
-                    len(self._ALLOWED_AXES) - len(self.shape), len(self._ALLOWED_AXES)
+                    len(self._ALLOWED_AXES) - len(pixels.shape), len(self._ALLOWED_AXES)
                 )
             ]
         self._pixels = pixels.copy()
