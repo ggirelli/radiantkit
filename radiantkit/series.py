@@ -3,6 +3,7 @@
 @contact: gigi.ga90@gmail.com
 """
 
+import argparse
 import itertools
 from joblib import cpu_count, delayed, Parallel  # type: ignore
 import logging
@@ -16,6 +17,7 @@ from radiantkit.image import ImageBinary, ImageLabeled
 from radiantkit.path import find_re, get_image_details
 from radiantkit.path import select_by_prefix_and_suffix
 from radiantkit.particle import Nucleus, Particle, ParticleFinder
+from radiantkit.scripts import argtools
 from radiantkit import stat
 from rich.progress import track  # type: ignore
 from typing import Dict, List, Tuple
@@ -601,3 +603,53 @@ class SeriesList(object):
     def __iter__(self) -> Iterator[Series]:
         self.__current_series = 0
         return self
+
+
+def init_series_list(
+    args: argparse.Namespace,
+) -> Tuple[argparse.Namespace, SeriesList]:
+    pickled = False
+    series_list = None
+    pickle_path = os.path.join(args.input, args.pickle_name)
+    args = argtools.set_default_args_for_series_init(args)
+
+    if os.path.exists(pickle_path):
+        if not args.import_instance:
+            logging.info(f"found '{args.pickle_name}' file in input folder.")
+            logging.info("use --import-instance flag to unpickle it.")
+        if args.import_instance:
+            with open(pickle_path, "rb") as PI:
+                series_list = pickle.load(PI)
+                pickled = True
+
+    if series_list is None:
+        logging.info("parsing series folder")
+        series_list = SeriesList.from_directory(
+            args.input,
+            args.inreg,
+            args.ref_channel,
+            (args.mask_prefix, args.mask_suffix),
+            args.aspect,
+            args.labeled,
+            args.block_side,
+            args.do_rescaling,
+        )
+
+    logging.info(
+        f"parsed {len(series_list)} series with "
+        + f"{len(series_list.channel_names)} channels each"
+        + f": {series_list.channel_names}"
+    )
+
+    args = argtools.check_parallelization_and_pickling(args, pickled)
+
+    return args, series_list
+
+
+def pickle_series_list(
+    args: argparse.Namespace, series_list: SeriesList
+) -> None:
+    if args.export_instance:
+        logging.info("Pickling instance")
+        series_list.unload()
+        series_list.to_pickle(args.input, args.pickle_name)

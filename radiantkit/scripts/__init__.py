@@ -3,7 +3,7 @@
 @contact: gigi.ga90@gmail.com
 """
 
-from radiantkit.scripts import common
+from radiantkit.scripts import argtools
 from radiantkit.scripts import config
 from radiantkit.scripts import czi_to_tiff, nd2_to_tiff
 from radiantkit.scripts import select_nuclei
@@ -24,7 +24,7 @@ logging.basicConfig(
 )
 
 __all__ = [
-    "common",
+    "argtools",
     "config",
     "czi_to_tiff",
     "nd2_to_tiff",
