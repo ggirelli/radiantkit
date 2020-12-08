@@ -140,7 +140,7 @@ Input images that have the specified prefix and suffix are not segmented.""",
         action="store_const",
         dest="default_axes",
         const="TCZYX",
-        default=const.default_axes,
+        default=const.default_axes[1:],
         help="Input is TCZYX instead of TZCYX.",
     )
     advanced.add_argument(
