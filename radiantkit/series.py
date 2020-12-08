@@ -334,6 +334,7 @@ class SeriesList(object):
         if 1 == threads:
             for series in track(self):
                 series.init_particles(particleClass, channel_list)
+                break
         else:
             self.series = Parallel(n_jobs=threads, verbose=11)(
                 delayed(Series.extract_particles)(series, particleClass, channel_list)
