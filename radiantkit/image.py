@@ -186,6 +186,7 @@ class Image(ImageBase):
             self._extract_nd()
         while 1 in self.pixels.shape:
             axis_index = self.pixels.shape.index(1)
+            logging.info((axis_index, self._axes_order, self._axes_order[axis_index]))
             new_shape = list(self.pixels.shape)
             new_shape.pop(axis_index)
             self.pixels.shape = new_shape
@@ -193,6 +194,7 @@ class Image(ImageBase):
                 self._axes_order[:axis_index]
                 + self._axes_order[min(axis_index + 1, len(self._axes_order)) :]
             )
+            logging.info((self.pixels.shape, self._axes_order))
 
     def axis_shape(self, axis: str) -> Optional[int]:
         if axis not in self._axes_order:
