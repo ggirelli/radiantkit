@@ -92,7 +92,9 @@ def check_focus(args: argparse.Namespace, ipath: str) -> pd.DataFrame:
     profile_data["path"] = ipath
     profile_data["response"] = "in-focus" if response else "out-of-focus"
     if "out-of-focus" == response and args.rename:
-        os.rename(os.path.join(args.input, ipath), os.path.join(args.input, ipath))
+        os.rename(
+            os.path.join(args.input, ipath), os.path.join(args.input, f"{ipath}.old")
+        )
     return profile_data
 
 
