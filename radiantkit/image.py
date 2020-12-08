@@ -734,7 +734,7 @@ def enforce_default_axis_bundle(
     img, bundle_axes = add_missing_axes(img, bundle_axes, expected_axes)
     logging.info(bundle_axes)
     img, bundle_axes = reorder_axes(img, bundle_axes, expected_axes)
-    logging.info((bundle_axes, "final"))
+    logging.info((img.shape, bundle_axes, "final"))
     return (img, bundle_axes)
 
 
