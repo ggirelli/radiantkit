@@ -320,5 +320,4 @@ class ParticleFinder(object):
             particle.aspect = L.aspect
             particle.idx = particle_label
             boxed_particles.append(particle)
-            return boxed_particles
         return boxed_particles
