@@ -319,8 +319,9 @@ def run(args: argparse.Namespace) -> None:
     io.add_log_file_handler(os.path.join(args.input, "select_nuclei.log.txt"))
     args, series_list = ra_series.init_series_list(args)
 
-    logging.info("extracting nuclei")
+    logging.info("extracting particles")
     series_list.extract_particles(Nucleus, [args.ref_channel], args.threads)
+    logging.info("extracting nuclei")
 
     nuclei = NucleiList(list(itertools.chain(*[s.particles for s in series_list])))
     logging.info(f"extracted {len(nuclei)} nuclei.")
