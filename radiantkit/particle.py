@@ -321,20 +321,19 @@ class ParticleFinder(object):
     ) -> List[Any]:
         assert L.pixels.min() != L.pixels.max(), "monochromatic image detected."
 
-        particle_list = []
-        for current_label in np.unique(L.pixels):
-            if 0 == current_label:
+        boxed_particles = []
+        for particle_label in np.unique(L.pixels):
+            if 0 == particle_label:
                 continue
-            B = ImageBinary(L.pixels == current_label)
 
-            region_of_interest = BoundingElement.from_binary_image(B)
+            region_of_interest = BoundingElement.from_labeled_image(L, particle_label)
 
-            B = ImageBinary(region_of_interest.apply(B))
+            B = ImageBinary(region_of_interest.apply(L), axes=L.axes)
             B.aspect = L.aspect
 
             particle = particleClass(B, region_of_interest)
-            particle.label = current_label
+            particle.label = particle_label
 
-            particle_list.append(particle)
+            boxed_particles.append(particle)
 
-        return particle_list
+        return boxed_particles

@@ -979,3 +979,7 @@ def tile_to(img: np.ndarray, shape: Tuple[int, ...]) -> np.ndarray:
         if 1 != img.shape[ai]:
             new_shape[ai] = 1
     return np.tile(img, new_shape)
+
+
+def pixels_are_binary(pixels: np.ndarray) -> bool:
+    return np.prod(pixels.shape) == ((pixels == 0).sum() + (pixels == 1).sum())
