@@ -305,8 +305,8 @@ class ParticleFinder(object):
     ) -> List[Any]:
         return ParticleFinder.get_particles_from_labeled_image(B.label(), particleClass)
 
-    @profile
     @staticmethod
+    @profile
     def get_particles_from_labeled_image(
         L: ImageLabeled, particleClass: Type[Particle] = Particle
     ) -> List[Any]:
