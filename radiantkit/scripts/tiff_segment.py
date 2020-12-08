@@ -138,7 +138,7 @@ Input images that have the specified prefix and suffix are not segmented.""",
     advanced.add_argument(
         "--VTCZYX",
         action="store_const",
-        dest="axes_default",
+        dest="default_axes",
         const="VTCZYX",
         default=const.default_axes,
         help="Input is VTCZYX instead of VTZCYX.",
