@@ -728,13 +728,9 @@ def reorder_axes(
 def enforce_default_axis_bundle(
     img: np.ndarray, bundle_axes: str, expected_axes: str = const.default_axes[1:]
 ) -> Tuple[np.ndarray, str]:
-    logging.info(bundle_axes)
     img, bundle_axes = remove_unexpected_axes(img, bundle_axes, expected_axes)
-    logging.info(bundle_axes)
     img, bundle_axes = add_missing_axes(img, bundle_axes, expected_axes)
-    logging.info(bundle_axes)
     img, bundle_axes = reorder_axes(img, bundle_axes, expected_axes)
-    logging.info((img.shape, bundle_axes, "final"))
     return (img, bundle_axes)
 
 
