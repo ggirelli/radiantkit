@@ -326,6 +326,7 @@ def run(args: argparse.Namespace) -> None:
     logging.info("selecting G1 nuclei.")
     nuclei_data, details = nuclei.select_G1(args.k_sigma, args.ref_channel)
     passed = extract_passing_nuclei_per_series(nuclei_data, args.inreg)
+    logging.info(passed)
 
     series_list = remove_labels_from_series_list_masks(
         args, series_list, passed, nuclei
