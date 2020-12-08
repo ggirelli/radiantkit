@@ -24,7 +24,6 @@ from rich.prompt import Confirm  # type: ignore
 from scipy.stats import gaussian_kde  # type: ignore
 from typing import Any, DefaultDict, Dict, List, Optional, Pattern, Tuple
 
-from memory_profiler import profile  # type: ignore
 
 __OUTPUT__: Dict[str, str] = {
     "raw_data": "select_nuclei.data.tsv",
@@ -315,7 +314,6 @@ def remove_labels_from_images_list_masks(
     return images_list
 
 
-@profile
 def run(args: argparse.Namespace) -> None:
     confirm_arguments(args)
     argtools.dump_args(args, "select_nuclei.args.pkl")

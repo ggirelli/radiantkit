@@ -20,8 +20,6 @@ from skimage.measure import mesh_surface_area
 from skimage.morphology import convex_hull_image  # type: ignore
 from typing import Any, Dict, List, Optional, Tuple, Type
 
-from memory_profiler import profile  # type: ignore
-
 
 class ParticleBase(ImageBinary):
     _region_of_interest: BoundingElement
@@ -306,7 +304,6 @@ class ParticleFinder(object):
         return ParticleFinder.get_particles_from_labeled_image(B.label(), particleClass)
 
     @staticmethod
-    @profile
     def get_particles_from_labeled_image(
         L: ImageLabeled, particleClass: Type[Particle] = Particle
     ) -> List[Any]:

@@ -19,8 +19,6 @@ from skimage.segmentation import clear_border  # type: ignore
 import tifffile as tf  # type: ignore
 from typing import Any, Dict, List, Optional, Tuple, Union
 
-from memory_profiler import profile  # type: ignore
-
 
 class ImageBase(object):
     _ALLOWED_AXES: str = const.default_axes[1:]
@@ -65,7 +63,6 @@ class Image(ImageBase):
     _pixels: np.ndarray
     _shape: Tuple[int]
 
-    @profile
     def __init__(
         self, pixels: np.ndarray, path: Optional[str] = None, axes: Optional[str] = None
     ):
@@ -177,7 +174,6 @@ class Image(ImageBase):
                 slice(len(self._axes_order) - self.nd, len(self._axes_order))
             ]
 
-    @profile
     def _remove_empty_axes(self) -> None:
         if len(self.shape) != self.nd:
             self._extract_nd()
@@ -186,7 +182,7 @@ class Image(ImageBase):
             new_shape = list(self._pixels.shape)
             new_shape.pop(axis_index)
             self._pixels = self._pixels.reshape(new_shape)
-            self._shape = new_shape
+            self._shape = tuple(new_shape)
             self._axes_order = (
                 self._axes_order[:axis_index]
                 + self._axes_order[min(axis_index + 1, len(self._axes_order)) :]

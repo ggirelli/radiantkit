@@ -23,8 +23,6 @@ from rich.progress import track  # type: ignore
 from typing import Dict, List, Tuple
 from typing import Iterator, Optional, Pattern, Type
 
-from memory_profiler import profile  # type: ignore
-
 ChannelName = str
 DistanceType = str
 ChannelRadialProfileData = Dict[DistanceType, Tuple[stat.PolyFitResult, pd.DataFrame]]
@@ -75,7 +73,6 @@ class Series(ChannelList):
                     pbody.init_intensity_features(self[name][1], name)
             self.unload(name)
 
-    @profile
     def __run_particle_finder(self, particleClass: Type[Particle] = Particle) -> None:
         if isinstance(self.mask, ImageLabeled):
             self._particles = ParticleFinder.get_particles_from_labeled_image(
@@ -86,7 +83,6 @@ class Series(ChannelList):
                 self.mask, particleClass
             )
 
-    @profile
     def init_particles(
         self,
         particleClass: Type[Particle] = Particle,
@@ -328,7 +324,6 @@ class SeriesList(object):
 
         return SeriesList(os.path.basename(dpath), list(series.values()))
 
-    @profile
     def extract_particles(
         self,
         particleClass: Type[Particle],
