@@ -73,12 +73,15 @@ class Image(ImageBase):
             assert all([c in self._ALLOWED_AXES for c in axes])
             assert all([1 == axes.count(c) for c in set(axes)])
             self._axes_order = axes
+            logging.info(1)
         else:
             self._axes_order = self._ALLOWED_AXES[
                 slice(
                     len(self._ALLOWED_AXES) - len(pixels.shape), len(self._ALLOWED_AXES)
                 )
             ]
+            logging.info(2)
+        logging.info(self._axes_order)
         self._pixels = pixels.copy()
         self._remove_empty_axes()
         self._shape = self._pixels.shape
