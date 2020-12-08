@@ -250,13 +250,12 @@ def extract_passing_nuclei_per_series(
         assert image_details is not None
         passed.loc[ii, "series_id"] = image_details[0]
     passed.drop("image", 1, inplace=True)
-    passed = dict(
-        [
-            (sid, passed.loc[passed["series_id"] == sid, "label"].values.tolist())
-            for sid in set(passed["series_id"].values)
-        ]
-    )
-    return passed
+    passed_dict: DefaultDict[int, List[int]] = defaultdict(lambda: [])
+    for sid in set(passed["series_id"].values):
+        passed_dict[sid] = passed.loc[
+            passed["series_id"] == sid, "label"
+        ].values.tolist()
+    return passed_dict
 
 
 def remove_labels_from_series_mask(
