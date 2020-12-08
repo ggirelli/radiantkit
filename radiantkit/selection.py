@@ -3,6 +3,7 @@
 @contact: gigi.ga90@gmail.com
 """
 
+import logging
 import numpy as np  # type: ignore
 from radiantkit.image import Image, ImageBinary, ImageLabeled, pixels_are_binary
 from typing import Tuple
@@ -29,8 +30,11 @@ class BoundingElement(object):
         axes_bounds = []
         for axis_id in range(len(pixels.shape)):
             axes_to_sum = list(range(len(pixels.shape)))
+            logging.info(axes_to_sum)
             axes_to_sum.pop(axes_to_sum.index(axis_id))
+            logging.info(axes_to_sum)
             axis_projection = pixels.sum(axes_to_sum) != 0
+            logging.info((axis_projection.min(), axis_projection.max()))
             axes_bounds.append(
                 slice(
                     axis_projection.argmax(),
