@@ -319,7 +319,7 @@ class ParticleFinder(object):
             B = ImageBinary(region_of_interest.apply(L), axes=L.axes)
             B.aspect = L.aspect
 
-            particle = particleClass(B, region_of_interest)
+            particle = particleClass(B.pixels, region_of_interest, B.axes)
             particle.idx = particle_label
 
             boxed_particles.append(particle)
