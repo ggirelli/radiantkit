@@ -627,7 +627,7 @@ def get_bundle_axes_from_metadata(
                     f"read axes field from {metadata_field}: {metadata[0]['axes']}"
                 )
                 return metadata[0]["axes"]
-    return bundle_axes[-len(t.asarray().shape):]
+    return bundle_axes[-len(t.asarray().shape) :]
 
 
 def read_tiff(
@@ -643,7 +643,9 @@ def read_tiff(
     except (ValueError, TypeError) as e:
         logging.critical(f"cannot read image '{path}', file seems corrupted.\n{e}")
         raise
-    img, bundle_axes = enforce_default_axis_bundle(img, bundle_axes, const.default_axes[1:])
+    img, bundle_axes = enforce_default_axis_bundle(
+        img, bundle_axes, const.default_axes[1:]
+    )
     return img
 
 
