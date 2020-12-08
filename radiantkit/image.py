@@ -70,8 +70,12 @@ class Image(ImageBase):
         logging.info((pixels.shape, path, axes))
         assert len(pixels.shape) <= len(self._ALLOWED_AXES)
         self._pixels = pixels.copy()
+        logging.info(1)
         self._remove_empty_axes()
+        logging.info(2)
+        logging.debug("test")
         self._shape = self._pixels.shape
+        logging.info(3)
         if axes is not None:
             assert len(axes) == len(self.shape)
             assert all([c in self._ALLOWED_AXES for c in axes])
