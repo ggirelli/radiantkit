@@ -90,11 +90,11 @@ class Binarizer(BinarizerSettings):
     ) -> ImageBinary:
         if M2 is not None:
             logging.info("combining with 2D mask")
-            M.logical_and(ImageBinary(M2.pixels))
+            M.logical_and(ImageBinary(M2.pixels, axes=M2.axes))
         return M
 
     def __clear_borders(self, M: ImageBinary) -> ImageBinary:
-        L = ImageLabeled(M.pixels)
+        L = ImageLabeled(M.pixels, axes=M.axes)
 
         if self.do_clear_XY_borders:
             logging.info("clearing XY borders")
@@ -104,7 +104,7 @@ class Binarizer(BinarizerSettings):
             logging.info("clearing Z borders")
             L.clear_Z_borders()
 
-        return ImageBinary(L.pixels)
+        return ImageBinary(L.pixels, axes=L.axes)
 
     def run(
         self,
