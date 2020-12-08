@@ -413,7 +413,7 @@ class ImageBinary(Image):
         return ImageBinary(read_tiff(path), path, axes, doRebinarize)
 
     def _rebinarize(self) -> None:
-        self._pixels = self.pixels > self.pixels.min()
+        self._pixels = (self.pixels > self.pixels.min()).astype(int)
 
     def fill_holes(self) -> None:
         self._pixels = fill_holes(self.pixels)
