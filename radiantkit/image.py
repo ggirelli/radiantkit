@@ -8,9 +8,8 @@ import logging
 import numpy as np  # type: ignore
 import os
 import pandas as pd  # type: ignore
-from radiantkit.const import __version__, default_axes, ProjectionType
+from radiantkit import const, stat
 from radiantkit.deconvolution import get_deconvolution_rescaling_factor
-from radiantkit import stat
 from scipy import ndimage as ndi  # type: ignore
 import skimage as ski  # type: ignore
 from skimage.morphology import square, cube  # type: ignore
@@ -22,8 +21,8 @@ from typing import Any, Dict, List, Optional, Tuple, Union
 
 
 class ImageBase(object):
-    _ALLOWED_AXES: str = default_axes
-    _axes_order: str = default_axes
+    _ALLOWED_AXES: str = const.default_axes
+    _axes_order: str = const.default_axes
     _aspect: np.ndarray = np.ones(6)
 
     def __init__(self):
@@ -191,20 +190,22 @@ class Image(ImageBase):
         return self.shape[self._axes_order.index(axis)]
 
     def flatten(
-        self, axes_to_keep: str, projection_type: ProjectionType = ProjectionType.SUM
+        self,
+        axes_to_keep: str,
+        projection_type: const.ProjectionType = const.ProjectionType.SUM,
     ) -> "Image":
         axes_to_flatten = tuple(
             [ai for ai in range(len(self.axes)) if self.axes[ai] not in axes_to_keep]
         )
-        if projection_type is ProjectionType.SUM:
+        if projection_type is const.ProjectionType.SUM:
             pixels = self.pixels.sum(axes_to_flatten, keepdims=True)
-        elif projection_type is ProjectionType.MAX:
+        elif projection_type is const.ProjectionType.MAX:
             pixels = self.pixels.max(axes_to_flatten, keepdims=True)
         else:
             raise ValueError
         return self.from_this(pixels)
 
-    def z_project(self, projection_type: ProjectionType) -> np.ndarray:
+    def z_project(self, projection_type: const.ProjectionType) -> np.ndarray:
         return z_project(self.pixels, projection_type)
 
     def tile_to(self, shape: Tuple[int, ...]) -> "Image":
@@ -524,9 +525,14 @@ class ImageGrayScale(Image):
 
     @staticmethod
     def from_tiff(
-        path: str, axes: Optional[str] = None, do_rescale: bool = False
+        path: str,
+        axes: Optional[str] = None,
+        do_rescale: bool = False,
+        default_axes: str = const.default_axes,
     ) -> "ImageGrayScale":
-        img = ImageGrayScale(read_tiff(path), path, axes, do_rescale)
+        img = ImageGrayScale(
+            read_tiff(path, default_axes=default_axes), path, axes, do_rescale
+        )
         return img
 
     def get_deconvolution_rescaling_factor(self) -> float:
@@ -608,8 +614,10 @@ def get_dtype(imax: Union[int, float]) -> str:
     return "uint"
 
 
-def get_bundle_axes_from_metadata(t: tf.TiffFile) -> str:
-    bundle_axes = "TCZYX"
+def get_bundle_axes_from_metadata(
+    t: tf.TiffFile, default_axes: str = const.default_axes
+) -> str:
+    bundle_axes = default_axes
     metadata_field_list = [x for x in dir(t) if "metadata" in x]
     for metadata_field in metadata_field_list:
         metadata = getattr(t, metadata_field)
@@ -621,11 +629,15 @@ def get_bundle_axes_from_metadata(t: tf.TiffFile) -> str:
     return bundle_axes
 
 
-def read_tiff(path: str, expected_axes: Optional[str] = "ZYX") -> np.ndarray:
+def read_tiff(
+    path: str,
+    expected_axes: Optional[str] = "ZYX",
+    default_axes: str = const.default_axes,
+) -> np.ndarray:
     assert os.path.isfile(path), f"file not found: '{path}'"
     try:
         t = tf.TiffFile(path)
-        bundle_axes = get_bundle_axes_from_metadata(t)
+        bundle_axes = get_bundle_axes_from_metadata(t, default_axes)
         img = t.asarray()
     except (ValueError, TypeError) as e:
         logging.critical(f"cannot read image '{path}', file seems corrupted.\n{e}")
@@ -748,16 +760,16 @@ def save_tiff(
         compress=compressionLevel,
         imagej=forImageJ,
         metadata=metadata,
-        software=f"radiant v{__version__}",
+        software=f"radiant v{const.__version__}",
         extratags=[(339, "i", 1, get_sampleformat_tag(img.dtype), False)],
         **kwargs,
     )
 
 
-def z_project(img: np.ndarray, projection_type: ProjectionType) -> np.ndarray:
-    if projection_type == ProjectionType.SUM:
+def z_project(img: np.ndarray, projection_type: const.ProjectionType) -> np.ndarray:
+    if projection_type == const.ProjectionType.SUM:
         img = img.sum(0).astype(img.dtype)
-    elif projection_type == ProjectionType.MAX:
+    elif projection_type == const.ProjectionType.MAX:
         img = img.max(0).astype(img.dtype)
     return img
 

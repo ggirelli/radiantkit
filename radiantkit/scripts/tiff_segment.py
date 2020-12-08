@@ -136,6 +136,14 @@ Input images that have the specified prefix and suffix are not segmented.""",
         in a dilate-fill-erode operation. Default: 0. Set to 0 to skip.""",
     )
     advanced.add_argument(
+        "--VTCZYX",
+        action="store_const",
+        dest="axes_default",
+        const="VTCZYX",
+        default=const.default_axes,
+        help="Input is VTCZYX instead of VTZCYX.",
+    )
+    advanced.add_argument(
         "--labeled",
         action="store_const",
         dest="labeled",
@@ -258,6 +266,7 @@ def print_settings(args: argparse.Namespace, clear: bool = True) -> str:
         Minimum radius : [{args.radius[0]:.2f}, {args.radius[1]:.2f}] vx
                Clear Z : {args.do_clear_Z}
 
+          Default axes : {args.default_axes}
                Rescale : {args.do_rescaling}
                Threads : {args.threads}
                 Regexp : {args.inreg.pattern}
@@ -306,7 +315,9 @@ def segment(
     logging.info(f"Segmenting image '{imgpath}'")
 
     img = channel.ImageGrayScale.from_tiff(
-        os.path.join(imgdir, imgpath), do_rescale=args.do_rescaling
+        os.path.join(imgdir, imgpath),
+        do_rescale=args.do_rescaling,
+        default_axes=args.default_axes,
     )
     logging.info(f"image axes: {img.axes}")
     logging.info(f"image shape: {img.shape}")
