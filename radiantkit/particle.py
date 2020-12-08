@@ -323,5 +323,5 @@ class ParticleFinder(object):
             particle.idx = particle_label
 
             boxed_particles.append(particle)
-            import sys; sys.exit()
+            return boxed_particles
         return boxed_particles
