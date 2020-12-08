@@ -67,7 +67,6 @@ class Image(ImageBase):
         self, pixels: np.ndarray, path: Optional[str] = None, axes: Optional[str] = None
     ):
         super(ImageBase, self).__init__()
-        logging.info((pixels.shape, path, axes))
         assert len(pixels.shape) <= len(self._ALLOWED_AXES)
         if axes is not None:
             assert len(axes) == len(pixels.shape)
@@ -177,12 +176,10 @@ class Image(ImageBase):
             ]
 
     def _remove_empty_axes(self) -> None:
-        logging.info((len(self.pixels.shape), self.nd))
         if len(self.pixels.shape) != self.nd:
             self._extract_nd()
         while 1 in self.pixels.shape:
             axis_index = self.pixels.shape.index(1)
-            logging.info((axis_index, self._axes_order, self._axes_order[axis_index]))
             new_shape = list(self.pixels.shape)
             new_shape.pop(axis_index)
             self._pixels = self.pixels.reshape(new_shape)
@@ -190,7 +187,6 @@ class Image(ImageBase):
                 self._axes_order[:axis_index]
                 + self._axes_order[min(axis_index + 1, len(self._axes_order)) :]
             )
-            logging.info((self.pixels.shape, self._axes_order))
 
     def axis_shape(self, axis: str) -> Optional[int]:
         if axis not in self._axes_order:
@@ -504,7 +500,6 @@ class ImageGrayScale(Image):
         do_rescale: bool = False,
     ):
         super(ImageGrayScale, self).__init__(pixels, path, axes)
-        logging.info((self, self.axes, self.pixels.shape, do_rescale))
         if do_rescale:
             self._rescale_factor = self.get_deconvolution_rescaling_factor()
 
@@ -542,7 +537,6 @@ class ImageGrayScale(Image):
         img = ImageGrayScale(
             read_tiff(path, default_axes=default_axes), path, axes, do_rescale
         )
-        logging.info((img.shape, img.axes))
         return img
 
     def get_deconvolution_rescaling_factor(self) -> float:
