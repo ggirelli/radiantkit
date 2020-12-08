@@ -136,12 +136,12 @@ Input images that have the specified prefix and suffix are not segmented.""",
         in a dilate-fill-erode operation. Default: 0. Set to 0 to skip.""",
     )
     advanced.add_argument(
-        "--VTCZYX",
+        "--TCZYX",
         action="store_const",
         dest="default_axes",
-        const="VTCZYX",
+        const="TCZYX",
         default=const.default_axes,
-        help="Input is VTCZYX instead of VTZCYX.",
+        help="Input is TCZYX instead of TZCYX.",
     )
     advanced.add_argument(
         "--labeled",

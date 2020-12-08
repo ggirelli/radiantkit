@@ -671,7 +671,7 @@ def get_sampleformat_tag(dtype):
 
 
 def add_missing_axes(
-    img: np.ndarray, bundle_axes: str, expected_axes: str = "TZCYX"
+    img: np.ndarray, bundle_axes: str, expected_axes: str = const.default_axes[1:]
 ) -> Tuple[np.ndarray, str]:
     new_shape = []
     for a in expected_axes:
@@ -707,7 +707,7 @@ def remove_unexpected_axes(
 
 
 def reorder_axes(
-    img: np.ndarray, bundle_axes: str, expected_axes: str = "TZCYX"
+    img: np.ndarray, bundle_axes: str, expected_axes: str = const.default_axes[1:]
 ) -> Tuple[np.ndarray, str]:
     if bundle_axes != expected_axes:
         bundle_axes_list = list(bundle_axes.upper())
@@ -724,7 +724,7 @@ def reorder_axes(
 
 
 def enforce_default_axis_bundle(
-    img: np.ndarray, bundle_axes: str, expected_axes: str = "TZCYX"
+    img: np.ndarray, bundle_axes: str, expected_axes: str = const.default_axes[1:]
 ) -> Tuple[np.ndarray, str]:
     img, bundle_axes = remove_unexpected_axes(img, bundle_axes, expected_axes)
     img, bundle_axes = add_missing_axes(img, bundle_axes, expected_axes)
@@ -748,7 +748,7 @@ def save_tiff(
     ), f"shape mismatch between bundled axes ({bundle_axes}) and image ({img.shape})."
 
     if forceTZCYX:
-        img, bundle_axes = enforce_default_axis_bundle(img, bundle_axes, "TZCYX")
+        img, bundle_axes = enforce_default_axis_bundle(img, bundle_axes, const.default_axes[1:])
 
     metadata: Dict[str, Any] = dict(axes=bundle_axes)
     if inMicrons:
