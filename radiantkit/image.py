@@ -182,14 +182,17 @@ class Image(ImageBase):
 
     def _remove_empty_axes(self) -> None:
         logging.info((len(self.pixels.shape), self.nd))
-        logging.debug((len(self.pixels.shape), self.nd))
         if len(self.pixels.shape) != self.nd:
             self._extract_nd()
-        while 1 == self.pixels.shape[0]:
+        while 1 in self.pixels.shape:
+            axis_index = self.pixels.shape.index(1)
             new_shape = list(self.pixels.shape)
-            new_shape.pop(0)
+            new_shape.pop(axis_index)
             self.pixels.shape = new_shape
-            self._axes_order = self._axes_order[1:]
+            self._axes_order = (
+                self._axes_order[:axis_index]
+                + self._axes_order[min(axis_index + 1, len(self._axes_order)) :]
+            )
 
     def axis_shape(self, axis: str) -> Optional[int]:
         if axis not in self._axes_order:
