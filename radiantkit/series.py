@@ -87,6 +87,7 @@ class Series(ChannelList):
         channel_list: Optional[List[str]] = None,
         reInit: bool = False,
     ) -> None:
+        self.info(f"initializing particles in series {self.ID}")
         if 0 != len(self._particles) and not reInit:
             return
 
