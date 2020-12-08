@@ -30,7 +30,7 @@ class BoundingElement(object):
         for axis_id in range(len(pixels.shape)):
             axes_to_sum = list(range(len(pixels.shape)))
             axes_to_sum.pop(axes_to_sum.index(axis_id))
-            axis_projection = pixels.sum(axes_to_sum) != 0
+            axis_projection = pixels.sum(tuple(axes_to_sum)) != 0
             axes_bounds.append(
                 slice(
                     axis_projection.argmax(),
