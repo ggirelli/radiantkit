@@ -176,14 +176,15 @@ class Image(ImageBase):
                 slice(len(self._axes_order) - self.nd, len(self._axes_order))
             ]
 
+    @profile
     def _remove_empty_axes(self) -> None:
-        if len(self.pixels.shape) != self.nd:
+        if len(self.shape) != self.nd:
             self._extract_nd()
-        while 1 in self.pixels.shape:
-            axis_index = self.pixels.shape.index(1)
-            new_shape = list(self.pixels.shape)
+        while 1 in self._pixels.shape:
+            axis_index = self._pixels.shape.index(1)
+            new_shape = list(self._pixels.shape)
             new_shape.pop(axis_index)
-            self._pixels = self.pixels.reshape(new_shape)
+            self._pixels = self._pixels.reshape(new_shape)
             self._axes_order = (
                 self._axes_order[:axis_index]
                 + self._axes_order[min(axis_index + 1, len(self._axes_order)) :]
