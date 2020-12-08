@@ -21,8 +21,8 @@ from typing import Any, Dict, List, Optional, Tuple, Union
 
 
 class ImageBase(object):
-    _ALLOWED_AXES: str = const.default_axes
-    _axes_order: str = const.default_axes
+    _ALLOWED_AXES: str = const.default_axes[1:]
+    _axes_order: str = const.default_axes[1:]
     _aspect: np.ndarray = np.ones(6)
 
     def __init__(self):
