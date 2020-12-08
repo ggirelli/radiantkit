@@ -618,7 +618,6 @@ def get_bundle_axes_from_metadata(
     t: tf.TiffFile, default_axes: str = const.default_axes
 ) -> str:
     bundle_axes = default_axes
-    logging.info(bundle_axes)
     metadata_field_list = [x for x in dir(t) if "metadata" in x]
     for metadata_field in metadata_field_list:
         metadata = getattr(t, metadata_field)
@@ -640,7 +639,6 @@ def read_tiff(
     try:
         t = tf.TiffFile(path)
         bundle_axes = get_bundle_axes_from_metadata(t, default_axes)
-        logging.info(bundle_axes)
         img = t.asarray()
     except (ValueError, TypeError) as e:
         logging.critical(f"cannot read image '{path}', file seems corrupted.\n{e}")
@@ -688,7 +686,11 @@ def remove_unexpected_axes(
     bundle_axes: str,
     expected_axes: Optional[str] = None,
 ) -> Tuple[np.ndarray, str]:
-    if expected_axes is None or expected_axes == bundle_axes:
+    if (
+        expected_axes is None
+        or expected_axes == bundle_axes
+        or all([c in expected_axes for c in bundle_axes])
+    ):
         return (img, bundle_axes)
     bundle_axes_list = list(bundle_axes.upper())
     slicing: List[Union[slice, int]] = []
@@ -726,8 +728,11 @@ def reorder_axes(
 def enforce_default_axis_bundle(
     img: np.ndarray, bundle_axes: str, expected_axes: str = const.default_axes[1:]
 ) -> Tuple[np.ndarray, str]:
+    logging.info(bundle_axes)
     img, bundle_axes = remove_unexpected_axes(img, bundle_axes, expected_axes)
+    logging.info(bundle_axes)
     img, bundle_axes = add_missing_axes(img, bundle_axes, expected_axes)
+    logging.info(bundle_axes)
     img, bundle_axes = reorder_axes(img, bundle_axes, expected_axes)
     return (img, bundle_axes)
 
@@ -748,7 +753,9 @@ def save_tiff(
     ), f"shape mismatch between bundled axes ({bundle_axes}) and image ({img.shape})."
 
     if forceTZCYX:
-        img, bundle_axes = enforce_default_axis_bundle(img, bundle_axes, const.default_axes[1:])
+        img, bundle_axes = enforce_default_axis_bundle(
+            img, bundle_axes, const.default_axes[1:]
+        )
 
     metadata: Dict[str, Any] = dict(axes=bundle_axes)
     if inMicrons:
