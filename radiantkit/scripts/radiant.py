@@ -5,7 +5,7 @@
 @contact: gigi.ga90@gmail.com
 """
 
-import argcomplete  # type: ignore
+# import argcomplete  # type: ignore
 import argparse
 from radiantkit.const import __version__
 from radiantkit import scripts
@@ -40,7 +40,7 @@ tools for radial analysis of microscopy image.
         help="Access the help page for a sub-command with: sub-command -h",
     )
 
-    scripts.config.init_parser(subparsers)
+    # scripts.config.init_parser(subparsers)
     scripts.czi_to_tiff.init_parser(subparsers)
     scripts.nd2_to_tiff.init_parser(subparsers)
 
@@ -62,7 +62,7 @@ tools for radial analysis of microscopy image.
     scripts.pipeline.init_parser(subparsers)
     scripts.report.init_parser(subparsers)
 
-    argcomplete.autocomplete(parser)
+    # argcomplete.autocomplete(parser)
     args = parser.parse_args()
     args = args.parse(args)
     args.run(args)

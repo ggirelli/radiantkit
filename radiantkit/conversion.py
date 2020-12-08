@@ -71,7 +71,7 @@ class ND2Reader2(ND2Reader):
     @property
     def bits_per_pixel(self) -> int:
         return self.parser._raw_metadata.image_attributes[six.b("SLxImageAttributes")][
-            six.b("uiBpcSignificant")
+            six.b("uiBpcInMemory")
         ]
 
     @property
