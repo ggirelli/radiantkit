@@ -50,7 +50,7 @@ class BoundingElement(object):
         return BoundingElement._from_binary_pixels(L == key)
 
     def apply(self, img: Image) -> np.ndarray:
-        assert len(self._bounds) == len(img.shape)
+        assert len(self._bounds) == len(img.shape), (self._bounds, img.shape)
         return img.pixels[self._bounds].copy()
 
     def __repr__(self):
