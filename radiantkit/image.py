@@ -75,9 +75,7 @@ class Image(ImageBase):
             self._axes_order = axes
         else:
             self._axes_order = self._ALLOWED_AXES[
-                slice(
-                    len(self._ALLOWED_AXES) - len(pixels.shape), len(self._ALLOWED_AXES)
-                )
+                (len(self._ALLOWED_AXES) - len(pixels.shape)) : len(self._ALLOWED_AXES)
             ]
         self._pixels = pixels.copy()
         self._remove_empty_axes()
@@ -85,6 +83,7 @@ class Image(ImageBase):
         self._aspect = self._aspect[
             slice(len(self.aspect) - len(self.shape), len(self.aspect))
         ]
+        logging.info((self.axes, self.shape))
         if path is not None:
             if os.path.isfile(path):
                 self._path_to_local = path
