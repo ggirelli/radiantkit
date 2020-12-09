@@ -81,7 +81,7 @@ class ParticleBase(ImageBinary):
         pixels = offset2(self.pixels, offset)
         particle = type(self)(pixels, self.roi.offset(offset), self.axes)
         particle.aspect = self.aspect
-        return self.from_this(pixels)
+        return particle
 
     def from_this(self, pixels: np.ndarray, keepPath: bool = False) -> "ParticleBase":
         I2 = type(self)(pixels, self.roi, self.axes)
