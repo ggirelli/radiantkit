@@ -325,8 +325,6 @@ def run(args: argparse.Namespace) -> None:
     logging.info("extracting nuclei")
     nuclei = NucleiList(list(itertools.chain(*[s.particles for s in images_list])))
     logging.info(f"extracted {len(nuclei)} nuclei.")
-    logging.info(nuclei)
-    return
 
     logging.info("selecting G1 nuclei.")
     nuclei_data, details = nuclei.select_G1(args.k_sigma, args.ref_channel)
