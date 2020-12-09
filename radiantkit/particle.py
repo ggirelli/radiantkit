@@ -33,8 +33,7 @@ class ParticleBase(ImageBinary):
         roi: BoundingElement,
         axes: Optional[str] = None,
     ):
-        logging.info((pixels, roi))
-        assert pixels.shape == roi.shape
+        assert pixels.shape == roi.shape, (pixels, pixels.shape, roi, roi.shape)
         super(ParticleBase, self).__init__(pixels, None, axes)
         self._region_of_interest = roi
 
