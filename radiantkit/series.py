@@ -123,9 +123,7 @@ class Series(ChannelList):
             for nucleus in self.particles:
                 basename = f"series{self.ID:03d}_nucleus{nucleus.idx:03d}"
 
-                nucleus.to_tiff(
-                    os.path.join(path, f"mask_{basename}.tif"), compressed
-                )
+                nucleus.to_tiff(os.path.join(path, f"mask_{basename}.tif"), compressed)
 
                 if nucleus.has_distances():
                     center_dist, lamina_dist = nucleus.distances
@@ -137,9 +135,7 @@ class Series(ChannelList):
                         os.path.join(path, f"laminaDist_{basename}.tif"), compressed
                     )
 
-                ImageGrayScale(
-                    nucleus.roi.apply(self[channel_name][1])
-                ).to_tiff(
+                ImageGrayScale(nucleus.roi.apply(self[channel_name][1])).to_tiff(
                     os.path.join(path, f"{channel_name}_{basename}.tif"), compressed
                 )
             self.unload(channel_name)
@@ -646,9 +642,7 @@ def init_series_list(
     return args, series_list
 
 
-def pickle_series_list(
-    args: argparse.Namespace, series_list: SeriesList
-) -> None:
+def pickle_series_list(args: argparse.Namespace, series_list: SeriesList) -> None:
     if args.export_instance:
         logging.info("Pickling instance")
         series_list.unload()

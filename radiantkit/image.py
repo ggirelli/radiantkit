@@ -61,7 +61,7 @@ class ImageBase(object):
 class Image(ImageBase):
     _path_to_local: Optional[str] = None
     _pixels: np.ndarray
-    _shape: Tuple[int]
+    _shape: Tuple[int, ...]
 
     def __init__(
         self, pixels: np.ndarray, path: Optional[str] = None, axes: Optional[str] = None
@@ -89,7 +89,7 @@ class Image(ImageBase):
                 self._path_to_local = path
 
     @property
-    def shape(self) -> Tuple[int]:
+    def shape(self) -> Tuple[int, ...]:
         return self._shape
 
     @property
