@@ -295,7 +295,7 @@ class ImageLabeled(Image):
         super(ImageLabeled, self).__init__(pixels, path, axes)
         if doRelabel:
             self._relabel()
-        self._pixels = self.pixels.astype('uint16')
+        self._pixels = self.pixels.astype("uint16")
 
     @property
     def max(self):
