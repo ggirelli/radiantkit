@@ -565,10 +565,7 @@ class ReportSelectNuclei(report.ReportBase):
         assert "raw_data" in data
         assert "arg_data" in kwargs
         for dirpath, dirdata in data["raw_data"].items():
-            logging.info(list(kwargs["arg_data"]["args"].keys()))
-            logging.info(dirpath)
-            import sys; sys.exit()
-            ref_colname = f"isum_{kwargs['arg_data']['args']['dirpath']['ref_channel']}"
+            ref_colname = f"isum_{kwargs['arg_data']['args'][dirpath]['ref_channel']}"
             assert isinstance(dirdata, pd.DataFrame)
             fig = go.Figure()
 
