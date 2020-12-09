@@ -982,5 +982,5 @@ def tile_to(img: np.ndarray, shape: Tuple[int, ...]) -> np.ndarray:
     return np.tile(img, new_shape)
 
 
-def pixels_are_binary(pixels: np.ndarray) -> bool:
+def are_pixels_binary(pixels: np.ndarray) -> bool:
     return np.prod(pixels.shape) == ((pixels == 0).sum() + (pixels == 1).sum())

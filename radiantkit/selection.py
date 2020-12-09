@@ -4,7 +4,7 @@
 """
 
 import numpy as np  # type: ignore
-from radiantkit.image import Image, ImageBinary, ImageLabeled, pixels_are_binary
+from radiantkit.image import Image, ImageBinary, ImageLabeled, are_pixels_binary
 from typing import Tuple
 
 
@@ -25,7 +25,7 @@ class BoundingElement(object):
 
     @staticmethod
     def from_binary_pixels(pixels: np.ndarray) -> "BoundingElement":
-        assert pixels_are_binary(pixels)
+        assert are_pixels_binary(pixels)
         axes_bounds = []
         for axis_id in range(len(pixels.shape)):
             axes_to_sum = list(range(len(pixels.shape)))
@@ -41,7 +41,7 @@ class BoundingElement(object):
 
     @staticmethod
     def from_binary_image(B: ImageBinary) -> "BoundingElement":
-        assert pixels_are_binary(B.pixels)
+        assert are_pixels_binary(B.pixels)
         return BoundingElement.from_binary_pixels(B.pixels)
 
     @staticmethod
@@ -49,9 +49,12 @@ class BoundingElement(object):
         assert key in L.pixels
         return BoundingElement.from_binary_pixels(L.pixels == key)
 
+    def apply_to_pixels(self, pixels: np.ndarray) -> np.ndarray:
+        assert len(self._bounds) == len(pixels.shape), (self._bounds, pixels.shape)
+        return pixels[self._bounds].copy()
+
     def apply(self, img: Image) -> np.ndarray:
-        assert len(self._bounds) == len(img.shape), (self._bounds, img.shape)
-        return img.pixels[self._bounds].copy()
+        return self.apply_to_pixels(img.pixels)
 
     def __repr__(self):
         return f"{len(self._bounds)}D Bounding Element: {self._bounds}"

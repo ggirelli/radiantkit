@@ -313,9 +313,9 @@ class ParticleFinder(object):
         for particle_label in np.unique(L.pixels):
             if 0 == particle_label:
                 continue
-            binary_pixels = L == particle_label
+            binary_pixels = L.pixels == particle_label
             roi = BoundingElement.from_binary_pixels(binary_pixels)
-            particle = particleClass(roi.apply(binary_pixels), roi, L.axes)
+            particle = particleClass(roi.apply_to_pixels(binary_pixels), roi, L.axes)
             particle.aspect = L.aspect
             particle.idx = particle_label
             boxed_particles.append(particle)
