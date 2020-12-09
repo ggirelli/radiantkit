@@ -78,6 +78,11 @@ class ParticleBase(ImageBinary):
         )
         return self._pixels.max(axes_idxs).sum()
 
+    def from_this(self, pixels: np.ndarray, keepPath: bool = False) -> "ParticleBase":
+        I2 = type(self)(pixels, self.roi, self.axes)
+        I2.aspect = self.aspect
+        return I2
+
 
 class Particle(ParticleBase):
     _intensity: Dict[str, Dict[str, float]]
@@ -86,10 +91,10 @@ class Particle(ParticleBase):
     def __init__(
         self,
         pixels: np.ndarray,
-        region_of_interest: BoundingElement,
+        roi: BoundingElement,
         axes: Optional[str] = None,
     ):
-        super(Particle, self).__init__(pixels, region_of_interest, axes)
+        super(Particle, self).__init__(pixels, roi, axes)
         self._intensity = {}
 
     @property
@@ -140,10 +145,10 @@ class Nucleus(Particle):
     def __init__(
         self,
         pixels: np.ndarray,
-        region_of_interest: BoundingElement,
+        roi: BoundingElement,
         axes: Optional[str] = None,
     ):
-        super(Nucleus, self).__init__(pixels, region_of_interest, axes)
+        super(Nucleus, self).__init__(pixels, roi, axes)
 
     @property
     def distances(self) -> Tuple[Optional[np.ndarray], Optional[np.ndarray]]:
