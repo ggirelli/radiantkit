@@ -564,10 +564,8 @@ class ReportSelectNuclei(report.ReportBase):
         fig_data: DefaultDict[str, Dict[str, go.Figure]] = defaultdict(lambda: {})
         assert "raw_data" in data
         assert "arg_data" in kwargs
-        logging.info(kwargs['arg_data'])
-        logging.info(kwargs['arg_data']['ref_channel'])
-        ref_colname = f"isum_{kwargs['arg_data']['ref_channel']}"
         for dirpath, dirdata in data["raw_data"].items():
+            ref_colname = f"isum_{kwargs['arg_data']['args']['dirpath']['ref_channel']}"
             assert isinstance(dirdata, pd.DataFrame)
             fig = go.Figure()
 
