@@ -384,6 +384,7 @@ class ReportRadialPopulation(report.ReportBase):
         self, data: DefaultDict[str, Dict[str, pd.DataFrame]]
     ) -> report.ReportPage:
         page = report.ReportPage("plot-subpage", 1)
+        logging.info("Plotting multi-condition panel.")
         page.add_panel(
             plot.ProfileMultiCondition.html_class,
             "Multi-condition",
@@ -393,6 +394,7 @@ class ReportRadialPopulation(report.ReportBase):
                 "Select a channel-stat to update the plot below.",
             ),
         )
+        logging.info("Plotting multi-condition (normalized) panel.")
         page.add_panel(
             plot.ProfileMultiConditionNorm.html_class,
             "Multi-condition (norm)",
@@ -402,6 +404,7 @@ class ReportRadialPopulation(report.ReportBase):
                 "Select a channel-stat to update the plot below.",
             ),
         )
+        logging.info("Plotting single-condition panel.")
         page.add_panel(
             plot.ProfileSingleCondition.html_class,
             "Single condition",
