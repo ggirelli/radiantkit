@@ -587,7 +587,7 @@ class SeriesList(object):
         return len(self.series)
 
     def __getitem__(self, i: int) -> Series:
-        return self.series[i]
+        return sorted(self.series, key=lambda s: s.ID)[i]
 
     def __next__(self) -> Series:
         self.__current_series += 1
