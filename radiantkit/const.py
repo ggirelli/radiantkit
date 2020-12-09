@@ -3,7 +3,7 @@
 @contact: gigi.ga90@gmail.com
 """
 
-__version__ = "0.0.1.08Dec2020_dev3"
+__version__ = "0.0.0.20201209.1"
 
 from enum import Enum
 from typing import Dict, List, Tuple
