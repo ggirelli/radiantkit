@@ -30,12 +30,13 @@ class ParticleBase(ImageBinary):
     def __init__(
         self,
         pixels: np.ndarray,
-        region_of_interest: BoundingElement,
+        roi: BoundingElement,
         axes: Optional[str] = None,
     ):
-        assert pixels.shape == region_of_interest.shape
+        logging.info((pixels, roi))
+        assert pixels.shape == roi.shape
         super(ParticleBase, self).__init__(pixels, None, axes)
-        self._region_of_interest = region_of_interest
+        self._region_of_interest = roi
 
     @property
     def roi(self) -> BoundingElement:
