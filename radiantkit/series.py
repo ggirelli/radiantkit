@@ -152,6 +152,7 @@ class Series(ChannelList):
             rdc.center_type is CenterType.CENTER_OF_MASS
         ):
             C = self[self.reference][1]
+        logging.info((self.reference, C, self._channels))
         for particle in self._particles:
             if not particle.has_distances() or reInit:
                 particle.init_distances(rdc, C)
