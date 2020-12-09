@@ -376,7 +376,7 @@ class ReportSelectNuclei(report.ReportBase):
     ) -> go.Scatter:
         return go.Scatter(
             x=data["size"],
-            y=data["isum_dapi"],
+            y=data[ref],
             mode="markers",
             name=name,
             xaxis="x",
@@ -394,7 +394,11 @@ class ReportSelectNuclei(report.ReportBase):
         )
 
     def __add_density_contours(
-        self, fig: go.Figure, data: pd.DataFrame, fit: Dict[str, Dict[str, Any]]
+        self,
+        fig: go.Figure,
+        data: pd.DataFrame,
+        fit: Dict[str, Dict[str, Any]],
+        ref: str,
     ) -> go.Figure:
         assert "size" in data
         size_linsp = np.linspace(data["size"].min(), data["size"].max(), 200)
@@ -409,9 +413,9 @@ class ReportSelectNuclei(report.ReportBase):
                 legendgroup="Size",
             )
         )
-        assert "isum_dapi" in data
-        isum_linsp = np.linspace(data["isum_dapi"].min(), data["isum_dapi"].max(), 200)
-        isum_kde = gaussian_kde(data["isum_dapi"])
+        assert ref in data
+        isum_linsp = np.linspace(data[ref].min(), data[ref].max(), 200)
+        isum_kde = gaussian_kde(data[ref])
         fig.add_trace(
             go.Scatter(
                 name="Intensity sum",
@@ -579,7 +583,9 @@ class ReportSelectNuclei(report.ReportBase):
             )
 
             if dirpath in data["fit"]:
-                fig = self.__add_density_contours(fig, dirdata, data["fit"][dirpath])
+                fig = self.__add_density_contours(
+                    fig, dirdata, data["fit"][dirpath], ref_colname
+                )
                 fig = self.__add_fit_contours(
                     fig,
                     "Size",
@@ -593,7 +599,7 @@ class ReportSelectNuclei(report.ReportBase):
                     fig,
                     "Intensity sum",
                     np.linspace(
-                        dirdata["isum_dapi"].min(), dirdata["isum_dapi"].max(), 200
+                        dirdata[ref_colname].min(), dirdata[ref_colname].max(), 200
                     ),
                     "y",
                     data["fit"][dirpath]["isum"]["fit"],
