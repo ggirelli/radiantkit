@@ -371,7 +371,9 @@ class ReportSelectNuclei(report.ReportBase):
         self._log = {"log": (__OUTPUT__["log"], False, [])}
         self._args = {"args": (__OUTPUT__["args"], False, [])}
 
-    def __make_scatter_trace(self, data: pd.DataFrame, name: str) -> go.Scatter:
+    def __make_scatter_trace(
+        self, data: pd.DataFrame, name: str, ref: str
+    ) -> go.Scatter:
         return go.Scatter(
             x=data["size"],
             y=data["isum_dapi"],
@@ -558,16 +560,21 @@ class ReportSelectNuclei(report.ReportBase):
         fig_data: DefaultDict[str, Dict[str, go.Figure]] = defaultdict(lambda: {})
         assert "raw_data" in data
         assert "arg_data" in kwargs
+        ref_colname = f"isum_{kwargs['arg_data']['ref_channel']}"
         for dirpath, dirdata in data["raw_data"].items():
             assert isinstance(dirdata, pd.DataFrame)
             fig = go.Figure()
 
             fig.add_trace(
-                self.__make_scatter_trace(dirdata.loc[dirdata["pass"]], "Selected")
+                self.__make_scatter_trace(
+                    dirdata.loc[dirdata["pass"]], "Selected", ref_colname
+                )
             )
             fig.add_trace(
                 self.__make_scatter_trace(
-                    dirdata.loc[np.logical_not(dirdata["pass"])], "Discarded"
+                    dirdata.loc[np.logical_not(dirdata["pass"])],
+                    "Discarded",
+                    ref_colname,
                 )
             )
 
