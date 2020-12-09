@@ -4,6 +4,7 @@
 """
 
 from enum import Enum
+import logging
 import numpy as np  # type: ignore
 from radiantkit.channel import ImageGrayScale
 from radiantkit.image import Image, ImageBinary
@@ -122,6 +123,7 @@ class RadialDistanceCalculator(object):
             return img.copy()
 
     def __unflatten(self, img: Image, shape: Tuple[int, ...]) -> Image:
+        logging.info(img)
         if self._flatten_axes is not None:
             return img.tile_to(shape)
         else:
