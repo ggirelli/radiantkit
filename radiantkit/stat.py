@@ -4,8 +4,7 @@
 """
 
 from enum import Enum
-
-# from matplotlib import pyplot as plt  # type: ignore
+import logging
 import numpy as np  # type: ignore
 from numpy.polynomial.polynomial import Polynomial  # type: ignore
 import pandas as pd  # type: ignore
@@ -128,15 +127,6 @@ def gaussian_fit(xx: np.ndarray) -> Optional[np.ndarray]:
     return fitted_params
 
 
-# def plot_gaussian_fit(xx: np.ndarray, fitted_params: np.ndarray) -> None:
-#     assert 3 == len(fitted_params)
-#     df = sp.stats.gaussian_kde(xx)
-#     plt.plot(xx, df(xx), ".")
-#     x2 = np.linspace(xx.min(), xx.max(), 1000)
-#     plt.plot(x2, gaussian(x2, *fitted_params), "r")
-#     plt.show()
-
-
 def sog(
     x: float,
     k1: float,
@@ -165,22 +155,16 @@ def sog_fit(xx: np.ndarray) -> Optional[np.ndarray]:
         with warnings.catch_warnings():
             fitted_params, _ = sp.optimize.curve_fit(sog, xx, df(xx), p0=params)
             if fitted_params[1] > fitted_params[4]:
+                logging.info(fitted_params)
                 fitted_params = np.array([fitted_params[3:], fitted_params[3:]])
+                logging.error(fitted_params)
+            else:
+                logging.info(fitted_params)
     except RuntimeError:
         return None
     if all(fitted_params == params):
         return None
     return fitted_params
-
-
-# def plot_sog_fit(xx: np.ndarray, fitted_params: np.ndarray) -> None:
-#     assert 6 == len(fitted_params)
-#     df = sp.stats.gaussian_kde(xx)
-#     plt.plot(xx, df(xx), ".")
-#     x2 = np.linspace(xx.min(), xx.max(), 1000)
-#     plt.plot(x2, gaussian(x2, *fitted_params[:3]), "r")
-#     plt.plot(x2, gaussian(x2, *fitted_params[3:]), "g")
-#     plt.show()
 
 
 def fwhm(xx: np.ndarray) -> Tuple[float]:
