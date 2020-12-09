@@ -468,7 +468,7 @@ class ReportMaker(OutputDirectories):
 
     def make(self) -> None:
         self.__find_reportable()
-        with open("test.html", "w+") as OH:
+        with open("radiant.report.html", "w+") as OH:
             OH.write("<!DOCTYPE html>\n<html lang='en'>\n")
             OH.write(self.__make_head())
             OH.write(self.__make_body())
