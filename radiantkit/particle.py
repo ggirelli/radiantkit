@@ -314,12 +314,14 @@ class ParticleFinder(object):
     ) -> List[Any]:
         assert L.pixels.min() != L.pixels.max(), "monochromatic image detected."
 
-        boxed_particles = []
+        boxed_particles: List[Particle] = []
         for particle_label in np.unique(L.pixels):
             if 0 == particle_label:
                 continue
             binary_pixels = L.pixels == particle_label
             roi = BoundingElement.from_binary_pixels(binary_pixels)
+            logging.critical((roi.apply_to_pixels(binary_pixels).shape, roi.shape, roi, binary_pixels.shape))
+            import sys; sys.exit()
             particle = particleClass(roi.apply_to_pixels(binary_pixels), roi, L.axes)
             particle.aspect = L.aspect
             particle.idx = particle_label

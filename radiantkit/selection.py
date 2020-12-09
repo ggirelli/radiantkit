@@ -3,7 +3,6 @@
 @contact: gigi.ga90@gmail.com
 """
 
-import logging
 import numpy as np  # type: ignore
 from radiantkit.image import Image, ImageBinary, ImageLabeled, are_pixels_binary
 from typing import Tuple
@@ -38,10 +37,7 @@ class BoundingElement(object):
                     len(axis_projection) - axis_projection[::-1].argmax(),
                 )
             )
-        be = BoundingElement(tuple(axes_bounds))
-        logging.error((pixels.shape, be.shape, be.apply_to_pixels(pixels).shape))
-        import sys; sys.exit()
-        return be
+        return BoundingElement(tuple(axes_bounds))
 
     @staticmethod
     def from_binary_image(B: ImageBinary) -> "BoundingElement":
