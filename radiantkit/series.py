@@ -114,14 +114,14 @@ class Series(ChannelList):
         return series
 
     def keep_particles(self, label_list: List[int]) -> None:
-        self._particles = [p for p in self._particles if p.label in label_list]
+        self._particles = [p for p in self._particles if p.idx in label_list]
 
     def export_particles(self, path: str, compressed: bool) -> None:
         assert os.path.isdir(path)
 
         for channel_name in self.names:
             for nucleus in self.particles:
-                basename = f"series{self.ID:03d}_nucleus{nucleus.label:03d}"
+                basename = f"series{self.ID:03d}_nucleus{nucleus.idx:03d}"
 
                 nucleus.to_tiff(
                     os.path.join(path, f"mask_{basename}.tif"), compressed
@@ -349,7 +349,7 @@ class SeriesList(object):
                 ndata = dict(
                     root=[self.name],
                     series_id=[series.ID],
-                    nucleus_id=[nucleus.label],
+                    nucleus_id=[nucleus.idx],
                     total_size=[nucleus.total_size],
                     volume=[nucleus.volume],
                     surface=[nucleus.surface],

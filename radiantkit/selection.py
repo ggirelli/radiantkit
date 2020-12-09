@@ -24,7 +24,7 @@ class BoundingElement(object):
         return tuple([int(r.stop - r.start) for r in self.bounds])
 
     @staticmethod
-    def _from_binary_pixels(pixels: np.ndarray) -> "BoundingElement":
+    def from_binary_pixels(pixels: np.ndarray) -> "BoundingElement":
         assert pixels_are_binary(pixels)
         axes_bounds = []
         for axis_id in range(len(pixels.shape)):
@@ -42,12 +42,12 @@ class BoundingElement(object):
     @staticmethod
     def from_binary_image(B: ImageBinary) -> "BoundingElement":
         assert pixels_are_binary(B.pixels)
-        return BoundingElement._from_binary_pixels(B.pixels)
+        return BoundingElement.from_binary_pixels(B.pixels)
 
     @staticmethod
     def from_labeled_image(L: ImageLabeled, key: int) -> "BoundingElement":
         assert key in L.pixels
-        return BoundingElement._from_binary_pixels(L.pixels == key)
+        return BoundingElement.from_binary_pixels(L.pixels == key)
 
     def apply(self, img: Image) -> np.ndarray:
         assert len(self._bounds) == len(img.shape), (self._bounds, img.shape)

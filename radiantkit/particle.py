@@ -174,7 +174,7 @@ class Nucleus(Particle):
         df["lamina_dist_norm"] = df["lamina_dist"] / (
             df["lamina_dist"] + df["center_dist"]
         )
-        df["nucleus_label"] = self.label
+        df["nucleus_label"] = self.idx
 
         if ref is not None:
             ref_value = self._region_of_interest.apply(ref)[self.pixels]
@@ -247,7 +247,7 @@ class NucleiList(object):
         ndata = pd.DataFrame.from_dict(
             dict(
                 image=[n.source for n in self.nuclei],
-                label=[n.label for n in self.nuclei],
+                label=[n.idx for n in self.nuclei],
                 size=[n.total_size for n in self.nuclei],
             )
         )
@@ -313,10 +313,9 @@ class ParticleFinder(object):
         for particle_label in np.unique(L.pixels):
             if 0 == particle_label:
                 continue
-            region_of_interest = BoundingElement.from_labeled_image(L, particle_label)
-            particle = particleClass(
-                region_of_interest.apply(L), region_of_interest, L.axes
-            )
+            binary_pixels = L == particle_label
+            roi = BoundingElement.from_binary_pixels(binary_pixels)
+            particle = particleClass(roi.apply(binary_pixels), roi, L.axes)
             particle.aspect = L.aspect
             particle.idx = particle_label
             boxed_particles.append(particle)
