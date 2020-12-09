@@ -59,8 +59,11 @@ class BoundingElement(object):
     def offset(self, offset: int) -> "BoundingElement":
         offset_bounds: List[slice] = []
         for bounds in self._bounds:
-            offset_bounds.append(slice(bounds.start + offset, bounds.stop + offset))
+            offset_bounds.append(slice(bounds.start - offset, bounds.stop + 2 * offset))
         return BoundingElement(tuple(offset_bounds))
 
     def __repr__(self):
-        return f"{len(self._bounds)}D Bounding Element: {self._bounds}\nShape: {self.shape}"
+        return (
+            f"{len(self._bounds)}D Bounding Element: {self._bounds}"
+            + f"\nShape: {self.shape}"
+        )
