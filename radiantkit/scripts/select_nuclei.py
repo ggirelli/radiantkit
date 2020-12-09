@@ -433,15 +433,26 @@ class ReportSelectNuclei(report.ReportBase):
         data_images: np.ndarray,
         params: List[float],
         fit_type: stat.FitType,
+        fitted_axis: str,
     ) -> Tuple[Optional[Dict[str, np.ndarray]], Optional[Dict[str, np.ndarray]]]:
+        labels = ("x", "y") if "x" == fitted_axis else ("y", "x")
         if stat.FitType.SOG == fit_type:
             return (
-                dict(y=data_images, x=stat.gaussian(data_images, *params[:3])),
-                dict(y=data_images, x=stat.gaussian(data_images, *params[3:])),
+                {
+                    labels[1]: stat.gaussian(data_images, *params[:3]),
+                    labels[0]: data_images,
+                },
+                {
+                    labels[1]: stat.gaussian(data_images, *params[3:]),
+                    labels[0]: data_images,
+                },
             )
         elif stat.FitType.GAUSSIAN == fit_type:
             return (
-                dict(y=data_images, x=stat.gaussian(data_images, *params[:3])),
+                {
+                    labels[1]: stat.gaussian(data_images, *params[:3]),
+                    labels[0]: data_images,
+                },
                 None,
             )
         else:
@@ -488,7 +499,9 @@ class ReportSelectNuclei(report.ReportBase):
     ) -> go.Figure:
         assert data_type in ["x", "y"]
         params, fit_type = fit
-        data_g1, data_g2 = self.__get_fit_gauss_data(data_images, params, fit_type)
+        data_g1, data_g2 = self.__get_fit_gauss_data(
+            data_images, params, fit_type, data_type
+        )
         if stat.FitType.FWHM != fit_type:
             fig.add_trace(
                 go.Scatter(
