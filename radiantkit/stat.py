@@ -164,6 +164,8 @@ def sog_fit(xx: np.ndarray) -> Optional[np.ndarray]:
     try:
         with warnings.catch_warnings():
             fitted_params, _ = sp.optimize.curve_fit(sog, xx, df(xx), p0=params)
+            if fitted_params[1] > fitted_params[4]:
+                fitted_params = np.array([fitted_params[3:], fitted_params[3:]])
     except RuntimeError:
         return None
     if all(fitted_params == params):
