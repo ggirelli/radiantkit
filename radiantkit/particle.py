@@ -320,8 +320,6 @@ class ParticleFinder(object):
                 continue
             binary_pixels = L.pixels == particle_label
             roi = BoundingElement.from_binary_pixels(binary_pixels)
-            logging.critical((roi.apply_to_pixels(binary_pixels).shape, roi.shape, roi, binary_pixels.shape))
-            import sys; sys.exit()
             particle = particleClass(roi.apply_to_pixels(binary_pixels), roi, L.axes)
             particle.aspect = L.aspect
             particle.idx = particle_label
