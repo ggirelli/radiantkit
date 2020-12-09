@@ -5,7 +5,7 @@
 
 import numpy as np  # type: ignore
 from radiantkit.image import Image, ImageBinary, ImageLabeled, are_pixels_binary
-from typing import Tuple
+from typing import List, Tuple
 
 
 class BoundingElement(object):
@@ -56,5 +56,11 @@ class BoundingElement(object):
     def apply(self, img: Image) -> np.ndarray:
         return self.apply_to_pixels(img.pixels)
 
+    def offset(self, offset: int) -> "BoundingElement":
+        offset_bounds: List[slice] = []
+        for bounds in self._bounds:
+            offset_bounds.append(slice(bounds.start+offset, bounds.stop+offset))
+        return BoundingElement(tuple(offset_bounds))
+
     def __repr__(self):
-        return f"{len(self._bounds)}D Bounding Element: {self._bounds}"
+        return f"{len(self._bounds)}D Bounding Element: {self._bounds}\nShape: {self.shape}"

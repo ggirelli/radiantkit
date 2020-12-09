@@ -11,7 +11,7 @@ import os
 import pandas as pd  # type: ignore
 from radiantkit.distance import RadialDistanceCalculator
 from radiantkit.channel import ImageGrayScale
-from radiantkit.image import Image, ImageBinary, ImageLabeled
+from radiantkit.image import Image, ImageBinary, ImageLabeled, offset2
 from radiantkit.selection import BoundingElement
 from radiantkit.stat import cell_cycle_fit, range_from_fit
 from rich.progress import track  # type: ignore
@@ -33,7 +33,7 @@ class ParticleBase(ImageBinary):
         roi: BoundingElement,
         axes: Optional[str] = None,
     ):
-        assert pixels.shape == roi.shape, (pixels, pixels.shape, roi, roi.shape)
+        assert pixels.shape == roi.shape, (pixels.shape, roi)
         super(ParticleBase, self).__init__(pixels, None, axes)
         self._region_of_interest = roi
 
@@ -76,6 +76,12 @@ class ParticleBase(ImageBinary):
             [self.axes.index(a) for a in self.axes if a not in axes_to_measure]
         )
         return self._pixels.max(axes_idxs).sum()
+
+    def offset(self, offset: int) -> np.ndarray:
+        pixels = offset2(self.pixels, offset)
+        particle = type(self)(pixels, self.roi.offset(offset), self.axes)
+        particle.aspect = self.aspect
+        return self.from_this(pixels)
 
     def from_this(self, pixels: np.ndarray, keepPath: bool = False) -> "ParticleBase":
         I2 = type(self)(pixels, self.roi, self.axes)
