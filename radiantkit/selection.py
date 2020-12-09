@@ -39,7 +39,7 @@ class BoundingElement(object):
                 )
             )
         be = BoundingElement(tuple(axes_bounds))
-        logging.error((pixels.shape, be.shape))
+        logging.error((pixels.shape, be.shape, be.apply_to_pixels(pixels).shape))
         import sys; sys.exit()
         return be
 
