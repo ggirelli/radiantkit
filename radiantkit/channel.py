@@ -137,31 +137,31 @@ class ChannelList(object):
             sys.exit()
 
     def add_mask(
-        self, name: str, M: Union[ImageBinary, ImageLabeled], replace: bool = False
+        self, name: str, mask: Union[ImageBinary, ImageLabeled], replace: bool = False
     ) -> None:
         if name not in self._channels:
             logging.error(f"{name} channel unavailable. Mask not added.")
             return
         if self.mask is not None and not replace:
             logging.warning("mask is already present. Use replace=True to replace it.")
-        self.__init_or_check_shape(M.shape)
-        self.__init_or_check_aspect(M.aspect)
-        self._mask = M
+        self.__init_or_check_shape(mask.shape)
+        self.__init_or_check_aspect(mask.aspect)
+        self._mask = mask
         self._ref = name
 
     def add_mask_from_tiff(
         self, name: str, path: str, labeled: bool = False, replace: bool = False
     ) -> None:
         assert os.path.isfile(path)
-        M: Union[ImageBinary, ImageLabeled]
+        mask: Union[ImageBinary, ImageLabeled]
         if labeled:
-            M = ImageLabeled.from_tiff(path)
+            mask = ImageLabeled.from_tiff(path)
         else:
-            M = ImageBinary.from_tiff(path)
+            mask = ImageBinary.from_tiff(path)
         if self.aspect is not None:
-            M.aspect = self.aspect
-        M.unload()
-        self.add_mask(name, M, replace)
+            mask.aspect = self.aspect
+        mask.unload()
+        self.add_mask(name, mask, replace)
 
     def add_channel(
         self, name: str, img: ImageGrayScale, replace: bool = False

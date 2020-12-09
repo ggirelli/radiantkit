@@ -16,15 +16,14 @@ import pickle
 from radiantkit import const, io
 from radiantkit.image import ImageBinary, ImageLabeled
 from radiantkit.particle import NucleiList, Nucleus
-import radiantkit.scripts.common.series as ra_series
-from radiantkit.scripts.common import argtools
-from radiantkit.series import Series, SeriesList
-from radiantkit import path, report, stat, string
+from radiantkit.scripts import argtools
+from radiantkit import path, report, series, stat, string
 import re
 from rich.progress import track  # type: ignore
 from rich.prompt import Confirm  # type: ignore
 from scipy.stats import gaussian_kde  # type: ignore
 from typing import Any, DefaultDict, Dict, List, Optional, Pattern, Tuple
+
 
 __OUTPUT__: Dict[str, str] = {
     "raw_data": "select_nuclei.data.tsv",
@@ -113,7 +112,7 @@ interactive data visualization.
         dest="export_instance",
         const=True,
         default=False,
-        help="Export pickled series instance.",
+        help="Export pickled images instance.",
     )
     pickler.add_argument(
         "--import-instance",
@@ -240,95 +239,96 @@ def confirm_arguments(args: argparse.Namespace) -> None:
     assert os.path.isdir(args.input), f"image folder not found: {args.input}"
 
 
-def extract_passing_nuclei_per_series(
+def extract_passing_nuclei_per_images(
     ndata: pd.DataFrame, inreg: Pattern
 ) -> Dict[int, List[int]]:
     passed = ndata.loc[ndata["pass"], ["image", "label"]]
-    passed["series_id"] = np.nan
+    passed["images_id"] = np.nan
     for ii in passed.index:
         image_details = path.get_image_details(passed.loc[ii, "image"], inreg)
         assert image_details is not None
-        passed.loc[ii, "series_id"] = image_details[0]
+        passed.loc[ii, "images_id"] = image_details[0]
     passed.drop("image", 1, inplace=True)
-    passed = dict(
-        [
-            (sid, passed.loc[passed["series_id"] == sid, "label"].values.tolist())
-            for sid in set(passed["series_id"].values)
-        ]
-    )
-    return passed
+    passed_dict: DefaultDict[int, List[int]] = defaultdict(lambda: [])
+    for sid in set(passed["images_id"].values):
+        passed_dict[sid] = passed.loc[
+            passed["images_id"] == sid, "label"
+        ].values.tolist()
+    return passed_dict
 
 
-def remove_labels_from_series_mask(
-    series: Series, labels: List[int], labeled: bool, compressed: bool
-) -> Series:
-    if series.mask is None:
-        return series
+def remove_labels_from_images_mask(
+    images: series.Series, labels: List[int], labeled: bool, compressed: bool
+) -> series.Series:
+    if images.mask is None:
+        return images
 
-    series.mask.load_from_local()
+    images.mask.load_from_local()
 
     if labeled:
-        L = series.mask.pixels
-        L[np.logical_not(np.isin(L, labels))] = 0
-        L = ImageLabeled(L)
-        L.to_tiff(path.add_suffix(series.mask.path, "selected"), compressed)
+        labeled_pixels = images.mask.pixels
+        labeled_pixels[np.logical_not(np.isin(labeled_pixels, labels))] = 0
+        labeled_pixels = ImageLabeled(labeled_pixels)
+        labeled_pixels.to_tiff(
+            path.add_suffix(images.mask.path, "selected"), compressed
+        )
     else:
-        if isinstance(series.mask, ImageBinary):
-            L = series.mask.label().pixels
+        if isinstance(images.mask, ImageBinary):
+            labeled_pixels = images.mask.label().pixels
         else:
-            L = series.mask.pixels
-        L[np.logical_not(np.isin(L, labels))] = 0
-        M = ImageBinary(L)
-        M.to_tiff(path.add_suffix(series.mask.path, "selected"), compressed)
+            labeled_pixels = images.mask.pixels
+        labeled_pixels[np.logical_not(np.isin(labeled_pixels, labels))] = 0
+        mask = ImageBinary(labeled_pixels)
+        mask.to_tiff(path.add_suffix(images.mask.path, "selected"), compressed)
 
-    series.unload()
-    return series
+    images.unload()
+    return images
 
 
-def remove_labels_from_series_list_masks(
+def remove_labels_from_images_list_masks(
     args: argparse.Namespace,
-    series_list: SeriesList,
+    images_list: series.SeriesList,
     passed: Dict[int, List[int]],
     nuclei: NucleiList,
-) -> SeriesList:
-    series_list.unload()
+) -> series.SeriesList:
+    images_list.unload()
     if args.remove_labels:
         logging.info("removing discarded nuclei labels from masks")
         if 1 == args.threads:
-            for s in track(series_list):
-                s = remove_labels_from_series_mask(
+            for s in track(images_list):
+                s = remove_labels_from_images_mask(
                     s, passed[s.ID], args.labeled, args.compressed
                 )
         else:
-            series_list.series = Parallel(n_jobs=args.threads, verbose=11)(
-                delayed(remove_labels_from_series_mask)(
+            images_list.series = Parallel(n_jobs=args.threads, verbose=11)(
+                delayed(remove_labels_from_images_mask)(
                     s, passed[s.ID], args.labeled, args.compressed
                 )
-                for s in series_list
+                for s in images_list
             )
         n_removed = len(nuclei) - len(list(itertools.chain(*passed.values())))
         logging.info(f"removed {n_removed} nuclei labels")
-    return series_list
+    return images_list
 
 
 def run(args: argparse.Namespace) -> None:
     confirm_arguments(args)
     argtools.dump_args(args, "select_nuclei.args.pkl")
     io.add_log_file_handler(os.path.join(args.input, "select_nuclei.log.txt"))
-    args, series_list = ra_series.init_series_list(args)
+    args, images_list = series.init_series_list(args)
 
+    logging.info("extracting particles")
+    images_list.extract_particles(Nucleus, [args.ref_channel], args.threads)
     logging.info("extracting nuclei")
-    series_list.extract_particles(Nucleus, [args.ref_channel], args.threads)
-
-    nuclei = NucleiList(list(itertools.chain(*[s.particles for s in series_list])))
+    nuclei = NucleiList(list(itertools.chain(*[s.particles for s in images_list])))
     logging.info(f"extracted {len(nuclei)} nuclei.")
 
     logging.info("selecting G1 nuclei.")
     nuclei_data, details = nuclei.select_G1(args.k_sigma, args.ref_channel)
-    passed = extract_passing_nuclei_per_series(nuclei_data, args.inreg)
+    passed = extract_passing_nuclei_per_images(nuclei_data, args.inreg)
 
-    series_list = remove_labels_from_series_list_masks(
-        args, series_list, passed, nuclei
+    images_list = remove_labels_from_images_list_masks(
+        args, images_list, passed, nuclei
     )
 
     np.set_printoptions(formatter={"float_kind": "{:.2E}".format})
@@ -349,7 +349,7 @@ def run(args: argparse.Namespace) -> None:
     with open(pkl_path, "wb") as POH:
         pickle.dump(details, POH)
 
-    ra_series.pickle_series_list(args, series_list)
+    series.pickle_series_list(args, images_list)
 
 
 class ReportSelectNuclei(report.ReportBase):
@@ -365,10 +365,12 @@ class ReportSelectNuclei(report.ReportBase):
         self._log = {"log": (__OUTPUT__["log"], False, [])}
         self._args = {"args": (__OUTPUT__["args"], False, [])}
 
-    def __make_scatter_trace(self, data: pd.DataFrame, name: str) -> go.Scatter:
+    def __make_scatter_trace(
+        self, data: pd.DataFrame, name: str, ref: str
+    ) -> go.Scatter:
         return go.Scatter(
             x=data["size"],
-            y=data["isum_dapi"],
+            y=data[ref],
             mode="markers",
             name=name,
             xaxis="x",
@@ -386,7 +388,11 @@ class ReportSelectNuclei(report.ReportBase):
         )
 
     def __add_density_contours(
-        self, fig: go.Figure, data: pd.DataFrame, fit: Dict[str, Dict[str, Any]]
+        self,
+        fig: go.Figure,
+        data: pd.DataFrame,
+        fit: Dict[str, Dict[str, Any]],
+        ref: str,
     ) -> go.Figure:
         assert "size" in data
         size_linsp = np.linspace(data["size"].min(), data["size"].max(), 200)
@@ -401,9 +407,9 @@ class ReportSelectNuclei(report.ReportBase):
                 legendgroup="Size",
             )
         )
-        assert "isum_dapi" in data
-        isum_linsp = np.linspace(data["isum_dapi"].min(), data["isum_dapi"].max(), 200)
-        isum_kde = gaussian_kde(data["isum_dapi"])
+        assert ref in data
+        isum_linsp = np.linspace(data[ref].min(), data[ref].max(), 200)
+        isum_kde = gaussian_kde(data[ref])
         fig.add_trace(
             go.Scatter(
                 name="Intensity sum",
@@ -418,18 +424,29 @@ class ReportSelectNuclei(report.ReportBase):
 
     def __get_fit_gauss_data(
         self,
-        data_series: np.ndarray,
+        data_images: np.ndarray,
         params: List[float],
         fit_type: stat.FitType,
+        fitted_axis: str,
     ) -> Tuple[Optional[Dict[str, np.ndarray]], Optional[Dict[str, np.ndarray]]]:
+        labels = ("x", "y") if "x" == fitted_axis else ("y", "x")
         if stat.FitType.SOG == fit_type:
             return (
-                dict(y=data_series, x=stat.gaussian(data_series, *params[:3])),
-                dict(y=data_series, x=stat.gaussian(data_series, *params[3:])),
+                {
+                    labels[1]: stat.gaussian(data_images, *params[:3]),
+                    labels[0]: data_images,
+                },
+                {
+                    labels[1]: stat.gaussian(data_images, *params[3:]),
+                    labels[0]: data_images,
+                },
             )
         elif stat.FitType.GAUSSIAN == fit_type:
             return (
-                dict(y=data_series, x=stat.gaussian(data_series, *params[:3])),
+                {
+                    labels[1]: stat.gaussian(data_images, *params[:3]),
+                    labels[0]: data_images,
+                },
                 None,
             )
         else:
@@ -439,7 +456,7 @@ class ReportSelectNuclei(report.ReportBase):
         self,
         fig: go.Figure,
         data_type: str,
-        data_series: np.ndarray,
+        data_images: np.ndarray,
         params: List[float],
         fit_type: stat.FitType,
     ) -> go.Figure:
@@ -468,7 +485,7 @@ class ReportSelectNuclei(report.ReportBase):
         self,
         fig: go.Figure,
         name: str,
-        data_series: np.ndarray,
+        data_images: np.ndarray,
         data_type: str,
         fit: Tuple[np.ndarray, stat.FitType],
         xref: str = "x",
@@ -476,7 +493,9 @@ class ReportSelectNuclei(report.ReportBase):
     ) -> go.Figure:
         assert data_type in ["x", "y"]
         params, fit_type = fit
-        data_g1, data_g2 = self.__get_fit_gauss_data(data_series, params, fit_type)
+        data_g1, data_g2 = self.__get_fit_gauss_data(
+            data_images, params, fit_type, data_type
+        )
         if stat.FitType.FWHM != fit_type:
             fig.add_trace(
                 go.Scatter(
@@ -488,7 +507,7 @@ class ReportSelectNuclei(report.ReportBase):
                 )
             )
             fig = self.__add_gaussian_mean_line(
-                fig, data_type, data_series, params, fit_type
+                fig, data_type, data_images, params, fit_type
             )
         if stat.FitType.SOG == fit_type:
             fig.add_trace(
@@ -553,20 +572,27 @@ class ReportSelectNuclei(report.ReportBase):
         assert "raw_data" in data
         assert "arg_data" in kwargs
         for dirpath, dirdata in data["raw_data"].items():
+            ref_colname = f"isum_{kwargs['arg_data']['args'][dirpath].ref_channel}"
             assert isinstance(dirdata, pd.DataFrame)
             fig = go.Figure()
 
             fig.add_trace(
-                self.__make_scatter_trace(dirdata.loc[dirdata["pass"]], "Selected")
+                self.__make_scatter_trace(
+                    dirdata.loc[dirdata["pass"]], "Selected", ref_colname
+                )
             )
             fig.add_trace(
                 self.__make_scatter_trace(
-                    dirdata.loc[np.logical_not(dirdata["pass"])], "Discarded"
+                    dirdata.loc[np.logical_not(dirdata["pass"])],
+                    "Discarded",
+                    ref_colname,
                 )
             )
 
             if dirpath in data["fit"]:
-                fig = self.__add_density_contours(fig, dirdata, data["fit"][dirpath])
+                fig = self.__add_density_contours(
+                    fig, dirdata, data["fit"][dirpath], ref_colname
+                )
                 fig = self.__add_fit_contours(
                     fig,
                     "Size",
@@ -580,7 +606,7 @@ class ReportSelectNuclei(report.ReportBase):
                     fig,
                     "Intensity sum",
                     np.linspace(
-                        dirdata["isum_dapi"].min(), dirdata["isum_dapi"].max(), 200
+                        dirdata[ref_colname].min(), dirdata[ref_colname].max(), 200
                     ),
                     "y",
                     data["fit"][dirpath]["isum"]["fit"],

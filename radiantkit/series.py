@@ -3,6 +3,7 @@
 @contact: gigi.ga90@gmail.com
 """
 
+import argparse
 import itertools
 from joblib import cpu_count, delayed, Parallel  # type: ignore
 import logging
@@ -16,6 +17,7 @@ from radiantkit.image import ImageBinary, ImageLabeled
 from radiantkit.path import find_re, get_image_details
 from radiantkit.path import select_by_prefix_and_suffix
 from radiantkit.particle import Nucleus, Particle, ParticleFinder
+from radiantkit.scripts import argtools
 from radiantkit import stat
 from rich.progress import track  # type: ignore
 from typing import Dict, List, Tuple
@@ -59,7 +61,7 @@ class Series(ChannelList):
             self._aspect = list(self._channels.values())[0].aspect
         if self._particles is not None:
             for particle in self._particles:
-                particle.set_aspect(spacing)
+                particle.aspect(spacing)
 
     def __init_particles_intensity_features(
         self, channel_names: Optional[List[str]] = None
@@ -87,6 +89,7 @@ class Series(ChannelList):
         channel_list: Optional[List[str]] = None,
         reInit: bool = False,
     ) -> None:
+        logging.info(f"initializing particles in series {self.ID}")
         if 0 != len(self._particles) and not reInit:
             return
 
@@ -111,18 +114,16 @@ class Series(ChannelList):
         return series
 
     def keep_particles(self, label_list: List[int]) -> None:
-        self._particles = [p for p in self._particles if p.label in label_list]
+        self._particles = [p for p in self._particles if p.idx in label_list]
 
     def export_particles(self, path: str, compressed: bool) -> None:
         assert os.path.isdir(path)
 
         for channel_name in self.names:
             for nucleus in self.particles:
-                basename = f"series{self.ID:03d}_nucleus{nucleus.label:03d}"
+                basename = f"series{self.ID:03d}_nucleus{nucleus.idx:03d}"
 
-                nucleus.mask.to_tiff(
-                    os.path.join(path, f"mask_{basename}.tif"), compressed
-                )
+                nucleus.to_tiff(os.path.join(path, f"mask_{basename}.tif"), compressed)
 
                 if nucleus.has_distances():
                     center_dist, lamina_dist = nucleus.distances
@@ -134,9 +135,7 @@ class Series(ChannelList):
                         os.path.join(path, f"laminaDist_{basename}.tif"), compressed
                     )
 
-                ImageGrayScale(
-                    nucleus.region_of_interest.apply(self[channel_name][1])
-                ).to_tiff(
+                ImageGrayScale(nucleus.roi.apply(self[channel_name][1])).to_tiff(
                     os.path.join(path, f"{channel_name}_{basename}.tif"), compressed
                 )
             self.unload(channel_name)
@@ -346,11 +345,11 @@ class SeriesList(object):
                 ndata = dict(
                     root=[self.name],
                     series_id=[series.ID],
-                    nucleus_id=[nucleus.label],
+                    nucleus_id=[nucleus.idx],
                     total_size=[nucleus.total_size],
                     volume=[nucleus.volume],
                     surface=[nucleus.surface],
-                    shape=[nucleus.shape()],
+                    shape=[nucleus.shape_descriptor()],
                 )
 
                 for name in nucleus.channel_names:
@@ -588,7 +587,7 @@ class SeriesList(object):
         return len(self.series)
 
     def __getitem__(self, i: int) -> Series:
-        return self.series[i]
+        return sorted(self.series, key=lambda s: s.ID)[i]
 
     def __next__(self) -> Series:
         self.__current_series += 1
@@ -600,3 +599,51 @@ class SeriesList(object):
     def __iter__(self) -> Iterator[Series]:
         self.__current_series = 0
         return self
+
+
+def init_series_list(
+    args: argparse.Namespace,
+) -> Tuple[argparse.Namespace, SeriesList]:
+    pickled = False
+    series_list = None
+    pickle_path = os.path.join(args.input, args.pickle_name)
+    args = argtools.set_default_args_for_series_init(args)
+
+    if os.path.exists(pickle_path):
+        if not args.import_instance:
+            logging.info(f"found '{args.pickle_name}' file in input folder.")
+            logging.info("use --import-instance flag to unpickle it.")
+        if args.import_instance:
+            with open(pickle_path, "rb") as PI:
+                series_list = pickle.load(PI)
+                pickled = True
+
+    if series_list is None:
+        logging.info("parsing series folder")
+        series_list = SeriesList.from_directory(
+            args.input,
+            args.inreg,
+            args.ref_channel,
+            (args.mask_prefix, args.mask_suffix),
+            args.aspect,
+            args.labeled,
+            args.block_side,
+            args.do_rescaling,
+        )
+
+    logging.info(
+        f"parsed {len(series_list)} series with "
+        + f"{len(series_list.channel_names)} channels each"
+        + f": {series_list.channel_names}"
+    )
+
+    args = argtools.check_parallelization_and_pickling(args, pickled)
+
+    return args, series_list
+
+
+def pickle_series_list(args: argparse.Namespace, series_list: SeriesList) -> None:
+    if args.export_instance:
+        logging.info("Pickling instance")
+        series_list.unload()
+        series_list.to_pickle(args.input, args.pickle_name)

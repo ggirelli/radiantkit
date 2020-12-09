@@ -11,7 +11,7 @@ import os
 import pandas as pd  # type: ignore
 from plotly import graph_objects as go, express as px  # type: ignore
 from radiantkit import const, exception, image, io, path, report
-from radiantkit.scripts.common import argtools
+from radiantkit.scripts import argtools
 from typing import Any, DefaultDict, Dict, Optional
 
 
@@ -92,7 +92,9 @@ def check_focus(args: argparse.Namespace, ipath: str) -> pd.DataFrame:
     profile_data["path"] = ipath
     profile_data["response"] = "in-focus" if response else "out-of-focus"
     if "out-of-focus" == response and args.rename:
-        os.rename(os.path.join(args.input, ipath), os.path.join(args.input, ipath))
+        os.rename(
+            os.path.join(args.input, ipath), os.path.join(args.input, f"{ipath}.old")
+        )
     return profile_data
 
 

@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "radiantkit"
-version = "0.0.0"
+version = "0.0.1.20201209.1"
 description = "Radial Image Analysis Toolkit"
 authors = ["Gabriele Girelli <gigi.ga90@gmail.com>"]
 license = "MIT"
@@ -22,6 +22,7 @@ include = ["CHANGELOG.md", "LICENSE"]
 python = "^3.7"
 czifile = "^2019.7.2"
 joblib = ">=0.16,<0.18"
+memory-profiler = "^0.58.0 "
 nd2reader = {git = "https://github.com/ggirelli/nd2reader"}
 numpy = "^1.19.2"
 pandas = "^1.1.2"

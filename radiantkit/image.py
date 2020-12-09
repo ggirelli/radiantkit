@@ -61,7 +61,7 @@ class ImageBase(object):
 class Image(ImageBase):
     _path_to_local: Optional[str] = None
     _pixels: np.ndarray
-    _shape: Tuple[int]
+    _shape: Tuple[int, ...]
 
     def __init__(
         self, pixels: np.ndarray, path: Optional[str] = None, axes: Optional[str] = None
@@ -75,11 +75,10 @@ class Image(ImageBase):
             self._axes_order = axes
         else:
             self._axes_order = self._ALLOWED_AXES[
-                slice(
-                    len(self._ALLOWED_AXES) - len(pixels.shape), len(self._ALLOWED_AXES)
-                )
+                (len(self._ALLOWED_AXES) - len(pixels.shape)) : len(self._ALLOWED_AXES)
             ]
         self._pixels = pixels.copy()
+        self._shape = pixels.shape
         self._remove_empty_axes()
         self._shape = self._pixels.shape
         self._aspect = self._aspect[
@@ -90,7 +89,7 @@ class Image(ImageBase):
                 self._path_to_local = path
 
     @property
-    def shape(self) -> Tuple[int]:
+    def shape(self) -> Tuple[int, ...]:
         return self._shape
 
     @property
@@ -176,13 +175,14 @@ class Image(ImageBase):
             ]
 
     def _remove_empty_axes(self) -> None:
-        if len(self.pixels.shape) != self.nd:
+        if len(self.shape) != self.nd:
             self._extract_nd()
-        while 1 in self.pixels.shape:
-            axis_index = self.pixels.shape.index(1)
-            new_shape = list(self.pixels.shape)
+        while 1 in self._pixels.shape:
+            axis_index = self._pixels.shape.index(1)
+            new_shape = list(self._pixels.shape)
             new_shape.pop(axis_index)
-            self._pixels = self.pixels.reshape(new_shape)
+            self._pixels = self._pixels.reshape(new_shape)
+            self._shape = tuple(new_shape)
             self._axes_order = (
                 self._axes_order[:axis_index]
                 + self._axes_order[min(axis_index + 1, len(self._axes_order)) :]
@@ -295,6 +295,7 @@ class ImageLabeled(Image):
         super(ImageLabeled, self).__init__(pixels, path, axes)
         if doRelabel:
             self._relabel()
+        self._pixels = self._pixels.astype("uint16")
 
     @property
     def max(self):
@@ -394,6 +395,7 @@ class ImageBinary(Image):
         super(ImageBinary, self).__init__(pixels, path, axes)
         if doRebinarize:
             self._rebinarize()
+        self._pixels = self._pixels.astype(bool)
         assert 1 == self.pixels.max()
         self._foreground = self.pixels.sum()
         self._background = np.prod(self.pixels.shape) - self._foreground
@@ -413,7 +415,7 @@ class ImageBinary(Image):
         return ImageBinary(read_tiff(path), path, axes, doRebinarize)
 
     def _rebinarize(self) -> None:
-        self._pixels = self.pixels > self.pixels.min()
+        self._pixels = (self.pixels > self.pixels.min()).astype(int)
 
     def fill_holes(self) -> None:
         self._pixels = fill_holes(self.pixels)
@@ -980,3 +982,7 @@ def tile_to(img: np.ndarray, shape: Tuple[int, ...]) -> np.ndarray:
         if 1 != img.shape[ai]:
             new_shape[ai] = 1
     return np.tile(img, new_shape)
+
+
+def are_pixels_binary(pixels: np.ndarray) -> bool:
+    return np.prod(pixels.shape) == ((pixels == 0).sum() + (pixels == 1).sum())
