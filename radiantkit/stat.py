@@ -156,7 +156,7 @@ def sog_fit(xx: np.ndarray) -> Optional[np.ndarray]:
             fitted_params, _ = sp.optimize.curve_fit(sog, xx, df(xx), p0=params)
             if fitted_params[1] > fitted_params[4]:
                 logging.info(fitted_params)
-                fitted_params = np.array([fitted_params[3:], fitted_params[3:]])
+                fitted_params = np.array([*fitted_params[3:], *fitted_params[:3]])
                 logging.error(fitted_params)
             else:
                 logging.info(fitted_params)
