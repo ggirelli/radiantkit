@@ -243,10 +243,6 @@ def extract_passing_nuclei_per_images(
     ndata: pd.DataFrame, inreg: Pattern
 ) -> Dict[int, List[int]]:
     passed = ndata.loc[ndata["pass"], ["image", "label"]]
-    logging.info((ndata, passed))
-    import sys
-
-    sys.exit()
     passed["images_id"] = np.nan
     for ii in passed.index:
         image_details = path.get_image_details(passed.loc[ii, "image"], inreg)
