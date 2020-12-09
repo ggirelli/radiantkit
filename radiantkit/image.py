@@ -295,6 +295,7 @@ class ImageLabeled(Image):
         super(ImageLabeled, self).__init__(pixels, path, axes)
         if doRelabel:
             self._relabel()
+        self._pixels = self.pixels.astype('uint16')
 
     @property
     def max(self):
@@ -394,6 +395,7 @@ class ImageBinary(Image):
         super(ImageBinary, self).__init__(pixels, path, axes)
         if doRebinarize:
             self._rebinarize()
+        self._pixels = self.pixels.astype(bool)
         assert 1 == self.pixels.max()
         self._foreground = self.pixels.sum()
         self._background = np.prod(self.pixels.shape) - self._foreground
