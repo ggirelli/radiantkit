@@ -36,7 +36,6 @@ class ParticleBase(ImageBinary):
         assert pixels.shape == region_of_interest.shape
         super(ParticleBase, self).__init__(pixels, None, axes)
         self._region_of_interest = region_of_interest
-        logging.info((self.shape, self.pixels.dtype))
 
     @property
     def roi(self) -> BoundingElement:
