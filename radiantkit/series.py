@@ -172,23 +172,21 @@ class Series(ChannelList):
         assert channel_name in self.names
         assert all([p.has_distances for p in self._particles])
 
+        particle_details: List[pd.DataFrame] = []
         if self.reference is not None and self.reference != channel_name:
-            df = pd.concat(
-                [
-                    p.get_intensity_at_distance(
-                        self[channel_name][1], self[self.reference][1]
-                    )
-                    for p in self._particles
-                ]
-            )
+            for p in self._particles:
+                tabulated_details = p.get_intensity_at_distance(
+                    self[channel_name][1], self[self.reference][1]
+                )
+                logging.info((type(particle_details)))
+                particle_details.append(tabulated_details)
             self.unload(self.reference)
         else:
-            df = pd.concat(
-                [
-                    p.get_intensity_at_distance(self[channel_name][1])
-                    for p in self._particles
-                ]
-            )
+            for p in self._particles:
+                tabulated_details = p.get_intensity_at_distance(self[channel_name][1])
+                logging.info((type(particle_details)))
+                particle_details.append(tabulated_details)
+        df = pd.concat(particle_details)
         self.unload(channel_name)
 
         df["reference"] = self.reference
