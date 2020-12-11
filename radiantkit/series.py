@@ -45,7 +45,7 @@ class Series(ChannelList):
     def particles(self) -> List[Nucleus]:
         if 0 == len(self._particles):
             logging.warning(
-                "particle attribute accessible " + "after running extract_particles."
+                "particle attribute accessible after running '.extract_particles()'."
             )
         return self._particles
 
@@ -74,6 +74,9 @@ class Series(ChannelList):
             self.unload(name)
 
     def __run_particle_finder(self, particleClass: Type[Particle] = Particle) -> None:
+        if self.mask is None or 0 == self.mask.pixels.max():
+            self._particles = []
+            return
         if isinstance(self.mask, ImageLabeled):
             self._particles = ParticleFinder.get_particles_from_labeled_image(
                 self.mask, particleClass
@@ -166,26 +169,24 @@ class Series(ChannelList):
         return series.init_particles_distances(rdc, reInit)
 
     def get_particles_intensity_at_distance(self, channel_name: str) -> pd.DataFrame:
+        if 0 == len(self._particles):
+            return pd.DataFrame()
         assert channel_name in self.names
         assert all([p.has_distances for p in self._particles])
 
+        particle_details: List[pd.DataFrame] = []
         if self.reference is not None and self.reference != channel_name:
-            df = pd.concat(
-                [
-                    p.get_intensity_at_distance(
-                        self[channel_name][1], self[self.reference][1]
-                    )
-                    for p in self._particles
-                ]
-            )
+            for p in self._particles:
+                tabulated_details = p.get_intensity_at_distance(
+                    self[channel_name][1], self[self.reference][1]
+                )
+                particle_details.append(tabulated_details)
             self.unload(self.reference)
         else:
-            df = pd.concat(
-                [
-                    p.get_intensity_at_distance(self[channel_name][1])
-                    for p in self._particles
-                ]
-            )
+            for p in self._particles:
+                tabulated_details = p.get_intensity_at_distance(self[channel_name][1])
+                particle_details.append(tabulated_details)
+        df = pd.concat(particle_details)
         self.unload(channel_name)
 
         df["reference"] = self.reference

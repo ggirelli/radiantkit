@@ -396,7 +396,6 @@ class ImageBinary(Image):
         if doRebinarize:
             self._rebinarize()
         self._pixels = self._pixels.astype(bool)
-        assert 1 == self.pixels.max()
         self._foreground = self.pixels.sum()
         self._background = np.prod(self.pixels.shape) - self._foreground
 
