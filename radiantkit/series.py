@@ -169,6 +169,8 @@ class Series(ChannelList):
         return series.init_particles_distances(rdc, reInit)
 
     def get_particles_intensity_at_distance(self, channel_name: str) -> pd.DataFrame:
+        if 0 == len(self._particles):
+            return pd.DataFrame()
         assert channel_name in self.names
         assert all([p.has_distances for p in self._particles])
 
