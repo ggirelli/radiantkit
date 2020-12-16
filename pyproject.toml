@@ -30,7 +30,7 @@ pims = "^0.5"
 plotly = "^4.13.0"
 pytest = "^6.1.2"
 rich = "^9.0"
-scikit-image = "^0.17.2"
+scikit-image = ">=0.17.2,<0.19.0"
 scipy = "^1.5.2"
 tifffile = "^2020.9.29"
 
