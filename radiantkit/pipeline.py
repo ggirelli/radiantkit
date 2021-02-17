@@ -36,7 +36,8 @@
 #     ) -> None:
 #         assert os.path.isdir(root)
 #         if shell_type is not None:
-#             assert any([shell_type == x.value for x in ShellType.__members__.values()])
+#             assert any([shell_type == x.value
+#                         for x in ShellType.__members__.values()])
 #         if conda_env is not None:
 #             assert re.search(r"[a-zA-Z0-9_]+", conda_env) is not None
 

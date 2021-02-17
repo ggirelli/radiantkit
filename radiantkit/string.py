@@ -19,9 +19,11 @@ class MultiRange(object):
     def __init__(self, s: str):
         super(MultiRange, self).__init__()
 
-        assert self.__reg.search(s) is not None, (
-            "cannot parse range string. It should only contains numbers, "
-            + "commas, dashes, and spaces."
+        assert self.__reg.search(s) is not None, " ".join(
+            [
+                "cannot parse range string. It should only contains numbers,",
+                "commas, dashes, and spaces.",
+            ]
         )
         self.__string_range = s
 
