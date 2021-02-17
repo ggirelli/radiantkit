@@ -11,16 +11,17 @@ from logging import Logger, getLogger
 from nd2reader import ND2Reader  # type: ignore
 from nd2reader.parser import Parser as ND2Parser  # type: ignore
 import numpy as np  # type: ignore
+from radiantkit import stat
 from radiantkit.string import TIFFNameTemplate as TNTemplate
 import six
-from typing import DefaultDict, Iterable, List, Optional, Set, Tuple
+from typing import DefaultDict, Iterable, List, Optional, Tuple
 import warnings
 import xml.etree.ElementTree as ET
 
 
 class ND2Reader2(ND2Reader):
     _xy_resolution: float
-    _z_resolution: Set[float]
+    _z_resolution: DefaultDict[float, int]
     _dtype: str
 
     def __init__(self, filename):
@@ -39,13 +40,13 @@ class ND2Reader2(ND2Reader):
 
         logger.info(f"Channels: {list(self.get_channel_names())}.")
 
-        if self.is3D:
+        if self.is3D():
             logger.info(
                 f"XYZ size: {self.sizes['x']} x "
                 + f"{self.sizes['y']} x {self.sizes['z']}"
             )
             logger.info(f"XY resolution: {self.xy_resolution:.3f} um")
-            logger.info(f"Delta Z value(s): {self._z_resolution} um")
+            logger.info(f"Delta Z value(s): {list(self._z_resolution.keys())} um")
         else:
             logger.info(f"XY size: {self.sizes['x']} x {self.sizes['y']}")
             logger.info(f"XY resolution: {self.xy_resolution} um")
@@ -59,8 +60,12 @@ class ND2Reader2(ND2Reader):
         return self._xy_resolution
 
     @property
-    def z_resolution(self) -> Set[float]:
-        return self._z_resolution
+    def z_resolution(self) -> List[Tuple[float, int]]:
+        return list(self._z_resolution.items())
+
+    @property
+    def z_resolution_mode(self) -> float:
+        return stat.get_hist_mode(list(self._z_resolution.items()))
 
     @property
     def pixel_type_tag(self) -> int:
@@ -84,11 +89,10 @@ class ND2Reader2(ND2Reader):
             logging.warning("XY resolution set to 0! (possibly incorrect obj. setup)")
 
     def _set_z_resolution(self):
-        self._z_resolution: Set[float] = set()
+        self._z_resolution: DefaultDict[float, int] = defaultdict(lambda: 0)
         for field_id in range(self.field_count()):
-            self._z_resolution = self._z_resolution.union(
-                self.get_field_resolutionZ(field_id)
-            )
+            for delta_z in self.get_field_resolutionZ(field_id):
+                self._z_resolution[delta_z] += 1
 
     def _set_proposed_dtype(self) -> None:
         dtype_tag: DefaultDict = defaultdict(lambda: "float")
@@ -121,7 +125,7 @@ class ND2Reader2(ND2Reader):
     def is3D(self) -> bool:
         return "z" in self.axes
 
-    def hasMultiChannels(self) -> bool:
+    def has_multi_channels(self) -> bool:
         if "c" in self.axes:
             return 1 < self.channel_count()
         return False
@@ -140,18 +144,18 @@ class ND2Reader2(ND2Reader):
 
     def set_axes_for_bundling(self):
         if self.is3D():
-            self.bundle_axes = "zyxc" if self.hasMultiChannels() else "zyx"
+            self.bundle_axes = "zyxc" if self.has_multi_channels() else "zyx"
         else:
             self.bundle_axes = "yxc" if "c" in self.axes else "yx"
 
-    def get_field_resolutionZ(self, field_id: int) -> Set[float]:
+    def get_field_resolutionZ(self, field_id: int) -> List[float]:
         with open(self.filename, "rb") as ND2H:
             parser = ND2Parser(ND2H)
             Zdata = np.array(parser._raw_metadata.z_data)
             Zlevels = np.array(parser.metadata["z_levels"]).astype("int")
             Zlevels = Zlevels + len(Zlevels) * field_id
             Zdata = Zdata[Zlevels]
-            return set(np.round(np.diff(Zdata), 3))
+            return np.round(np.diff(Zdata), 3).tolist()
 
     def select_channels(self, channels: List[str]) -> List[str]:
         return [
@@ -219,7 +223,7 @@ class CziFile2(CziFile):
     def is3D(self) -> bool:
         return "Z" in self.axes
 
-    def hasMultiChannels(self) -> bool:
+    def has_multi_channels(self) -> bool:
         if "C" in self.axes:
             return 1 < self.channel_count()
         return False

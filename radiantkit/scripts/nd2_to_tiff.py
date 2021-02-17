@@ -13,6 +13,7 @@ from radiantkit.conversion import ND2Reader2
 from radiantkit.exception import enable_rich_exceptions
 import radiantkit.image as imt
 from radiantkit.io import add_log_file_handler
+import radiantkit.stat as stat
 from radiantkit.string import MultiRange
 from radiantkit.string import TIFFNameTemplateFields as TNTFields
 from radiantkit.string import TIFFNameTemplate as TNTemplate
@@ -148,6 +149,32 @@ def parse_arguments(args: argparse.Namespace) -> argparse.Namespace:
     return args
 
 
+def get_resolution_Z_mode(z_steps: List[float], field_id: int) -> float:
+    z_mode = stat.get_hist_mode(stat.list_to_hist(z_steps))
+    if np.isnan(z_mode):
+        logging.error(
+            " ".join(
+                [
+                    f"Z resolution is not constant in field #{field_id+1}: {set(z_steps)}."
+                    f"Cannot automatically identify a delta Z for field #{field_id+1}.",
+                    "Skipping this field.",
+                    "Please enforce a delta Z manually using the --deltaZ option.",
+                ]
+            )
+        )
+        return np.nan
+    logging.info(
+        " ".join(
+            [
+                f"Z resolution is not constant in field #{field_id+1}:",
+                f"{set(z_steps)}.",
+                f"Using a Z resolution of {z_mode} um.",
+            ]
+        )
+    )
+    return z_mode
+
+
 def get_resolution_Z(nd2_image: ND2Reader2, field_id: int, enforce: float) -> float:
     if not nd2_image.is3D():
         return 0.0
@@ -155,11 +182,10 @@ def get_resolution_Z(nd2_image: ND2Reader2, field_id: int, enforce: float) -> fl
     if enforce is not None:
         return enforce
 
-    resolutionZ = nd2_image.get_field_resolutionZ(field_id)
-    assert 1 == len(
-        resolutionZ
-    ), f"Z resolution is not constant {resolutionZ} in field {field_id}."
-    return list(resolutionZ)[0]
+    z_steps = nd2_image.get_field_resolutionZ(field_id)
+    if 1 < len(set(z_steps)):
+        return get_resolution_Z_mode(z_steps, field_id)
+    return z_steps[0]
 
 
 def get_field(nd2_image: ND2Reader2, field_id: int, channel_id: int) -> np.ndarray:
@@ -206,7 +232,8 @@ def export_multiple_channels(
     channels = list(nd2_image.get_channel_names()) if channels is None else channels
     channels = nd2_image.select_channels(channels)
     bundle_axes = nd2_image.bundle_axes.copy()
-    bundle_axes.pop(bundle_axes.index("c"))
+    if nd2_image.has_multi_channels():
+        bundle_axes.pop(bundle_axes.index("c"))
     bundle_axes = "".join(bundle_axes).upper()
     for channel_id in range(nd2_image.channel_count()):
         channel_name = nd2_image.metadata["channels"][channel_id].lower()
@@ -236,13 +263,20 @@ def export_field(
     channels: Optional[List[str]] = None,
 ) -> None:
     z_resolution = get_resolution_Z(nd2_image, field_id, args.deltaZ)
+    if np.isnan(z_resolution):
+        return
+
     try:
         export_multiple_channels(nd2_image, field_id, args, channels, z_resolution)
     except ValueError as e:
         if "could not broadcast input array from shape" in e.args[0]:
             logging.error(
-                f"corrupted file raised {type(e).__name__}. "
-                + "At least one frame has mismatching shape."
+                " ".join(
+                    [
+                        f"corrupted file raised {type(e).__name__}.",
+                        "At least one frame has mismatching shape.",
+                    ]
+                )
             )
             logging.critical(f"{e.args[0]}")
             sys.exit()
@@ -274,7 +308,13 @@ def convert_to_tiff(args: argparse.Namespace, nd2_image: ND2Reader2) -> None:
             export_field(nd2_image, field_id - 1, args, args.channels)
 
 
-def check_argument_compatibility(
+def check_channel_selection(args: argparse.Namespace, nd2_image: ND2Reader2):
+    if args.channels is not None:
+        channels = nd2_image.select_channels(args.channels)
+        assert 0 != len(channels), "none of the specified channels was found."
+
+
+def check_arguments(
     args: argparse.Namespace, nd2_image: ND2Reader2
 ) -> argparse.Namespace:
     assert not nd2_image.isLive(), "time-course conversion images not implemented."
@@ -285,9 +325,7 @@ def check_argument_compatibility(
         + f"Got '{args.template.template}' instead."
     )
 
-    if args.channels is not None:
-        channels = nd2_image.select_channels(args.channels)
-        assert 0 != len(channels), "none of the specified channels was found."
+    check_channel_selection(args, nd2_image)
 
     assert args.template.can_export_channels(
         nd2_image.channel_count(), args.channels
@@ -307,10 +345,18 @@ def check_argument_compatibility(
 
     if args.deltaZ is not None:
         logging.info(f"Enforcing a deltaZ of {args.deltaZ:.3f} um.")
-    else:
-        assert 1 == len(
-            nd2_image.z_resolution
-        ), f"Z resolution is not constant {nd2_image.z_resolution}."
+    elif 1 < len(nd2_image.z_resolution):
+        logging.warning(
+            " ".join(
+                [
+                    "Z resolution is not constant across fields.",
+                    "It will be automagically identified, field-by-field.",
+                    "If the automatic Z resolution reported in the log is wrong,",
+                    "please enforce the correct one using the --deltaZ option.",
+                ]
+            )
+        )
+        logging.debug(f"Z steps histogram: {nd2_image.z_resolution}.")
 
     return args
 
@@ -327,7 +373,7 @@ def run(args: argparse.Namespace) -> None:
     add_log_file_handler(os.path.join(args.outdir, "nd2_to_tiff.log.txt"))
 
     nd2_image.log_details()
-    args = check_argument_compatibility(args, nd2_image)
+    args = check_arguments(args, nd2_image)
 
     logging.info(f"Output directory: '{args.outdir}'")
 
