@@ -52,8 +52,12 @@ class ReportBase(OutputDirectories):
             found_in: const.DirectoryPathList = output.search(filename)
             if not found_in and required:
                 logging.warning(
-                    f"missing required output file '{filename}' "
-                    + f"for script '{self._stub}' report."
+                    " ".join(
+                        [
+                            f"missing required output file '{filename}'",
+                            f"for script '{self._stub}' report.",
+                        ]
+                    )
                 )
                 continue
             else:

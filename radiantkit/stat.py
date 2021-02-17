@@ -3,13 +3,13 @@
 @contact: gigi.ga90@gmail.com
 """
 
+from collections import defaultdict
 from enum import Enum
-import logging
 import numpy as np  # type: ignore
 from numpy.polynomial.polynomial import Polynomial  # type: ignore
 import pandas as pd  # type: ignore
 import scipy as sp  # type: ignore
-from typing import Dict, Optional, Tuple
+from typing import DefaultDict, Dict, List, Optional, Tuple
 import warnings
 
 
@@ -378,3 +378,25 @@ def get_radial_profile_roots(
         return (roots_der1[0], roots_der2[np.argmax(roots_der2 >= roots_der1)])
 
     return (roots_der1[0], np.nan)
+
+
+def list_to_hist(input_list: List[float]) -> List[Tuple[float, int]]:
+    histogram: DefaultDict[float, int] = defaultdict(lambda: 0)
+    for element in input_list:
+        histogram[element] += 1
+    return list(histogram.items())
+
+
+def get_hist_mode(
+    hist: List[Tuple[float, int]], thr: float = 0.5, min_delta: float = 0.1
+) -> float:
+    hist = sorted(hist, key=lambda x: x[1])
+    if 1 == len(hist):
+        return hist[0][0]
+    n = sum([x[1] for x in hist])
+    f = [x[1] / n for x in hist]
+    if f[-1] < thr:
+        return np.nan
+    if f[-1] - f[-2] < min_delta:
+        return np.nan
+    return hist[-1][0]

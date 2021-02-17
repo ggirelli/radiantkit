@@ -47,14 +47,22 @@ class ImageBase(object):
         elif len(spacing) < len(self._axes_order):
             self.aspect[aspect_slice] = spacing
             logging.warning(
-                f"aspect changed to {self.aspect} "
-                + f"(used only last {len(self.aspect)} values)"
+                " ".join(
+                    [
+                        f"aspect changed to {self.aspect}",
+                        f"(used only last {len(self.aspect)} values)",
+                    ]
+                )
             )
         else:
             self.aspect = spacing[aspect_slice]
             logging.warning(
-                f"aspect changed to {self.aspect} "
-                + f"(used only last {len(self.aspect)} values)"
+                " ".join(
+                    [
+                        f"aspect changed to {self.aspect}",
+                        f"(used only last {len(self.aspect)} values)",
+                    ]
+                )
             )
 
 
