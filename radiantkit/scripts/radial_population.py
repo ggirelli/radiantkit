@@ -440,9 +440,13 @@ class ReportRadialPopulation(report.ReportBase):
         logging.info(f"reading logs and args of '{self._stub}'.")
         log_data = self._read(self._search(self._log))
         arg_data = self._read(self._search(self._args))
-        return self._make_html(
-            fig_data=None,
-            log_data=log_data,
-            arg_data=arg_data,
-            output_data=output_data,
-        )
+        try:
+            return self._make_html(
+                fig_data=None,
+                log_data=log_data,
+                arg_data=arg_data,
+                output_data=output_data,
+            )
+        except AssertionError:
+            logging.warning(f"skipped '{self._stub}'.")
+            return ""
