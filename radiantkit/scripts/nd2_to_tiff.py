@@ -155,7 +155,8 @@ def get_resolution_Z_mode(z_steps: List[float], field_id: int) -> float:
         logging.error(
             " ".join(
                 [
-                    f"Z resolution is not constant in field #{field_id+1}: {set(z_steps)}."
+                    f"Z resolution is not constant in field #{field_id+1}:",
+                    f"{set(z_steps)}."
                     f"Cannot automatically identify a delta Z for field #{field_id+1}.",
                     "Skipping this field.",
                     "Please enforce a delta Z manually using the --deltaZ option.",

@@ -30,7 +30,11 @@ For more available features, check out our [docs](https://ggirelli.github.io/rad
 
 We recommend installing `radiantkit` using [`pipx`](https://github.com/pipxproject/pipx). Check how to install `pipx` [here](https://github.com/pipxproject/pipx#install-pipx) if you don't have it yet!
 
-Once you have `pipx` ready on your system, install the latest stable release of `radiantkit` by running: `pipx install radiantkit`. If you see the stars (✨ 🌟 ✨), then the installation went well!
+Once you have `pipx` ready on your system, install the latest stable release of `radiantkit` by running:
+```
+pipx install radiantkit
+```
+If you see the stars (✨ 🌟 ✨), then the installation went well!
 
 Alternatively, you can use `pipx` (v0.15.5+) to install directly from git, with the command:
 ```

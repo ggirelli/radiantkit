@@ -60,7 +60,7 @@ class ReportBase(OutputDirectories):
                     )
                 )
                 continue
-            else:
+            elif found_in:
                 located_files[stub] = (filename, required, found_in)
         return located_files
 
@@ -221,11 +221,15 @@ class ReportBase(OutputDirectories):
         logging.info(f"reading logs and args of '{self._stub}'.")
         log_data = self._read(self._search(self._log))
         arg_data = self._read(self._search(self._args))
-        return self._make_html(
-            fig_data=self._plot(output_data, arg_data=arg_data),
-            log_data=log_data,
-            arg_data=arg_data,
-        )
+        try:
+            return self._make_html(
+                fig_data=self._plot(output_data, arg_data=arg_data),
+                log_data=log_data,
+                arg_data=arg_data,
+            )
+        except AssertionError:
+            logging.warning(f"skipped '{self._stub}'.")
+            return ""
 
 
 class ReportPage(object):
@@ -407,6 +411,16 @@ class ReportMaker(OutputDirectories):
         )
 
     def __make_body(self) -> str:
+        report_pages = dict(
+            (
+                (report, report.make().replace("\n", f"\n{' '*4*3}"))
+                for report in self.__reportable
+            )
+        )
+        for (report, page) in list(report_pages.items()):
+            if 0 == len(page):
+                report_pages.pop(report, None)
+
         body = """
         <body>
             <header>
@@ -426,7 +440,7 @@ class ReportMaker(OutputDirectories):
                 <div id='index-list' class='three columns'>""".replace(
             f"\n{' '*4*2}", "\n"
         )
-        for report in self.__reportable:
+        for report in report_pages.keys():
             body += f"""
             <a class='button u-full-width'
                 href='#' data-page='{report.stub}'>{report.title}</a>"""
@@ -434,8 +448,7 @@ class ReportMaker(OutputDirectories):
         </div>
         <!--Report results-->
         <div id='report-list' class='nine columns'>"""
-        for report in self.__reportable:
-            body += report.make().replace("\n", f"\n{' '*4*3}") + "\n"
+        body += "\n".join([page for page in report_pages.values()])
         body += f"""
                 </div>
             </div>
