@@ -88,10 +88,10 @@ def parse_arguments(args: argparse.Namespace) -> argparse.Namespace:
 
 def check_focus(args: argparse.Namespace, ipath: str) -> pd.DataFrame:
     img = image.ImageGrayScale.from_tiff(os.path.join(args.input, ipath))
-    response, profile_data = img.is_in_focus(args.descriptor_mode, args.fraction)
+    is_in_focus, profile_data = img.is_in_focus(args.descriptor_mode, args.fraction)
     profile_data["path"] = ipath
-    profile_data["response"] = "in-focus" if response else "out-of-focus"
-    if "out-of-focus" == response and args.rename:
+    profile_data["response"] = "in-focus" if is_in_focus else "out-of-focus"
+    if not is_in_focus and args.rename:
         os.rename(
             os.path.join(args.input, ipath), os.path.join(args.input, f"{ipath}.old")
         )
