@@ -27,29 +27,34 @@ def init_parser(subparsers: argparse._SubParsersAction) -> argparse.ArgumentPars
     parser = subparsers.add_parser(
         __name__.split(".")[-1],
         description=f"""
-    Convert a nd2 file into single channel tiff images.
+Convert a nd2 file into single channel tiff images.
 
-    In the case of 3+D images, the script also checks for consistent deltaZ
-    distance across consecutive 2D slices (i.e., dZ). If the distance is consitent,
-    it is used to set the tiff image dZ metadata. Otherwise, the script stops. Use
-    the -Z argument to disable this check and provide a single dZ value to be used.
+In the case of 3+D images, the script also checks for consistent deltaZ distance across
+consecutive 2D slices (i.e., dZ). If the distance is consitent, it is used to set the
+tiff image dZ metadata. Otherwise, the script tries to guess the correct dZ and reports
+it in the log. If the reported dZ is wrong, please enforce the correct one using the -Z
+option. If a correct dZ cannot be automatically guessed, the field of view is skipped
+and a warning is issued to the user. Use the --fields and -Z options to convert the
+skipped field(s).
 
-    The output tiff file names follow the specified template (-T). A template is a
-    string including a series of "seeds" that are replaced by the corresponding
-    values when writing the output file. Available seeds are:
-    {TNTFields.CHANNEL_NAME} : channel name, lower-cased.
-    {TNTFields.CHANNEL_ID} : channel ID (number).
-    {TNTFields.SERIES_ID} : series ID (number).
-    {TNTFields.DIMENSIONS} : number of dimensions, followed by "D".
-    {TNTFields.AXES_ORDER} : axes order (e.g., "TZYX").
-    Leading 0s are added up to 3 digits to any ID seed.
+# File naming
 
-    The default template is "{TNTFields.CHANNEL_NAME}_{TNTFields.SERIES_ID}".
-    Hence, when writing the 3rd series of the "a488" channel, the output file name
-    would be:"a488_003.tiff".
+The output tiff file names follow the specified template (-T). A template is a string
+including a series of "seeds" that are replaced by the corresponding values when writing
+the output file. Available seeds are:
+{TNTFields.CHANNEL_NAME} : channel name, lower-cased.
+{TNTFields.CHANNEL_ID} : channel ID (number).
+{TNTFields.SERIES_ID} : series ID (number).
+{TNTFields.DIMENSIONS} : number of dimensions, followed by "D".
+{TNTFields.AXES_ORDER} : axes order (e.g., "TZYX").
+Leading 0s are added up to 3 digits to any ID seed.
 
-    Please, remember to escape the "$" when running from command line if using
-    double quotes, i.e., "\\$". Alternatively, use single quotes, i.e., '$'.""",
+The default template is "{TNTFields.CHANNEL_NAME}_{TNTFields.SERIES_ID}". Hence, when
+writing the 3rd series of the "a488" channel, the output file name would be:
+"a488_003.tiff".
+
+Please, remember to escape the "$" when running from command line if using double
+quotes, i.e., "\\$". Alternatively, use single quotes, i.e., '$'.""",
         formatter_class=argparse.RawDescriptionHelpFormatter,
         help="Convert a nd2 file into single channel tiff images.",
     )
@@ -68,16 +73,17 @@ def init_parser(subparsers: argparse._SubParsersAction) -> argparse.ArgumentPars
         "--fields",
         metavar="STRING",
         type=str,
-        help="""Extract only fields of view specified as when printing a set
-        of pages. E.g., '1-2,5,8-9'.""",
+        help="""Convert only fields of view specified as when printing a set
+        of pages. Omit if all fields should be converted. E.g., '1-2,5,8-9'.""",
         default=None,
     )
     parser.add_argument(
         "--channels",
         metavar="STRING",
         type=str,
-        help="""Extract only specified channels. Specified as space-separated
-        channel names. E.g., 'dapi cy5 a488'.""",
+        help="""Convert only specified channels. Specified as space-separated
+        channel names. Omit if all channels should be converted.
+        E.g., 'dapi cy5 a488'.""",
         default=None,
         nargs="+",
     )
@@ -88,7 +94,7 @@ def init_parser(subparsers: argparse._SubParsersAction) -> argparse.ArgumentPars
 
     advanced = parser.add_argument_group("advanced arguments")
     advanced.add_argument(
-        "--deltaZ",
+        "--deltaZ", "-Z",
         type=float,
         metavar="FLOAT",
         help="""If provided (in um), the script does not check delta Z
@@ -96,7 +102,7 @@ def init_parser(subparsers: argparse._SubParsersAction) -> argparse.ArgumentPars
         default=None,
     )
     advanced.add_argument(
-        "--template",
+        "--template", "-T",
         metavar="STRING",
         type=str,
         help=f"""Template for output file name. See main description for more
@@ -109,7 +115,8 @@ def init_parser(subparsers: argparse._SubParsersAction) -> argparse.ArgumentPars
         dest="doCompress",
         const=True,
         default=False,
-        help="Write compressed TIFF as output.",
+        help="""Write compressed TIFF as output. Useful especially for binary or
+        low-depth (e.g. labeled) images.""",
     )
     advanced.add_argument(
         "-n",
@@ -118,7 +125,7 @@ def init_parser(subparsers: argparse._SubParsersAction) -> argparse.ArgumentPars
         dest="dry",
         const=True,
         default=False,
-        help="Describe input data and stop.",
+        help="Describe input data and stop (nothing is converted).",
     )
 
     parser.set_defaults(parse=parse_arguments, run=run)
