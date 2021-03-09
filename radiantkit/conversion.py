@@ -34,16 +34,24 @@ class ND2Reader2(ND2Reader):
         logger.info(f"Input: '{self.filename}'")
 
         logger.info(
-            f"Found {self.field_count()} field(s) of view, "
-            + f"with {self.channel_count()} channel(s)."
+            "".join(
+                [
+                    f"Found {self.field_count()} field(s) of view, ",
+                    f"with {self.channel_count()} channel(s).",
+                ]
+            )
         )
 
         logger.info(f"Channels: {list(self.get_channel_names())}.")
 
         if self.is3D():
             logger.info(
-                f"XYZ size: {self.sizes['x']} x "
-                + f"{self.sizes['y']} x {self.sizes['z']}"
+                "".join(
+                    [
+                        f"XYZ size: {self.sizes['x']} x ",
+                        f"{self.sizes['y']} x {self.sizes['z']}",
+                    ]
+                )
             )
             logger.info(f"XY resolution: {self.xy_resolution:.3f} um")
             logger.info(f"Delta Z value(s): {list(self._z_resolution.keys())} um")
@@ -193,8 +201,12 @@ class CziFile2(CziFile):
         logger.info(f"Input: '{self._fh.name}'")
 
         logger.info(
-            f"Found {self.field_count()} field(s) of view, "
-            + f"with {self.channel_count()} channel(s)."
+            "".join(
+                [
+                    f"Found {self.field_count()} field(s) of view, ",
+                    f"with {self.channel_count()} channel(s).",
+                ]
+            )
         )
 
         logger.info(f"Channels: {list(self.get_channel_names())}.")

@@ -156,9 +156,13 @@ def field_generator(
     for field_id in args.fields:
         if field_id - 1 >= czi_image.field_count():
             logging.warning(
-                f"Skipped field #{field_id} "
-                + "(from specified field range, "
-                + "not available in czi file)."
+                "".join(
+                    [
+                        f"Skipped field #{field_id} ",
+                        "(from specified field range, ",
+                        "not available in czi file).",
+                    ]
+                )
             )
             continue
         for yieldedValue in czi_image.get_channel_pixels(args, field_id - 1):
@@ -199,21 +203,27 @@ def convert_to_tiff(args: argparse.Namespace, czi_image: CziFile2) -> None:
 def check_argument_compatibility(
     args: argparse.Namespace, czi_image: CziFile2
 ) -> argparse.Namespace:
-    assert args.template.can_export_fields(czi_image.field_count(), args.fields), (
-        "when exporting more than 1 field, the template "
-        + f"must include the {TNTFields.SERIES_ID} seed. "
-        + f"Got '{args.template.template}' instead."
+    assert args.template.can_export_fields(
+        czi_image.field_count(), args.fields
+    ), "".join(
+        [
+            "when exporting more than 1 field, the template ",
+            f"must include the {TNTFields.SERIES_ID} seed. ",
+            f"Got '{args.template.template}' instead.",
+        ]
     )
 
     args.channels = check_channels(args.channels, czi_image)
 
     assert args.template.can_export_channels(
         czi_image.channel_count(), args.channels
-    ), (
-        "when exporting more than 1 channel, the template "
-        + f"must include either {TNTFields.CHANNEL_ID} or "
-        + f"{TNTFields.CHANNEL_NAME} seeds. "
-        + f"Got '{args.template.template}' instead."
+    ), "".join(
+        [
+            "when exporting more than 1 channel, the template ",
+            f"must include either {TNTFields.CHANNEL_ID} or ",
+            f"{TNTFields.CHANNEL_NAME} seeds. ",
+            f"Got '{args.template.template}' instead.",
+        ]
     )
 
     if args.fields is None:

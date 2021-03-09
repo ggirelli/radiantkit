@@ -94,7 +94,8 @@ quotes, i.e., "\\$". Alternatively, use single quotes, i.e., '$'.""",
 
     advanced = parser.add_argument_group("advanced arguments")
     advanced.add_argument(
-        "--deltaZ", "-Z",
+        "--deltaZ",
+        "-Z",
         type=float,
         metavar="FLOAT",
         help="""If provided (in um), the script does not check delta Z
@@ -102,7 +103,8 @@ quotes, i.e., "\\$". Alternatively, use single quotes, i.e., '$'.""",
         default=None,
     )
     advanced.add_argument(
-        "--template", "-T",
+        "--template",
+        "-T",
         metavar="STRING",
         type=str,
         help=f"""Template for output file name. See main description for more
@@ -309,8 +311,12 @@ def convert_to_tiff(args: argparse.Namespace, nd2_image: ND2Reader2) -> None:
     for field_id in field_generator:
         if field_id - 1 >= nd2_image.field_count():
             logging.warning(
-                f"Skipped field #{field_id}(from specified "
-                + "field range, not available in nd2 file)."
+                "".join(
+                    [
+                        f"Skipped field #{field_id}(from specified ",
+                        "field range, not available in nd2 file).",
+                    ]
+                )
             )
         else:
             export_field(nd2_image, field_id - 1, args, args.channels)
@@ -327,28 +333,38 @@ def check_arguments(
 ) -> argparse.Namespace:
     assert not nd2_image.isLive(), "time-course conversion images not implemented."
 
-    assert args.template.can_export_fields(nd2_image.field_count(), args.fields), (
-        "when exporting more than 1 field, the template "
-        + f"must include the {TNTFields.SERIES_ID} seed. "
-        + f"Got '{args.template.template}' instead."
+    assert args.template.can_export_fields(
+        nd2_image.field_count(), args.fields
+    ), "".join(
+        [
+            "when exporting more than 1 field, the template ",
+            f"must include the {TNTFields.SERIES_ID} seed. ",
+            f"Got '{args.template.template}' instead.",
+        ]
     )
 
     check_channel_selection(args, nd2_image)
 
     assert args.template.can_export_channels(
         nd2_image.channel_count(), args.channels
-    ), (
-        "when exporting more than 1 channel, the template "
-        + f"must include either {TNTFields.CHANNEL_ID} or "
-        + f"{TNTFields.CHANNEL_NAME} seeds. "
-        + f"Got '{args.template.template}' instead."
+    ), "".join(
+        [
+            "when exporting more than 1 channel, the template ",
+            f"must include either {TNTFields.CHANNEL_ID} or ",
+            f"{TNTFields.CHANNEL_NAME} seeds. ",
+            f"Got '{args.template.template}' instead.",
+        ]
     )
 
     if args.fields is not None:
         if np.min(args.fields) > nd2_image.field_count():
             logging.warning(
-                "Skipped all available fields "
-                + "(not included in specified field range."
+                "".join(
+                    [
+                        "Skipped all available fields ",
+                        "(not included in specified field range.",
+                    ]
+                )
             )
 
     if args.deltaZ is not None:

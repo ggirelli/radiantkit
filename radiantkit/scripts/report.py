@@ -82,9 +82,11 @@ def run(args: argparse.Namespace) -> None:
     repmaker = report.ReportMaker(args.input)
     repmaker.is_root = args.is_root
     repmaker.title = f"Radiant report - {args.input}"
-    repmaker.footer = (
-        f"Generated with <code>{' '.join(sys.argv)}</code> "
-        + f"(<code>v{const.__version__}</code>)."
+    repmaker.footer = "".join(
+        [
+            f"Generated with <code>{' '.join(sys.argv)}</code> ",
+            f"(<code>v{const.__version__}</code>).",
+        ]
     )
     repmaker.make()
 

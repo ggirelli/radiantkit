@@ -63,7 +63,9 @@ class BoundingElement(object):
         return BoundingElement(tuple(offset_bounds))
 
     def __repr__(self):
-        return (
-            f"{len(self._bounds)}D Bounding Element: {self._bounds}"
-            + f"\nShape: {self.shape}"
+        return "".join(
+            [
+                f"{len(self._bounds)}D Bounding Element: {self._bounds}",
+                f"\nShape: {self.shape}",
+            ]
         )

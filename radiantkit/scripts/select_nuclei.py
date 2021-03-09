@@ -190,8 +190,12 @@ def parse_arguments(args: argparse.Namespace) -> argparse.Namespace:
 
     if not 0 != args.block_side % 2:
         logging.warning(
-            "changed ground block side from "
-            + f"{args.block_side} to {args.block_side+1}"
+            "".join(
+                [
+                    "changed ground block side from ",
+                    f"{args.block_side} to {args.block_side+1}",
+                ]
+            )
         )
         args.block_side += 1
 
@@ -381,9 +385,13 @@ class ReportSelectNuclei(report.ReportBase):
                     data["image"],
                 )
             )[0],
-            hovertemplate="Size=%{x}<br>Intensity sum=%{y}<br>"
-            + "Label=%{customdata[0]}<br>"
-            + 'Image="%{customdata[1]}"',
+            hovertemplate="".join(
+                [
+                    "Size=%{x}<br>Intensity sum=%{y}<br>",
+                    "Label=%{customdata[0]}<br>",
+                    'Image="%{customdata[1]}"',
+                ]
+            ),
             legendgroup=name,
         )
 
@@ -620,8 +628,12 @@ class ReportSelectNuclei(report.ReportBase):
                 )
 
             fig.update_layout(
-                title_text="Nuclei selection<br>"
-                + f" #selected: {dirdata['pass'].sum()}</sub>",
+                title_text="".join(
+                    [
+                        "Nuclei selection<br>",
+                        f" #selected: {dirdata['pass'].sum()}</sub>",
+                    ]
+                ),
                 xaxis=dict(domain=[0.19, 1], title="Size"),
                 yaxis=dict(
                     domain=[0, 0.82],
