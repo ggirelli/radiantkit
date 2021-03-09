@@ -43,7 +43,7 @@ pipx install git+https://github.com/ggirelli/radiantkit.git --force
 
 ## Usage
 
-Run:
+Run: `radiant -h`.
 
 All RadIAnTkit tools are accessible from the terminal using the `radiant` keyword.  
 
