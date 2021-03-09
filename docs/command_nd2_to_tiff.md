@@ -2,40 +2,49 @@
 title: nd2_to_tiff
 ---
 
+<!-- MarkdownTOC -->
+
+- [In short](#in-short)
+- [Introduction](#introduction)
+- [File naming](#file-naming)
+- [More arguments](#more-arguments)
+
+<!-- /MarkdownTOC -->
+
+### In short
+
+Run `radiant nd2_to_tiff -h` to access the command's help page.
+
 ```bash
-usage: radiant nd2_to_tiff [-h] [--outdir DIRPATH] [--fields STRING] [--channels STRING [STRING ...]]
-                           [--version] [--deltaZ FLOAT] [--template STRING] [--compressed] [-n]
-                           input
+usage: radiant nd2_to_tiff [-h] [--outdir DIRPATH] [--fields STRING]
+    [--channels STRING [STRING ...]] [--version] [--deltaZ FLOAT]
+    [--template STRING] [--compressed] [-n] input
+```
 
-Convert a nd2 file into single channel tiff images.
+### Introduction
 
-In the case of 3+D images, the script also checks for consistent deltaZ distance across
-consecutive 2D slices (i.e., dZ). If the distance is consitent, it is used to set the
-tiff image dZ metadata. Otherwise, the script tries to guess the correct dZ and reports
-it in the log. If the reported dZ is wrong, please enforce the correct one using the -Z
-option. If a correct dZ cannot be automatically guessed, the field of view is skipped
-and a warning is issued to the user. Use the --fields and -Z options to convert the
-skipped field(s).
+Use `radiant nd2_to_tiff` to convert a nd2 file into single channel tiff images.
 
-# File naming
+In the case of 3+D images, the script also checks for consistent deltaZ distance across consecutive 2D slices (i.e., dZ). If the distance is consitent, it is used to set the tiff image dZ metadata. Otherwise, the script tries to guess the correct dZ and reports it in the log. If the reported dZ is wrong, please enforce the correct one using the -Z option. If a correct dZ cannot be automatically guessed, the field of view is skipped and a warning is issued to the user. Use the --fields and -Z options to convert the skipped field(s).
 
-The output tiff file names follow the specified template (-T). A template is a string
-including a series of "seeds" that are replaced by the corresponding values when writing
-the output file. Available seeds are:
-${channel_name} : channel name, lower-cased.
-${channel_id} : channel ID (number).
-${series_id} : series ID (number).
-${dimensions} : number of dimensions, followed by "D".
-${axes_order} : axes order (e.g., "TZYX").
+### File naming
+
+The output tiff file names follow the specified template (-T). A template is a string including a series of "seeds" that are replaced by the corresponding values when writing the output file. Available seeds are:
+- `${channel_name}` : channel name, lower-cased.
+- `${channel_id}` : channel ID (number).
+- `${series_id}` : series ID (number).
+- `${dimensions}` : number of dimensions, followed by "D".
+- `${axes_order}` : axes order (e.g., "TZYX").
+
 Leading 0s are added up to 3 digits to any ID seed.
 
-The default template is "${channel_name}_${series_id}". Hence, when
-writing the 3rd series of the "a488" channel, the output file name would be:
-"a488_003.tiff".
+The default template is "`${channel_name}_${series_id}`". Hence, when writing the 3rd series of the "a488" channel, the output file name would be: "a488_003.tiff".
 
-Please, remember to escape the "$" when running from command line if using double
-quotes, i.e., "\$". Alternatively, use single quotes, i.e., '$'.
+Please, remember to escape the "$" when running from command line if using double quotes, i.e., "\$". Alternatively, use single quotes, i.e., '$'.
 
+### More arguments
+
+```bash
 positional arguments:
   input                 Path to the nd2 file to convert.
 
