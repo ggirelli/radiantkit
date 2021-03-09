@@ -707,8 +707,9 @@ def remove_unexpected_axes(
     bundle_axes: str,
     expected_axes: Optional[str] = None,
 ) -> Tuple[np.ndarray, str]:
-    condition = expected_axes is None
-    condition = condition or expected_axes == bundle_axes
+    if expected_axes is None:
+        return (img, bundle_axes)
+    condition = expected_axes == bundle_axes
     condition = condition or all([c in expected_axes for c in bundle_axes])
     if condition:
         return (img, bundle_axes)
