@@ -191,10 +191,10 @@ class Image(ImageBase):
             new_shape.pop(axis_index)
             self._pixels = self._pixels.reshape(new_shape)
             self._shape = tuple(new_shape)
-            self._axes_order = (
-                self._axes_order[:axis_index]
-                + self._axes_order[min(axis_index + 1, len(self._axes_order)) :]
-            )
+            self._axes_order = self._axes_order[:axis_index]
+            self._axes_order += self._axes_order[
+                min(axis_index + 1, len(self._axes_order)) :
+            ]
 
     def axis_shape(self, axis: str) -> Optional[int]:
         if axis not in self._axes_order:
@@ -352,8 +352,12 @@ class ImageLabeled(Image):
         filtered = np.logical_or(sizes < pass_range[0], sizes > pass_range[1])
 
         logging.info(
-            f"removing {filtered.sum()}/{self.max} labels "
-            + f"outside of {axes} size range {pass_range}"
+            "".join(
+                [
+                    f"removing {filtered.sum()}/{self.max} labels ",
+                    f"outside of {axes} size range {pass_range}",
+                ]
+            )
         )
         logging.debug(np.array((labels, sizes)))
         self.pixels[np.isin(self.pixels, labels[filtered])] = 0
@@ -613,9 +617,10 @@ class ImageGrayScale(Image):
         max_slice_id = slice_descriptors.index(max(slice_descriptors))
         halfrange = self.shape[0] * fraction / 2.0
         halfstack = self.shape[0] / 2.0
+        condition = max_slice_id >= (halfstack - halfrange)
+        condition = condition and max_slice_id <= (halfstack + halfrange)
         return (
-            max_slice_id >= (halfstack - halfrange)
-            and max_slice_id <= (halfstack + halfrange),
+            condition,
             profile,
         )
 
@@ -702,11 +707,11 @@ def remove_unexpected_axes(
     bundle_axes: str,
     expected_axes: Optional[str] = None,
 ) -> Tuple[np.ndarray, str]:
-    if (
-        expected_axes is None
-        or expected_axes == bundle_axes
-        or all([c in expected_axes for c in bundle_axes])
-    ):
+    if expected_axes is None:
+        return (img, bundle_axes)
+    condition = expected_axes == bundle_axes
+    condition = condition or all([c in expected_axes for c in bundle_axes])
+    if condition:
         return (img, bundle_axes)
     bundle_axes_list = list(bundle_axes.upper())
     slicing: List[Union[slice, int]] = []
@@ -835,8 +840,12 @@ def threshold_adaptive(
             )
     else:
         logging.info(
-            "Local threshold not implemented for images with "
-            + f"{len(img.shape)} dimensions."
+            "".join(
+                [
+                    "Local threshold not implemented for images with ",
+                    f"{len(img.shape)} dimensions.",
+                ]
+            )
         )
         raise ValueError
     return mask
@@ -850,8 +859,12 @@ def fill_holes(mask: np.ndarray) -> np.ndarray:
             mask[slice_id, :, :] = ndi.binary_fill_holes(mask[slice_id, :, :])
     elif 2 != len(mask.shape):
         logging.warning(
-            "3D hole filling not performed on images with "
-            + f"{len(mask.shape)} dimensions."
+            "".join(
+                [
+                    "3D hole filling not performed on images with ",
+                    f"{len(mask.shape)} dimensions.",
+                ]
+            )
         )
         raise ValueError
     return mask
@@ -866,8 +879,12 @@ def closing2(mask: np.ndarray, block_side: int = 3) -> np.ndarray:
             mask = closing(mask, cube(block_side))
         else:
             logging.info(
-                "Close operation not implemented for images with "
-                + f"{len(mask.shape)} dimensions."
+                "".join(
+                    [
+                        "Close operation not implemented for images with ",
+                        f"{len(mask.shape)} dimensions.",
+                    ]
+                )
             )
             raise ValueError
     return mask
@@ -882,8 +899,12 @@ def opening2(mask: np.ndarray, block_side: int = 3) -> np.ndarray:
             mask = opening(mask, cube(block_side))
         else:
             logging.info(
-                "Open operation not implemented for images with "
-                + f"{len(mask.shape)} dimensions."
+                "".join(
+                    [
+                        "Open operation not implemented for images with ",
+                        f"{len(mask.shape)} dimensions.",
+                    ]
+                )
             )
             raise ValueError
     return mask
@@ -898,8 +919,12 @@ def dilate(mask: np.ndarray, block_side: int = 3) -> np.ndarray:
             mask = dilation(mask, cube(block_side))
         else:
             logging.info(
-                "Dilate operation not implemented for images with "
-                + f"{len(mask.shape)} dimensions."
+                "".join(
+                    [
+                        "Dilate operation not implemented for images with ",
+                        f"{len(mask.shape)} dimensions.",
+                    ]
+                )
             )
             raise ValueError
     return mask
@@ -914,8 +939,12 @@ def erode(mask: np.ndarray, block_side: int = 3) -> np.ndarray:
             mask = erosion(mask, cube(block_side))
         else:
             logging.info(
-                "Erode operation not implemented for images with "
-                + f"{len(mask.shape)} dimensions."
+                "".join(
+                    [
+                        "Erode operation not implemented for images with ",
+                        f"{len(mask.shape)} dimensions.",
+                    ]
+                )
             )
             raise ValueError
     return mask
@@ -935,8 +964,12 @@ def clear_XY_borders(L: np.ndarray) -> np.ndarray:
         return ski.measure.label(L)
     else:
         logging.warning(
-            "XY border clearing not implemented for images "
-            + f"with {len(L.shape)} dimensions."
+            "".join(
+                [
+                    "XY border clearing not implemented for images ",
+                    f"with {len(L.shape)} dimensions.",
+                ]
+            )
         )
         raise ValueError
 
@@ -953,8 +986,12 @@ def clear_Z_borders(L: np.ndarray) -> np.ndarray:
         return ski.measure.label(L)
     else:
         logging.warning(
-            "Z border clearing not implemented for images "
-            + f"with {len(L.shape)} dimensions."
+            "".join(
+                [
+                    "Z border clearing not implemented for images ",
+                    f"with {len(L.shape)} dimensions.",
+                ]
+            )
         )
         raise ValueError
 
@@ -976,8 +1013,12 @@ def inherit_labels(
         return ImageLabeled(new_mask, doRelabel=False)
     else:
         logging.warning(
-            "mask combination not allowed for images "
-            + f"with {len(mask.shape)} dimensions."
+            "".join(
+                [
+                    "mask combination not allowed for images ",
+                    f"with {len(mask.shape)} dimensions.",
+                ]
+            )
         )
         raise ValueError
 

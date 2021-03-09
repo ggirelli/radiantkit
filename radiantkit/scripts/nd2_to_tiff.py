@@ -27,29 +27,34 @@ def init_parser(subparsers: argparse._SubParsersAction) -> argparse.ArgumentPars
     parser = subparsers.add_parser(
         __name__.split(".")[-1],
         description=f"""
-    Convert a nd2 file into single channel tiff images.
+Convert a nd2 file into single channel tiff images.
 
-    In the case of 3+D images, the script also checks for consistent deltaZ
-    distance across consecutive 2D slices (i.e., dZ). If the distance is consitent,
-    it is used to set the tiff image dZ metadata. Otherwise, the script stops. Use
-    the -Z argument to disable this check and provide a single dZ value to be used.
+In the case of 3+D images, the script also checks for consistent deltaZ distance across
+consecutive 2D slices (i.e., dZ). If the distance is consitent, it is used to set the
+tiff image dZ metadata. Otherwise, the script tries to guess the correct dZ and reports
+it in the log. If the reported dZ is wrong, please enforce the correct one using the -Z
+option. If a correct dZ cannot be automatically guessed, the field of view is skipped
+and a warning is issued to the user. Use the --fields and -Z options to convert the
+skipped field(s).
 
-    The output tiff file names follow the specified template (-T). A template is a
-    string including a series of "seeds" that are replaced by the corresponding
-    values when writing the output file. Available seeds are:
-    {TNTFields.CHANNEL_NAME} : channel name, lower-cased.
-    {TNTFields.CHANNEL_ID} : channel ID (number).
-    {TNTFields.SERIES_ID} : series ID (number).
-    {TNTFields.DIMENSIONS} : number of dimensions, followed by "D".
-    {TNTFields.AXES_ORDER} : axes order (e.g., "TZYX").
-    Leading 0s are added up to 3 digits to any ID seed.
+# File naming
 
-    The default template is "{TNTFields.CHANNEL_NAME}_{TNTFields.SERIES_ID}".
-    Hence, when writing the 3rd series of the "a488" channel, the output file name
-    would be:"a488_003.tiff".
+The output tiff file names follow the specified template (-T). A template is a string
+including a series of "seeds" that are replaced by the corresponding values when writing
+the output file. Available seeds are:
+{TNTFields.CHANNEL_NAME} : channel name, lower-cased.
+{TNTFields.CHANNEL_ID} : channel ID (number).
+{TNTFields.SERIES_ID} : series ID (number).
+{TNTFields.DIMENSIONS} : number of dimensions, followed by "D".
+{TNTFields.AXES_ORDER} : axes order (e.g., "TZYX").
+Leading 0s are added up to 3 digits to any ID seed.
 
-    Please, remember to escape the "$" when running from command line if using
-    double quotes, i.e., "\\$". Alternatively, use single quotes, i.e., '$'.""",
+The default template is "{TNTFields.CHANNEL_NAME}_{TNTFields.SERIES_ID}". Hence, when
+writing the 3rd series of the "a488" channel, the output file name would be:
+"a488_003.tiff".
+
+Please, remember to escape the "$" when running from command line if using double
+quotes, i.e., "\\$". Alternatively, use single quotes, i.e., '$'.""",
         formatter_class=argparse.RawDescriptionHelpFormatter,
         help="Convert a nd2 file into single channel tiff images.",
     )
@@ -68,16 +73,17 @@ def init_parser(subparsers: argparse._SubParsersAction) -> argparse.ArgumentPars
         "--fields",
         metavar="STRING",
         type=str,
-        help="""Extract only fields of view specified as when printing a set
-        of pages. E.g., '1-2,5,8-9'.""",
+        help="""Convert only fields of view specified as when printing a set
+        of pages. Omit if all fields should be converted. E.g., '1-2,5,8-9'.""",
         default=None,
     )
     parser.add_argument(
         "--channels",
         metavar="STRING",
         type=str,
-        help="""Extract only specified channels. Specified as space-separated
-        channel names. E.g., 'dapi cy5 a488'.""",
+        help="""Convert only specified channels. Specified as space-separated
+        channel names. Omit if all channels should be converted.
+        E.g., 'dapi cy5 a488'.""",
         default=None,
         nargs="+",
     )
@@ -89,6 +95,7 @@ def init_parser(subparsers: argparse._SubParsersAction) -> argparse.ArgumentPars
     advanced = parser.add_argument_group("advanced arguments")
     advanced.add_argument(
         "--deltaZ",
+        "-Z",
         type=float,
         metavar="FLOAT",
         help="""If provided (in um), the script does not check delta Z
@@ -97,6 +104,7 @@ def init_parser(subparsers: argparse._SubParsersAction) -> argparse.ArgumentPars
     )
     advanced.add_argument(
         "--template",
+        "-T",
         metavar="STRING",
         type=str,
         help=f"""Template for output file name. See main description for more
@@ -109,7 +117,8 @@ def init_parser(subparsers: argparse._SubParsersAction) -> argparse.ArgumentPars
         dest="doCompress",
         const=True,
         default=False,
-        help="Write compressed TIFF as output.",
+        help="""Write compressed TIFF as output. Useful especially for binary or
+        low-depth (e.g. labeled) images.""",
     )
     advanced.add_argument(
         "-n",
@@ -118,7 +127,7 @@ def init_parser(subparsers: argparse._SubParsersAction) -> argparse.ArgumentPars
         dest="dry",
         const=True,
         default=False,
-        help="Describe input data and stop.",
+        help="Describe input data and stop (nothing is converted).",
     )
 
     parser.set_defaults(parse=parse_arguments, run=run)
@@ -302,8 +311,12 @@ def convert_to_tiff(args: argparse.Namespace, nd2_image: ND2Reader2) -> None:
     for field_id in field_generator:
         if field_id - 1 >= nd2_image.field_count():
             logging.warning(
-                f"Skipped field #{field_id}(from specified "
-                + "field range, not available in nd2 file)."
+                "".join(
+                    [
+                        f"Skipped field #{field_id}(from specified ",
+                        "field range, not available in nd2 file).",
+                    ]
+                )
             )
         else:
             export_field(nd2_image, field_id - 1, args, args.channels)
@@ -320,28 +333,38 @@ def check_arguments(
 ) -> argparse.Namespace:
     assert not nd2_image.isLive(), "time-course conversion images not implemented."
 
-    assert args.template.can_export_fields(nd2_image.field_count(), args.fields), (
-        "when exporting more than 1 field, the template "
-        + f"must include the {TNTFields.SERIES_ID} seed. "
-        + f"Got '{args.template.template}' instead."
+    assert args.template.can_export_fields(
+        nd2_image.field_count(), args.fields
+    ), "".join(
+        [
+            "when exporting more than 1 field, the template ",
+            f"must include the {TNTFields.SERIES_ID} seed. ",
+            f"Got '{args.template.template}' instead.",
+        ]
     )
 
     check_channel_selection(args, nd2_image)
 
     assert args.template.can_export_channels(
         nd2_image.channel_count(), args.channels
-    ), (
-        "when exporting more than 1 channel, the template "
-        + f"must include either {TNTFields.CHANNEL_ID} or "
-        + f"{TNTFields.CHANNEL_NAME} seeds. "
-        + f"Got '{args.template.template}' instead."
+    ), "".join(
+        [
+            "when exporting more than 1 channel, the template ",
+            f"must include either {TNTFields.CHANNEL_ID} or ",
+            f"{TNTFields.CHANNEL_NAME} seeds. ",
+            f"Got '{args.template.template}' instead.",
+        ]
     )
 
     if args.fields is not None:
         if np.min(args.fields) > nd2_image.field_count():
             logging.warning(
-                "Skipped all available fields "
-                + "(not included in specified field range."
+                "".join(
+                    [
+                        "Skipped all available fields ",
+                        "(not included in specified field range.",
+                    ]
+                )
             )
 
     if args.deltaZ is not None:

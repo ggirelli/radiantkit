@@ -256,8 +256,12 @@ def parse_arguments(args: argparse.Namespace) -> argparse.Namespace:
 
     if not 0 != args.block_side % 2:
         logging.warning(
-            "changed ground block side from "
-            + f"{args.block_side} to {args.block_side+1}"
+            "".join(
+                [
+                    "changed ground block side from ",
+                    f"{args.block_side} to {args.block_side+1}",
+                ]
+            )
         )
         args.block_side += 1
 

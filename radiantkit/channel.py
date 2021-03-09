@@ -168,8 +168,12 @@ class ChannelList(object):
     ) -> None:
         if name in self._channels and not replace:
             logging.warning(
-                f"channel {name} is already present."
-                + "Use replace=True to replace it."
+                "".join(
+                    [
+                        f"channel {name} is already present.",
+                        "Use replace=True to replace it.",
+                    ]
+                )
             )
         self.__init_or_check_shape(img.shape)
         self.__init_or_check_aspect(img.aspect)

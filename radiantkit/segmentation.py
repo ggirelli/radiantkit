@@ -57,9 +57,13 @@ class Binarizer(BinarizerSettings):
 
     def __do_local_threshold(self, img: ImageGrayScale) -> ImageBinary:
         self.logger.info(
-            "applying adaptive threshold to neighbourhood "
-            + f"with side of {self.local_side} px. "
-            + f"({self.local_method}, {self.local_mode})"
+            "".join(
+                [
+                    "applying adaptive threshold to neighbourhood ",
+                    f"with side of {self.local_side} px. ",
+                    f"({self.local_method}, {self.local_mode})",
+                ]
+            )
         )
         local_mask = img.threshold_adaptive(
             self.local_side, self.local_method, self.local_mode

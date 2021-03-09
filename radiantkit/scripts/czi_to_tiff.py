@@ -27,9 +27,11 @@ def init_parser(subparsers: argparse._SubParsersAction) -> argparse.ArgumentPars
         description=f"""
 Convert a czi file into single channel tiff images.
 
-The output tiff file names follow the specified template (-T). A template is a
-string including a series of "seeds" that are replaced by the corresponding
-values when writing the output file. Available seeds are:
+# File naming
+
+The output tiff file names follow the specified template (-T). A template is a string
+including a series of "seeds" that are replaced by the corresponding values when writing
+the output file. Available seeds are:
 {TNTFields.CHANNEL_NAME} : channel name, lower-cased.
 {TNTFields.CHANNEL_ID} : channel ID (number).
 {TNTFields.SERIES_ID} : series ID (number).
@@ -37,12 +39,12 @@ values when writing the output file. Available seeds are:
 {TNTFields.AXES_ORDER} : axes order (e.g., "TZYX").
 Leading 0s are added up to 3 digits to any ID seed.
 
-The default template is "{TNTFields.CHANNEL_NAME}_{TNTFields.SERIES_ID}".
-Hence, when writing the 3rd series of the "a488" channel, the output file name
-would be:"a488_003.tiff".
+The default template is "{TNTFields.CHANNEL_NAME}_{TNTFields.SERIES_ID}". Hence, when
+writing the 3rd series of the "a488" channel, the output file name would be:
+"a488_003.tiff".
 
-Please, remember to escape the "$" when running from command line if using
-double quotes, i.e., "\\$". Alternatively, use single quotes, i.e., '$'.""",
+Please, remember to escape the "$" when running from command line if using double
+quotes, i.e., "\\$". Alternatively, use single quotes, i.e., '$'.""",
         formatter_class=argparse.RawDescriptionHelpFormatter,
         help="Convert a czi file into single channel tiff images.",
     )
@@ -61,16 +63,17 @@ double quotes, i.e., "\\$". Alternatively, use single quotes, i.e., '$'.""",
         "--fields",
         metavar="STRING",
         type=str,
-        help="""Extract only fields of view specified as when printing a set
-        of pages. E.g., '1-2,5,8-9'.""",
+        help="""Convert only fields of view specified as when printing a set
+        of pages. Omit if all fields should be converted. E.g., '1-2,5,8-9'.""",
         default=None,
     )
     parser.add_argument(
         "--channels",
         metavar="STRING",
         type=str,
-        help="""Extract only specified channels. Specified as space-separated
-        channel names. E.g., 'dapi cy5 a488'.""",
+        help="""Convert only specified channels. Specified as space-separated
+        channel names. Omit if all channels should be converted.
+        E.g., 'dapi cy5 a488'.""",
         default=None,
         nargs="+",
     )
@@ -84,7 +87,7 @@ double quotes, i.e., "\\$". Alternatively, use single quotes, i.e., '$'.""",
         "--template",
         metavar="STRING",
         type=str,
-        help="""Template for output file name. See main description for more
+        help=f"""Template for output file name. See main description for more
         details. Default: '{TNTFields.CHANNEL_NAME}_{TNTFields.SERIES_ID}'""",
         default=f"{TNTFields.CHANNEL_NAME}_{TNTFields.SERIES_ID}",
     )
@@ -94,7 +97,8 @@ double quotes, i.e., "\\$". Alternatively, use single quotes, i.e., '$'.""",
         dest="doCompress",
         const=True,
         default=False,
-        help="Write compressed TIFF as output.",
+        help="""Write compressed TIFF as output. Useful especially for binary or
+        low-depth (e.g. labeled) images.""",
     )
     advanced.add_argument(
         "-n",
@@ -103,7 +107,7 @@ double quotes, i.e., "\\$". Alternatively, use single quotes, i.e., '$'.""",
         dest="dry",
         const=True,
         default=False,
-        help="Describe input data and stop.",
+        help="Describe input data and stop (nothing is converted).",
     )
 
     parser.set_defaults(parse=parse_arguments, run=run)
@@ -152,9 +156,13 @@ def field_generator(
     for field_id in args.fields:
         if field_id - 1 >= czi_image.field_count():
             logging.warning(
-                f"Skipped field #{field_id} "
-                + "(from specified field range, "
-                + "not available in czi file)."
+                "".join(
+                    [
+                        f"Skipped field #{field_id} ",
+                        "(from specified field range, ",
+                        "not available in czi file).",
+                    ]
+                )
             )
             continue
         for yieldedValue in czi_image.get_channel_pixels(args, field_id - 1):
@@ -195,21 +203,27 @@ def convert_to_tiff(args: argparse.Namespace, czi_image: CziFile2) -> None:
 def check_argument_compatibility(
     args: argparse.Namespace, czi_image: CziFile2
 ) -> argparse.Namespace:
-    assert args.template.can_export_fields(czi_image.field_count(), args.fields), (
-        "when exporting more than 1 field, the template "
-        + f"must include the {TNTFields.SERIES_ID} seed. "
-        + f"Got '{args.template.template}' instead."
+    assert args.template.can_export_fields(
+        czi_image.field_count(), args.fields
+    ), "".join(
+        [
+            "when exporting more than 1 field, the template ",
+            f"must include the {TNTFields.SERIES_ID} seed. ",
+            f"Got '{args.template.template}' instead.",
+        ]
     )
 
     args.channels = check_channels(args.channels, czi_image)
 
     assert args.template.can_export_channels(
         czi_image.channel_count(), args.channels
-    ), (
-        "when exporting more than 1 channel, the template "
-        + f"must include either {TNTFields.CHANNEL_ID} or "
-        + f"{TNTFields.CHANNEL_NAME} seeds. "
-        + f"Got '{args.template.template}' instead."
+    ), "".join(
+        [
+            "when exporting more than 1 channel, the template ",
+            f"must include either {TNTFields.CHANNEL_ID} or ",
+            f"{TNTFields.CHANNEL_NAME} seeds. ",
+            f"Got '{args.template.template}' instead.",
+        ]
     )
 
     if args.fields is None:

@@ -248,9 +248,13 @@ class SeriesList(object):
 
             if channel_name in series[sid]:
                 logging.warning(
-                    "found multiple instances of channel "
-                    + f"{channel_name} in series {sid}. "
-                    + f"Skipping '{path}'."
+                    "".join(
+                        [
+                            "found multiple instances of channel ",
+                            f"{channel_name} in series {sid}. ",
+                            f"Skipping '{path}'.",
+                        ]
+                    )
                 )
                 continue
 
@@ -279,9 +283,13 @@ class SeriesList(object):
 
             if channel_name != ref:
                 logging.warning(
-                    "skipping mask for channel "
-                    + f"'{channel_name}', "
-                    + f"not reference ({ref})."
+                    "".join(
+                        [
+                            "skipping mask for channel ",
+                            f"'{channel_name}', ",
+                            f"not reference ({ref}).",
+                        ]
+                    )
                 )
                 continue
 
@@ -492,8 +500,12 @@ class SeriesList(object):
         reInit: bool = False,
     ) -> List[Tuple[ChannelName, ChannelRadialProfileData]]:
         logging.info(
-            f"extracting vx values for channel '{channel_name}'"
-            + f" [threads:{threads}]"
+            "".join(
+                [
+                    f"extracting vx values for channel '{channel_name}'",
+                    f" [threads:{threads}]",
+                ]
+            )
         )
 
         channel_intensity_data = self.__retrieve_channel_intensity_at_distance(
@@ -633,9 +645,13 @@ def init_series_list(
         )
 
     logging.info(
-        f"parsed {len(series_list)} series with "
-        + f"{len(series_list.channel_names)} channels each"
-        + f": {series_list.channel_names}"
+        "".join(
+            [
+                f"parsed {len(series_list)} series with ",
+                f"{len(series_list.channel_names)} channels each",
+                f": {series_list.channel_names}",
+            ]
+        )
     )
 
     args = argtools.check_parallelization_and_pickling(args, pickled)

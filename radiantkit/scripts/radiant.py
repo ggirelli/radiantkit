@@ -40,7 +40,6 @@ tools for radial analysis of microscopy image.
         help="Access the help page for a sub-command with: sub-command -h",
     )
 
-    # scripts.config.init_parser(subparsers)
     scripts.czi_to_tiff.init_parser(subparsers)
     scripts.nd2_to_tiff.init_parser(subparsers)
 

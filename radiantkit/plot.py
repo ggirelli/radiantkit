@@ -207,11 +207,10 @@ class ProfileMultiConditionNorm(object):
         selected_pfits: Dict[str, Dict[str, Any]] = {}
         for condition_lab, pfit_list in pfit_data.items():
             for pfit in pfit_list:
-                if (
-                    pfit["stat"] == stat_type
-                    and pfit["distance_type"] == dtype.value
-                    and pfit["cname"] == channel_lab
-                ):
+                condition = pfit["stat"] == stat_type
+                condition = condition and pfit["distance_type"] == dtype.value
+                condition = condition and pfit["cname"] == channel_lab
+                if condition:
                     selected_pfits[
                         os.path.basename(os.path.dirname(condition_lab))
                     ] = pfit
@@ -424,11 +423,10 @@ class ProfileMultiCondition(object):
         selected_pfits: Dict[str, Dict[str, Any]] = {}
         for condition_lab, pfit_list in pfit_data.items():
             for pfit in pfit_list:
-                if (
-                    pfit["stat"] == stat_type
-                    and pfit["distance_type"] == dtype.value
-                    and pfit["cname"] == channel_lab
-                ):
+                condition = pfit["stat"] == stat_type
+                condition = condition and pfit["distance_type"] == dtype.value
+                condition = condition and pfit["cname"] == channel_lab
+                if condition:
                     selected_pfits[
                         os.path.basename(os.path.dirname(condition_lab))
                     ] = pfit
