@@ -1,4 +1,12 @@
+title:               radiantkit
+description:         'Radial Image Analysis Toolkir'
+
+author:
+  name:              Gabriele Girelli
+  nickname:          GG
+  url:               http://ggirelli.info
+  email:             gabriele.girelli@scilifelab.se
+
+version: 0.0.1.20210309.1
 theme: jekyll-theme-minimal
-title: "RadIAnTkit"
-description: "A Python3 Radial Image Analysis Toolkit"
 google_analytics: "UA-99031010-8"
