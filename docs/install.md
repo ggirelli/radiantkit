@@ -18,7 +18,7 @@ title: Install
 
 ## Install
 
-### Install with `pip`
+#### Install with `pip`
 
 ```bash
 git clone https://github.com/ggirelli/radiantkit.git
@@ -26,7 +26,7 @@ cd radiantkit
 pip install --user .
 ```
 
-### Install with `pipx`
+#### Install with `pipx`
 
 If you want access only to `radiantkit` scripts (i.e., not the API), we recommend installing using [`pipx`](https://github.com/pipxproject/pipx). Check how to install `pipx` [here](https://github.com/pipxproject/pipx#install-pipx) if you don't have it yet!
 
