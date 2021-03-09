@@ -1,4 +1,6 @@
-# radiantkit
+---
+title: radiantkit
+---
 
 ![](https://img.shields.io/librariesio/github/ggirelli/radiantkit.svg?style=flat) ![](https://img.shields.io/github/license/ggirelli/radiantkit.svg?style=flat)  
 ![](https://github.com/ggirelli/radiantkit/workflows/Python%20package/badge.svg?branch=main&event=push) ![PyPI - Python Version](https://img.shields.io/pypi/pyversions/radiantkit) ![PyPI - Format](https://img.shields.io/pypi/format/radiantkit) ![PyPI - Status](https://img.shields.io/pypi/status/radiantkit)  
