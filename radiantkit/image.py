@@ -193,7 +193,7 @@ class Image(ImageBase):
             self._shape = tuple(new_shape)
             new_axes = list(self._axes_order)
             new_axes.pop(axis_index)
-            self._axes_order = new_axes
+            self._axes_order = "".join(new_axes)
 
     def axis_shape(self, axis: str) -> Optional[int]:
         if axis not in self._axes_order:
