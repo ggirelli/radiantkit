@@ -641,11 +641,11 @@ def get_bundle_axes_from_metadata(
     for metadata_field in metadata_field_list:
         metadata = getattr(t, metadata_field)
         if metadata is not None:
-            if "axes" in metadata[0]:
+            if "axes" in metadata:
                 logging.debug(
-                    f"read axes field from {metadata_field}: {metadata[0]['axes']}"
+                    f"read axes field from {metadata_field}: {metadata['axes']}"
                 )
-                return metadata[0]["axes"]
+                return metadata["axes"]
     return bundle_axes[-len(t.asarray().shape) :]
 
 

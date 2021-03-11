@@ -20,12 +20,10 @@ title: radiantkit
 ## Features (in short)
 
 * **Convert** proprietary microscope formats CZI (Zeiss) and ND2 (Nikon) to open-source TIFF format.
-* **Segment** cellular nuclei or other objects, in 2D or 3D, in an unsupervised manner.  
-Then use the automatic segmentation to **estimate background** and foreground intensity.
+* **Segment** cellular nuclei or other objects, in 2D or 3D, in an unsupervised manner. Then use the automatic segmentation to **estimate background** and foreground intensity.
 * **Select** cellular nuclei, in G1-phase of the cell cycle, based on DNA staining and nuclear volume.
 * **Extract** segmented objects and **measure** their features (e.g., volume, integral of intensity, shape descriptors).
-* Measure **radial patterns** as radial profiles (with different center definitions),  
-and characterize them (e.g., peaks, inflection points, contrast).
+* * Measure **radial patterns** as radial profiles (with different center definitions), and characterize them (e.g., peaks, inflection points, contrast).
 * Generate **snakemake-based workflows** for seamless integration into fully reproducible streamlined analysis pipelines.
 
 ## Contributing
