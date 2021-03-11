@@ -191,10 +191,9 @@ class Image(ImageBase):
             new_shape.pop(axis_index)
             self._pixels = self._pixels.reshape(new_shape)
             self._shape = tuple(new_shape)
-            self._axes_order = self._axes_order[:axis_index]
-            self._axes_order += self._axes_order[
-                min(axis_index + 1, len(self._axes_order)) :
-            ]
+            new_axes = list(self._axes_order)
+            new_axes.pop(axis_index)
+            self._axes_order = new_axes
 
     def axis_shape(self, axis: str) -> Optional[int]:
         if axis not in self._axes_order:
