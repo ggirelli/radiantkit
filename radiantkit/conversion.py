@@ -13,6 +13,7 @@ from nd2reader.parser import Parser as ND2Parser  # type: ignore
 import numpy as np  # type: ignore
 from radiantkit import stat
 from radiantkit.string import TIFFNameTemplate as TNTemplate
+import re
 import six
 from typing import DefaultDict, Iterable, List, Optional, Tuple
 import warnings
@@ -156,9 +157,32 @@ class ND2Reader2(ND2Reader):
         else:
             self.bundle_axes = "yxc" if "c" in self.axes else "yx"
 
+    def get_Z_loop_step(self, parser) -> Tuple[int, float, str]:
+        image_text_info = parser._raw_metadata.image_text_info[
+            six.b("SLxImageTextInfo")
+        ]
+        metadata_fields = [x for x in image_text_info.values() if b"Z Stack Loop" in x]
+        if 0 == len(metadata_fields):
+            return (0, np.nan, "")
+        metadata = metadata_fields[0]
+        parsed = re.search(
+            "Z Stack Loop: ([0-9]+)\r\n- Step: ([0-9,]+) ([^\r\n]*)", metadata.decode()
+        )
+        if parsed is None:
+            return (0, np.nan, "")
+        parsed_fields = parsed.groups()
+        return (
+            int(parsed_fields[0]),
+            float(parsed_fields[1].replace(",", ".")),
+            parsed_fields[2],
+        )
+
     def get_field_resolutionZ(self, field_id: int) -> List[float]:
         with open(self.filename, "rb") as ND2H:
             parser = ND2Parser(ND2H)
+            z_fields, z_step, z_unit = self.get_Z_loop_step(parser)
+            if 0 != z_fields:
+                return [z_step]
             Zdata = np.array(parser._raw_metadata.z_data)
             Zlevels = np.array(parser.metadata["z_levels"]).astype("int")
             Zlevels = Zlevels + len(Zlevels) * field_id
