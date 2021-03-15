@@ -279,7 +279,9 @@ def run(args: argparse.Namespace) -> None:
     args, series_list = series.init_series_list(args)
 
     logging.info("extracting nuclei")
-    series_list.extract_particles(particle.Nucleus, threads=args.threads)
+    series_list.extract_particles(
+        particle.Nucleus, series_list.channel_names, threads=args.threads
+    )
     logging.info(f"extracted {len(list(series_list.particles()))} nuclei")
 
     measure_object_features(args, series_list)
