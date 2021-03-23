@@ -36,6 +36,7 @@ tifffile = ">=2020.9.29,<2022.0.0"
 
 [tool.poetry.scripts]
 "radiant" = "radiantkit.scripts.radiant:main"
+
 [build-system]
 requires = ["poetry>=0.12"]
 build-backend = "poetry.masonry.api"
