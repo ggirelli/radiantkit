@@ -7,7 +7,7 @@ import argparse
 from joblib import cpu_count, delayed, Parallel  # type: ignore
 import logging
 import os
-from radiantkit.const import __version__
+from radiantkit import __version__
 from radiantkit import image, path
 import re
 import sys

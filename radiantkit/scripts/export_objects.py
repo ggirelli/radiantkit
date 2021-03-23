@@ -7,7 +7,7 @@ import argparse
 from joblib import cpu_count  # type: ignore
 import logging
 import os
-from radiantkit import const
+from radiantkit import __version__, const
 from radiantkit import particle, series
 from radiantkit import string
 import re
@@ -48,7 +48,7 @@ def init_parser(subparsers: argparse._SubParsersAction) -> argparse.ArgumentPars
         version="%s %s"
         % (
             sys.argv[0],
-            const.__version__,
+            __version__,
         ),
     )
 

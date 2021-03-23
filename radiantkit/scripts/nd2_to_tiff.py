@@ -8,7 +8,7 @@ import logging
 import numpy as np  # type: ignore
 import os
 import pims  # type: ignore
-from radiantkit.const import __version__
+from radiantkit import __version__
 from radiantkit.conversion import ND2Reader2
 from radiantkit.exception import enable_rich_exceptions
 import radiantkit.image as imt

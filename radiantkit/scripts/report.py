@@ -6,7 +6,7 @@
 import argparse
 import logging
 import os
-from radiantkit import const, report
+from radiantkit import __version__, const, report
 from radiantkit.exception import enable_rich_exceptions
 import sys
 
@@ -59,7 +59,7 @@ def init_parser(subparsers: argparse._SubParsersAction) -> argparse.ArgumentPars
     )
 
     parser.add_argument(
-        "--version", action="version", version=f"{sys.argv[0]} {const.__version__}"
+        "--version", action="version", version=f"{sys.argv[0]} {__version__}"
     )
 
     parser.set_defaults(parse=parse_arguments, run=run)
@@ -71,7 +71,7 @@ def init_parser(subparsers: argparse._SubParsersAction) -> argparse.ArgumentPars
 def parse_arguments(args: argparse.Namespace) -> argparse.Namespace:
     args.input = os.path.abspath(args.input)
     assert os.path.isdir(args.input)
-    args.version = const.__version__
+    args.version = __version__
     return args
 
 
@@ -85,7 +85,7 @@ def run(args: argparse.Namespace) -> None:
     repmaker.footer = "".join(
         [
             f"Generated with <code>{' '.join(sys.argv)}</code> ",
-            f"(<code>v{const.__version__}</code>).",
+            f"(<code>v{__version__}</code>).",
         ]
     )
     repmaker.make()

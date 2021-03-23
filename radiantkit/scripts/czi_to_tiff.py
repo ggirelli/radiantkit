@@ -7,7 +7,7 @@ import argparse
 import logging
 import numpy as np  # type: ignore
 import os
-from radiantkit.const import __version__
+from radiantkit import __version__
 from radiantkit.conversion import CziFile2
 from radiantkit.exception import enable_rich_exceptions
 import radiantkit.image as imt

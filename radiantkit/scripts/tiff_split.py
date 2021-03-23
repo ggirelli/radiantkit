@@ -8,7 +8,7 @@ import configparser as cp
 import logging
 import numpy as np  # type: ignore
 import os
-from radiantkit.const import __version__
+from radiantkit import __version__
 from radiantkit import image as imt
 from rich.progress import track  # type: ignore
 from rich.prompt import Confirm  # type: ignore

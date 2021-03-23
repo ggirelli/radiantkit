@@ -7,7 +7,7 @@
 
 # import argcomplete  # type: ignore
 import argparse
-from radiantkit.const import __version__
+from radiantkit import __version__
 from radiantkit import scripts
 import sys
 

@@ -4,7 +4,7 @@
 """
 
 import argparse
-from radiantkit.const import __version__
+from radiantkit import __version__
 import sys
 
 

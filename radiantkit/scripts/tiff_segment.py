@@ -8,7 +8,7 @@ import argparse
 from joblib import cpu_count, delayed, Parallel  # type: ignore
 import numpy as np  # type: ignore
 import os
-from radiantkit.const import __version__
+from radiantkit import __version__
 from radiantkit import const, path, stat, string
 from radiantkit import channel, image, segmentation
 from radiantkit.exception import enable_rich_exceptions

@@ -13,7 +13,7 @@ import os
 import pandas as pd  # type: ignore
 import plotly.graph_objects as go  # type: ignore
 import pickle
-from radiantkit import const, io
+from radiantkit import __version__, const, io
 from radiantkit.image import ImageBinary, ImageLabeled
 from radiantkit.particle import NucleiList, Nucleus
 from radiantkit.scripts import argtools
@@ -205,7 +205,7 @@ def parse_arguments(args: argparse.Namespace) -> argparse.Namespace:
 
 
 def print_settings(args: argparse.Namespace, clear: bool = True) -> str:
-    s = f"""# Nuclei selection v{const.__version__}
+    s = f"""# Nuclei selection v{__version__}
 
     ---------- SETTING : VALUE ----------
 

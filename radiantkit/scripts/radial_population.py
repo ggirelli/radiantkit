@@ -10,7 +10,17 @@ import os
 import pandas as pd  # type: ignore
 import plotly.graph_objects as go  # type: ignore
 import pickle
-from radiantkit import const, distance, io, particle, plot, report, series, string
+from radiantkit import (
+    __version__,
+    const,
+    distance,
+    io,
+    particle,
+    plot,
+    report,
+    series,
+    string,
+)
 from radiantkit.scripts import argtools
 import re
 from rich.prompt import Confirm  # type: ignore
@@ -76,7 +86,7 @@ def init_parser(subparsers: argparse._SubParsersAction) -> argparse.ArgumentPars
         "{const.default_subfolder}" subfolder in the input directory.""",
     )
     parser.add_argument(
-        "--version", action="version", version=f"{sys.argv[0]} {const.__version__}"
+        "--version", action="version", version=f"{sys.argv[0]} {__version__}"
     )
 
     critical = parser.add_argument_group("critical arguments")
@@ -235,7 +245,7 @@ def init_parser(subparsers: argparse._SubParsersAction) -> argparse.ArgumentPars
 
 
 def parse_arguments(args: argparse.Namespace) -> argparse.Namespace:
-    args.version = const.__version__
+    args.version = __version__
 
     if args.output is None:
         args.output = os.path.join(args.input, const.default_subfolder)
