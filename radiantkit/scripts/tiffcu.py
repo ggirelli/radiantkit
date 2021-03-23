@@ -103,7 +103,7 @@ def parse_arguments(args: argparse.Namespace) -> argparse.Namespace:
     if args.doCompress and args.doUncompress:
         logging.error("please, use either -c (compress) or -u (uncompress).")
         sys.exit()
-    args.threads = cpu_count() if args.threads > cpu_count() else args.threads
+    args.threads = max(1, min(cpu_count(), args.threads))
     args.process_multiple_files = False
     if os.path.isdir(args.input):
         args.process_multiple_files = True

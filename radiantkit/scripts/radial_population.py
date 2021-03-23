@@ -265,7 +265,7 @@ def parse_arguments(args: argparse.Namespace) -> argparse.Namespace:
         )
         args.block_side += 1
 
-    args.threads = cpu_count() if args.threads > cpu_count() else args.threads
+    args.threads = max(1, min(cpu_count(), args.threads))
 
     return args
 

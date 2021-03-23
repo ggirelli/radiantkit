@@ -168,7 +168,7 @@ def parse_arguments(args: argparse.Namespace) -> argparse.Namespace:
     args.mask_prefix = string.add_trailing_dot(args.mask_prefix)
     args.mask_suffix = string.add_leading_dot(args.mask_suffix)
 
-    args.threads = cpu_count() if args.threads > cpu_count() else args.threads
+    args.threads = max(1, min(cpu_count(), args.threads))
 
     return args
 

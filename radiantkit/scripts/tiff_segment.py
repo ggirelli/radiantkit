@@ -237,7 +237,7 @@ def parse_arguments(args: argparse.Namespace) -> argparse.Namespace:
             args.mask_2d
         ), f"2D mask folder not found, '{args.mask_2d}'"
 
-    args.threads = cpu_count() if args.threads > cpu_count() else args.threads
+    args.threads = max(1, min(cpu_count(), args.threads))
 
     loglvl = 20
     loglvl = logging.DEBUG if args.debug_mode else 20

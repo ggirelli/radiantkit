@@ -68,10 +68,7 @@ def add_threads_argument(parser: argparse._ArgumentGroup) -> argparse._ArgumentG
 
 
 def check_threads(threads: int) -> int:
-    if threads > cpu_count():
-        logging.warning(f"reduced number of threads to {cpu_count()}")
-        return cpu_count()
-    return threads
+    return max(1, min(cpu_count(), threads))
 
 
 def add_pattern_argument(parser: argparse._ArgumentGroup) -> argparse._ArgumentGroup:
