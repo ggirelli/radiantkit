@@ -166,7 +166,7 @@ class ND2Reader2(ND2Reader):
             return (0, np.nan, "")
         metadata = metadata_fields[0]
         parsed = re.search(
-            "Z Stack Loop: ([0-9]+)\r\n- Step: ([0-9,\.]+) ([^\r\n]*)",
+            "Z Stack Loop: ([0-9]+)\r\n- Step: ([0-9,\\.]+) ([^\r\n]*)",
             metadata.decode(),
         )
         if parsed is None:
