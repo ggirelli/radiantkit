@@ -7,12 +7,11 @@ import argparse
 from joblib import cpu_count  # type: ignore
 import logging
 import os
-from radiantkit import const
-from radiantkit import particle, series
-from radiantkit import string
+import radiantkit as ra
+from radiantkit import const, particle, series, string
+from radiantkit import argtools as ap
 import re
 from rich.prompt import Confirm  # type: ignore
-import sys
 
 
 def init_parser(subparsers: argparse._SubParsersAction) -> argparse.ArgumentParser:
@@ -41,15 +40,6 @@ def init_parser(subparsers: argparse._SubParsersAction) -> argparse.ArgumentPars
         type=str,
         help=f"""Path to folder where output should be written to. Defaults to
         "{const.default_subfolder}" subfolder in the input directory.""",
-    )
-    parser.add_argument(
-        "--version",
-        action="version",
-        version="%s %s"
-        % (
-            sys.argv[0],
-            const.__version__,
-        ),
     )
 
     critical = parser.add_argument_group("critical arguments")
@@ -147,13 +137,14 @@ def init_parser(subparsers: argparse._SubParsersAction) -> argparse.ArgumentPars
         help="""Do not ask for settings confirmation and proceed.""",
     )
 
+    parser = ap.add_version_argument(parser)
     parser.set_defaults(parse=parse_arguments, run=run)
 
     return parser
 
 
 def parse_arguments(args: argparse.Namespace) -> argparse.Namespace:
-    args.version = const.__version__
+    args.version = ra.__version__
 
     if args.output is None:
         args.output = os.path.join(args.input, const.default_subfolder)
@@ -168,7 +159,7 @@ def parse_arguments(args: argparse.Namespace) -> argparse.Namespace:
     args.mask_prefix = string.add_trailing_dot(args.mask_prefix)
     args.mask_suffix = string.add_leading_dot(args.mask_suffix)
 
-    args.threads = cpu_count() if args.threads > cpu_count() else args.threads
+    args.threads = max(1, min(cpu_count(), args.threads))
 
     return args
 

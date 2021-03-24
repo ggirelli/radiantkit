@@ -8,6 +8,7 @@ from joblib import cpu_count  # type: ignore
 import logging
 import os
 import pickle as pk
+import radiantkit as ra
 from radiantkit import const
 import sys
 
@@ -50,7 +51,7 @@ def add_version_argument(parser: argparse.ArgumentParser) -> argparse.ArgumentPa
         version="%s %s"
         % (
             sys.argv[0],
-            const.__version__,
+            ra.__version__,
         ),
     )
     return parser
@@ -68,10 +69,7 @@ def add_threads_argument(parser: argparse._ArgumentGroup) -> argparse._ArgumentG
 
 
 def check_threads(threads: int) -> int:
-    if threads > cpu_count():
-        logging.warning(f"reduced number of threads to {cpu_count()}")
-        return cpu_count()
-    return threads
+    return max(1, min(cpu_count(), threads))
 
 
 def add_pattern_argument(parser: argparse._ArgumentGroup) -> argparse._ArgumentGroup:

@@ -4,8 +4,7 @@
 """
 
 import argparse
-from radiantkit.const import __version__
-import sys
+from radiantkit import argtools as ap
 
 
 def init_parser(subparsers: argparse._SubParsersAction) -> argparse.ArgumentParser:
@@ -26,10 +25,7 @@ Generate radial profiles along random linear trajectories. *NOT IMPLEMENTED*""",
         "ref_channel", type=str, help="Name of channel with DNA staining intensity."
     )
 
-    parser.add_argument(
-        "--version", action="version", version=f"{sys.argv[0]} {__version__}"
-    )
-
+    parser = ap.add_version_argument(parser)
     parser.set_defaults(parse=parse_arguments, run=run)
 
     return parser

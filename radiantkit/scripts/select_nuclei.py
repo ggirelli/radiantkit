@@ -13,10 +13,11 @@ import os
 import pandas as pd  # type: ignore
 import plotly.graph_objects as go  # type: ignore
 import pickle
+import radiantkit as ra
+from radiantkit import argtools
 from radiantkit import const, io
 from radiantkit.image import ImageBinary, ImageLabeled
 from radiantkit.particle import NucleiList, Nucleus
-from radiantkit.scripts import argtools
 from radiantkit import path, report, series, stat, string
 import re
 from rich.progress import track  # type: ignore
@@ -205,7 +206,7 @@ def parse_arguments(args: argparse.Namespace) -> argparse.Namespace:
 
 
 def print_settings(args: argparse.Namespace, clear: bool = True) -> str:
-    s = f"""# Nuclei selection v{const.__version__}
+    s = f"""# Nuclei selection v{ra.__version__}
 
     ---------- SETTING : VALUE ----------
 

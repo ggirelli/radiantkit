@@ -11,13 +11,13 @@ import numpy as np  # type: ignore
 import os
 import pandas as pd  # type: ignore
 import pickle
+from radiantkit import argtools
 from radiantkit.distance import CenterType, RadialDistanceCalculator
 from radiantkit.channel import ImageGrayScale, ChannelList
 from radiantkit.image import ImageBinary, ImageLabeled
 from radiantkit.path import find_re, get_image_details
 from radiantkit.path import select_by_prefix_and_suffix
 from radiantkit.particle import Nucleus, Particle, ParticleFinder
-from radiantkit.scripts import argtools
 from radiantkit import stat
 from rich.progress import track  # type: ignore
 from typing import Dict, List, Tuple
@@ -335,7 +335,7 @@ class SeriesList(object):
         channel_list: Optional[List[str]] = None,
         threads: int = 1,
     ) -> None:
-        threads = cpu_count() if threads > cpu_count() else threads
+        threads = max(1, min(cpu_count(), threads))
         if 1 == threads:
             for series in track(self):
                 series.init_particles(particleClass, channel_list)
@@ -449,7 +449,7 @@ class SeriesList(object):
     def export_particle_tiffs(
         self, path: str, threads: int = 1, compressed: bool = False
     ) -> None:
-        threads = cpu_count() if threads > cpu_count() else threads
+        threads = max(1, min(cpu_count(), threads))
         assert os.path.isdir(path)
         if 1 == threads:
             for series in track(self, description="series"):

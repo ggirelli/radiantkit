@@ -10,11 +10,20 @@ import os
 import pandas as pd  # type: ignore
 import plotly.graph_objects as go  # type: ignore
 import pickle
-from radiantkit import const, distance, io, particle, plot, report, series, string
-from radiantkit.scripts import argtools
+import radiantkit as ra
+from radiantkit import (
+    const,
+    argtools,
+    distance,
+    io,
+    particle,
+    plot,
+    report,
+    series,
+    string,
+)
 import re
 from rich.prompt import Confirm  # type: ignore
-import sys
 from typing import Any, DefaultDict, Dict, Optional
 
 __OUTPUT__: Dict[str, str] = {
@@ -74,9 +83,6 @@ def init_parser(subparsers: argparse._SubParsersAction) -> argparse.ArgumentPars
         type=str,
         help=f"""Path to folder where output should be written to. Defaults to
         "{const.default_subfolder}" subfolder in the input directory.""",
-    )
-    parser.add_argument(
-        "--version", action="version", version=f"{sys.argv[0]} {const.__version__}"
     )
 
     critical = parser.add_argument_group("critical arguments")
@@ -229,13 +235,14 @@ def init_parser(subparsers: argparse._SubParsersAction) -> argparse.ArgumentPars
         help="""Do not ask for settings confirmation and proceed.""",
     )
 
+    parser = argtools.add_version_argument(parser)
     parser.set_defaults(parse=parse_arguments, run=run)
 
     return parser
 
 
 def parse_arguments(args: argparse.Namespace) -> argparse.Namespace:
-    args.version = const.__version__
+    args.version = ra.__version__
 
     if args.output is None:
         args.output = os.path.join(args.input, const.default_subfolder)
@@ -265,7 +272,7 @@ def parse_arguments(args: argparse.Namespace) -> argparse.Namespace:
         )
         args.block_side += 1
 
-    args.threads = cpu_count() if args.threads > cpu_count() else args.threads
+    args.threads = max(1, min(cpu_count(), args.threads))
 
     return args
 

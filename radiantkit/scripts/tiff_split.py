@@ -8,7 +8,8 @@ import configparser as cp
 import logging
 import numpy as np  # type: ignore
 import os
-from radiantkit.const import __version__
+import radiantkit as ra
+from radiantkit import argtools as ap
 from radiantkit import image as imt
 from rich.progress import track  # type: ignore
 from rich.prompt import Confirm  # type: ignore
@@ -122,16 +123,6 @@ tiff_split big_image.tif split_out_dir 100 -e -O 10 20""",
         help="Expand to avoid pixel loss.",
     )
 
-    parser.add_argument(
-        "--version",
-        action="version",
-        version="%s %s"
-        % (
-            sys.argv[0],
-            __version__,
-        ),
-    )
-
     advanced = parser.add_argument_group("advanced arguments")
     advanced.add_argument(
         "--invert",
@@ -150,6 +141,7 @@ tiff_split big_image.tif split_out_dir 100 -e -O 10 20""",
         default=False,
     )
 
+    parser = ap.add_version_argument(parser)
     parser.set_defaults(parse=parse_arguments, run=run)
 
     return parser
@@ -221,7 +213,7 @@ def check_step_and_overlap(args: argparse.Namespace) -> argparse.Namespace:
 
 
 def parse_arguments(args: argparse.Namespace) -> argparse.Namespace:
-    args.version = __version__
+    args.version = ra.__version__
 
     assert os.path.isfile(args.input), "input file not found: %s" % args.input
     assert not os.path.isfile(

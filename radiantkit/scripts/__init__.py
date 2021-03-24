@@ -3,7 +3,6 @@
 @contact: gigi.ga90@gmail.com
 """
 
-from radiantkit.scripts import argtools
 from radiantkit.scripts import czi_to_tiff, nd2_to_tiff
 from radiantkit.scripts import select_nuclei
 from radiantkit.scripts import measure_objects, export_objects
@@ -23,7 +22,6 @@ logging.basicConfig(
 )
 
 __all__ = [
-    "argtools",
     "czi_to_tiff",
     "nd2_to_tiff",
     "select_nuclei",

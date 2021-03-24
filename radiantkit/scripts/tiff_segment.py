@@ -8,7 +8,8 @@ import argparse
 from joblib import cpu_count, delayed, Parallel  # type: ignore
 import numpy as np  # type: ignore
 import os
-from radiantkit.const import __version__
+import radiantkit as ra
+from radiantkit import argtools as ap
 from radiantkit import const, path, stat, string
 from radiantkit import channel, image, segmentation
 from radiantkit.exception import enable_rich_exceptions
@@ -16,7 +17,6 @@ from radiantkit.io import add_log_file_handler
 import re
 from rich.progress import track  # type: ignore
 from rich.prompt import Confirm  # type: ignore
-import sys
 from typing import Optional
 
 
@@ -116,16 +116,6 @@ Input images that have the specified prefix and suffix are not segmented.""",
         help="""Remove objects touching the bottom/top of the stack.""",
     )
 
-    parser.add_argument(
-        "--version",
-        action="version",
-        version="%s %s"
-        % (
-            sys.argv[0],
-            __version__,
-        ),
-    )
-
     advanced = parser.add_argument_group("advanced arguments")
     advanced.add_argument(
         "--dilate-fill-erode",
@@ -188,9 +178,8 @@ Input images that have the specified prefix and suffix are not segmented.""",
         "--inreg",
         type=str,
         metavar="REGEXP",
-        help="""Regular expression to identify input TIFF images.
-        Default: '%s'"""
-        % (default_inreg,),
+        help=f"""Regular expression to identify input TIFF images.
+        Default: '{default_inreg}'""",
         default=default_inreg,
     )
     advanced.add_argument(
@@ -210,6 +199,7 @@ Input images that have the specified prefix and suffix are not segmented.""",
         help="""Do not ask for settings confirmation and proceed.""",
     )
 
+    parser = ap.add_version_argument(parser)
     parser.set_defaults(parse=parse_arguments, run=run)
 
     return parser
@@ -217,7 +207,7 @@ Input images that have the specified prefix and suffix are not segmented.""",
 
 @enable_rich_exceptions
 def parse_arguments(args: argparse.Namespace) -> argparse.Namespace:
-    args.version = __version__
+    args.version = ra.__version__
 
     if args.output is None:
         if os.path.isfile(args.input):
@@ -237,7 +227,7 @@ def parse_arguments(args: argparse.Namespace) -> argparse.Namespace:
             args.mask_2d
         ), f"2D mask folder not found, '{args.mask_2d}'"
 
-    args.threads = cpu_count() if args.threads > cpu_count() else args.threads
+    args.threads = max(1, min(cpu_count(), args.threads))
 
     loglvl = 20
     loglvl = logging.DEBUG if args.debug_mode else 20
