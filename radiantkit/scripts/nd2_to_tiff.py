@@ -28,8 +28,10 @@ def init_parser(subparsers: argparse._SubParsersAction) -> argparse.ArgumentPars
     parser = subparsers.add_parser(
         __name__.split(".")[-1],
         description=f"""
-Convert one or more nd2 files into single channel tiff images. When a folder is
-specified as input, all files matchin the inreg regular expression are converted.
+Convert one or more nd2 files into single channel tiff images. You can specify multiple
+nd2 files, or multiple folders containing nd2 files, by separating them with a space.
+When a folder is specified as input, all files matching the "inreg" regular expression
+are converted. You can change the regular expression to convert a specific files subset.
 
 In the case of 3+D images, the script also checks for consistent deltaZ distance across
 consecutive 2D slices (i.e., dZ). If the distance is consitent, it is used to set the
@@ -64,7 +66,9 @@ quotes, i.e., "\\$". Alternatively, use single quotes, i.e., '$'.""",
     parser.add_argument(
         "input",
         type=str,
-        help="""Path an nd2 file to convert, or to a folder containing nd2 files.""",
+        nargs="+",
+        help="""Path an nd2 file to convert, or to a folder containing nd2 files.
+        To specify multiple inputs, separate them with a space.""",
     )
 
     parser.add_argument(
@@ -132,13 +136,22 @@ quotes, i.e., "\\$". Alternatively, use single quotes, i.e., '$'.""",
         low-depth (e.g. labeled) images.""",
     )
     advanced.add_argument(
-        "-n",
-        "--dry-run",
+        "-i",
+        "--info",
         action="store_const",
-        dest="dry",
+        dest="info",
         const=True,
         default=False,
-        help="Describe input data and stop (nothing is converted).",
+        help="Show details of input nd2 files and stop (nothing is converted).",
+    )
+    advanced.add_argument(
+        "-l",
+        "--list",
+        action="store_const",
+        dest="list",
+        const=True,
+        default=False,
+        help="List input nd2 files and stop (nothing is converted).",
     )
 
     parser = ap.add_version_argument(parser)
@@ -395,15 +408,20 @@ def check_arguments(
 
 
 def convert_single_nd2_file(args: argparse.Namespace, path: str, outdir: str = None):
+    logging.info(f"Working on file '{path}'.")
+    assert os.path.isfile(path), f"input file not found: {path}"
+    if args.list:
+        return
+
     if outdir is None:
         outdir = os.path.splitext(os.path.basename(path))[0]
         outdir = os.path.join(os.path.dirname(path), outdir)
-    assert os.path.isfile(path), f"input file not found: {path}"
     assert not os.path.isfile(outdir), f"output directory cannot be a file: {outdir}"
 
     nd2_image = ND2Reader2(path)
-    if args.dry:
+    if args.info:
         nd2_image.log_details()
+        logging.info("")
         return
 
     if not os.path.isdir(outdir):
@@ -422,15 +440,17 @@ def convert_folder_nd2_files(args: argparse.Namespace, path: str):
     assert os.path.isdir(path)
     for fpath in sorted(os.listdir(path)):
         if re.match(args.inreg, fpath) is not None:
-            logging.info(f"Working on file '{fpath}'.")
+            fpath = os.path.join(path, fpath)
             convert_single_nd2_file(args, fpath)
-            logging.info("")
 
 
 @enable_rich_exceptions
 def run(args: argparse.Namespace) -> None:
-    if os.path.isdir(args.input):
-        convert_folder_nd2_files(args, args.input)
-    else:
-        convert_single_nd2_file(args, args.input, args.outdir)
-    logging.info("Done. :thumbs_up: :smiley:")
+    logging.info(f"Input: {args.input}")
+    for input_path in args.input:
+        if os.path.isdir(input_path):
+            logging.info(f"Looking into folder: {input_path}")
+            convert_folder_nd2_files(args, input_path)
+        else:
+            convert_single_nd2_file(args, input_path, args.outdir)
+        logging.info("Done. :thumbs_up: :smiley:")
