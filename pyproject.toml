@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "radiantkit"
-version = "0.0.1.20210324.1"
+version = "0.0.1.20210324.2"
 description = "Radial Image Analysis Toolkit"
 authors = ["Gabriele Girelli <gigi.ga90@gmail.com>"]
 license = "MIT"
