@@ -10,9 +10,10 @@ import os
 import pandas as pd  # type: ignore
 import plotly.graph_objects as go  # type: ignore
 import pickle
+import radiantkit as ra
 from radiantkit import (
-    __version__,
     const,
+    argtools,
     distance,
     io,
     particle,
@@ -21,10 +22,8 @@ from radiantkit import (
     series,
     string,
 )
-from radiantkit.scripts import argtools
 import re
 from rich.prompt import Confirm  # type: ignore
-import sys
 from typing import Any, DefaultDict, Dict, Optional
 
 __OUTPUT__: Dict[str, str] = {
@@ -84,9 +83,6 @@ def init_parser(subparsers: argparse._SubParsersAction) -> argparse.ArgumentPars
         type=str,
         help=f"""Path to folder where output should be written to. Defaults to
         "{const.default_subfolder}" subfolder in the input directory.""",
-    )
-    parser.add_argument(
-        "--version", action="version", version=f"{sys.argv[0]} {__version__}"
     )
 
     critical = parser.add_argument_group("critical arguments")
@@ -239,13 +235,14 @@ def init_parser(subparsers: argparse._SubParsersAction) -> argparse.ArgumentPars
         help="""Do not ask for settings confirmation and proceed.""",
     )
 
+    parser = argtools.add_version_argument(parser)
     parser.set_defaults(parse=parse_arguments, run=run)
 
     return parser
 
 
 def parse_arguments(args: argparse.Namespace) -> argparse.Namespace:
-    args.version = __version__
+    args.version = ra.__version__
 
     if args.output is None:
         args.output = os.path.join(args.input, const.default_subfolder)

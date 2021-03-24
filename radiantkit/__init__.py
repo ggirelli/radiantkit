@@ -3,25 +3,26 @@
 @contact: gigi.ga90@gmail.com
 """
 
-from radiantkit import const, exception, output, scripts
+from radiantkit import const, argtools, exception, output
 from radiantkit import conversion, deconvolution, segmentation
 from radiantkit import image, particle, series
-from radiantkit import path, plot, stat, string
-from radiantkit import report, pipeline
+from radiantkit import path, stat, string
+from radiantkit import scripts
+from radiantkit import report, plot, pipeline
 
-from importlib.metadata import version, PackageNotFoundError
+from importlib.metadata import version
 
 try:
     __version__ = version(__name__)
-except PackageNotFoundError:
-    pass
+except Exception as e:
+    raise e
 
 __all__ = [
     "__version__",
     "const",
+    "argtools",
     "exception",
     "output",
-    "scripts",
     "conversion",
     "deconvolution",
     "segmentation",
@@ -32,6 +33,7 @@ __all__ = [
     "plot",
     "stat",
     "string",
+    "scripts",
     "report",
     "pipeline",
 ]

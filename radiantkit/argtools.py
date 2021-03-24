@@ -8,7 +8,8 @@ from joblib import cpu_count  # type: ignore
 import logging
 import os
 import pickle as pk
-from radiantkit import __version__, const
+import radiantkit as ra
+from radiantkit import const
 import sys
 
 
@@ -50,7 +51,7 @@ def add_version_argument(parser: argparse.ArgumentParser) -> argparse.ArgumentPa
         version="%s %s"
         % (
             sys.argv[0],
-            __version__,
+            ra.__version__,
         ),
     )
     return parser

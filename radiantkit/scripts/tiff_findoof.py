@@ -10,8 +10,8 @@ import logging
 import os
 import pandas as pd  # type: ignore
 from plotly import graph_objects as go, express as px  # type: ignore
+from radiantkit import argtools
 from radiantkit import const, exception, image, io, path, report
-from radiantkit.scripts import argtools
 from typing import Any, DefaultDict, Dict, Optional
 
 

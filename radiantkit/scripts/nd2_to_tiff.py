@@ -8,7 +8,7 @@ import logging
 import numpy as np  # type: ignore
 import os
 import pims  # type: ignore
-from radiantkit import __version__
+from radiantkit import argtools as ap
 from radiantkit.conversion import ND2Reader2
 from radiantkit.exception import enable_rich_exceptions
 import radiantkit.image as imt
@@ -17,6 +17,7 @@ import radiantkit.stat as stat
 from radiantkit.string import MultiRange
 from radiantkit.string import TIFFNameTemplateFields as TNTFields
 from radiantkit.string import TIFFNameTemplate as TNTemplate
+import re
 from rich.progress import track  # type: ignore
 import sys
 from typing import List, Optional, Tuple, Union
@@ -27,7 +28,8 @@ def init_parser(subparsers: argparse._SubParsersAction) -> argparse.ArgumentPars
     parser = subparsers.add_parser(
         __name__.split(".")[-1],
         description=f"""
-Convert a nd2 file into single channel tiff images.
+Convert one or more nd2 files into single channel tiff images. When a folder is
+specified as input, all files matchin the inreg regular expression are converted.
 
 In the case of 3+D images, the script also checks for consistent deltaZ distance across
 consecutive 2D slices (i.e., dZ). If the distance is consitent, it is used to set the
@@ -59,14 +61,18 @@ quotes, i.e., "\\$". Alternatively, use single quotes, i.e., '$'.""",
         help="Convert a nd2 file into single channel tiff images.",
     )
 
-    parser.add_argument("input", type=str, help="""Path to the nd2 file to convert.""")
+    parser.add_argument(
+        "input",
+        type=str,
+        help="""Path an nd2 file to convert, or to a folder containing nd2 files.""",
+    )
 
     parser.add_argument(
         "--outdir",
         metavar="DIRPATH",
         type=str,
         help="""Path to output TIFF folder. Defaults to the input file
-        basename.""",
+        basename. This is ignored when input is a folder.""",
         default=None,
     )
     parser.add_argument(
@@ -88,10 +94,6 @@ quotes, i.e., "\\$". Alternatively, use single quotes, i.e., '$'.""",
         nargs="+",
     )
 
-    parser.add_argument(
-        "--version", action="version", version=f"{sys.argv[0]} {__version__}"
-    )
-
     advanced = parser.add_argument_group("advanced arguments")
     advanced.add_argument(
         "--deltaZ",
@@ -101,6 +103,15 @@ quotes, i.e., "\\$". Alternatively, use single quotes, i.e., '$'.""",
         help="""If provided (in um), the script does not check delta Z
         consistency and instead uses the provided one.""",
         default=None,
+    )
+    default_inreg = r"^.*\.nd2$"
+    advanced.add_argument(
+        "--inreg",
+        type=str,
+        metavar="REGEXP",
+        help=f"""Regular expression to identify input ND2 images.
+        Default: '{default_inreg}'""",
+        default=default_inreg,
     )
     advanced.add_argument(
         "--template",
@@ -130,6 +141,7 @@ quotes, i.e., "\\$". Alternatively, use single quotes, i.e., '$'.""",
         help="Describe input data and stop (nothing is converted).",
     )
 
+    parser = ap.add_version_argument(parser)
     parser.set_defaults(parse=parse_arguments, run=run)
 
     return parser
@@ -137,15 +149,6 @@ quotes, i.e., "\\$". Alternatively, use single quotes, i.e., '$'.""",
 
 @enable_rich_exceptions
 def parse_arguments(args: argparse.Namespace) -> argparse.Namespace:
-    if args.outdir is None:
-        args.outdir = os.path.splitext(os.path.basename(args.input))[0]
-        args.outdir = os.path.join(os.path.dirname(args.input), args.outdir)
-
-    assert os.path.isfile(args.input), f"input file not found: {args.input}"
-    assert not os.path.isfile(
-        args.outdir
-    ), f"output directory cannot be a file: {args.outdir}"
-
     if args.fields is not None:
         args.fields = list(MultiRange(args.fields))
 
@@ -233,9 +236,10 @@ def export_single_channel(
 
 
 def export_multiple_channels(
+    outdir: str,
     nd2_image: ND2Reader2,
     field_id: int,
-    args: argparse.Namespace,
+    args,
     channels: Optional[List[str]] = None,
     z_resolution: float = 0.0,
 ) -> None:
@@ -250,7 +254,7 @@ def export_multiple_channels(
         if channel_name in channels:
             imt.save_tiff(
                 os.path.join(
-                    args.outdir,
+                    outdir,
                     nd2_image.get_tiff_path(args.template, channel_id, field_id),
                 ),
                 get_field(nd2_image, field_id, channel_id),
@@ -267,6 +271,7 @@ def export_multiple_channels(
 
 
 def export_field(
+    outdir: str,
     nd2_image: ND2Reader2,
     field_id: int,
     args: argparse.Namespace,
@@ -277,7 +282,9 @@ def export_field(
         return
 
     try:
-        export_multiple_channels(nd2_image, field_id, args, channels, z_resolution)
+        export_multiple_channels(
+            outdir, nd2_image, field_id, args, channels, z_resolution
+        )
     except ValueError as e:
         if "could not broadcast input array from shape" in e.args[0]:
             logging.error(
@@ -293,7 +300,9 @@ def export_field(
         raise e
 
 
-def convert_to_tiff(args: argparse.Namespace, nd2_image: ND2Reader2) -> None:
+def convert_to_tiff(
+    args: argparse.Namespace, outdir: str, nd2_image: ND2Reader2
+) -> None:
     if "v" in nd2_image.axes:
         nd2_image.iter_axes = "v"
     nd2_image.set_axes_for_bundling()
@@ -319,7 +328,7 @@ def convert_to_tiff(args: argparse.Namespace, nd2_image: ND2Reader2) -> None:
                 )
             )
         else:
-            export_field(nd2_image, field_id - 1, args, args.channels)
+            export_field(outdir, nd2_image, field_id - 1, args, args.channels)
 
 
 def check_channel_selection(args: argparse.Namespace, nd2_image: ND2Reader2):
@@ -385,22 +394,43 @@ def check_arguments(
     return args
 
 
-@enable_rich_exceptions
-def run(args: argparse.Namespace) -> None:
-    nd2_image = ND2Reader2(args.input)
+def convert_single_nd2_file(args: argparse.Namespace, path: str, outdir: str = None):
+    if outdir is None:
+        outdir = os.path.splitext(os.path.basename(path))[0]
+        outdir = os.path.join(os.path.dirname(path), outdir)
+    assert os.path.isfile(path), f"input file not found: {path}"
+    assert not os.path.isfile(outdir), f"output directory cannot be a file: {outdir}"
+
+    nd2_image = ND2Reader2(path)
     if args.dry:
         nd2_image.log_details()
-        sys.exit()
+        return
 
-    if not os.path.isdir(args.outdir):
-        os.mkdir(args.outdir)
-    add_log_file_handler(os.path.join(args.outdir, "nd2_to_tiff.log.txt"))
+    if not os.path.isdir(outdir):
+        os.mkdir(outdir)
+    add_log_file_handler(os.path.join(outdir, "nd2_to_tiff.log.txt"))
 
     nd2_image.log_details()
     args = check_arguments(args, nd2_image)
 
-    logging.info(f"Output directory: '{args.outdir}'")
+    logging.info(f"Output directory: '{outdir}'")
 
-    convert_to_tiff(args, nd2_image)
+    convert_to_tiff(args, outdir, nd2_image)
 
+
+def convert_folder_nd2_files(args: argparse.Namespace, path: str):
+    assert os.path.isdir(path)
+    for fpath in sorted(os.listdir(path)):
+        if re.match(args.inreg, fpath) is not None:
+            logging.info(f"Working on file '{fpath}'.")
+            convert_single_nd2_file(args, fpath)
+            logging.info("")
+
+
+@enable_rich_exceptions
+def run(args: argparse.Namespace) -> None:
+    if os.path.isdir(args.input):
+        convert_folder_nd2_files(args, args.input)
+    else:
+        convert_single_nd2_file(args, args.input, args.outdir)
     logging.info("Done. :thumbs_up: :smiley:")

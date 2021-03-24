@@ -7,7 +7,7 @@ import argparse
 from joblib import cpu_count, delayed, Parallel  # type: ignore
 import logging
 import os
-from radiantkit import __version__
+from radiantkit import argtools as ap
 from radiantkit import image, path
 import re
 import sys
@@ -59,16 +59,6 @@ bottleneck when parallelizing.""",
         help="Compress TIFF files.",
     )
 
-    parser.add_argument(
-        "--version",
-        action="version",
-        version="%s %s"
-        % (
-            sys.argv[0],
-            __version__,
-        ),
-    )
-
     advanced = parser.add_argument_group("advanced arguments")
     default_inreg = "^.*\\.tiff?$"
     advanced.add_argument(
@@ -89,6 +79,7 @@ bottleneck when parallelizing.""",
         (un)compress multiple images (i.e., input is a folder). Default: 1""",
     )
 
+    parser = ap.add_version_argument(parser)
     parser.set_defaults(parse=parse_arguments, run=run)
 
     return parser

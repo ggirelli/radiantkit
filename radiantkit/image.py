@@ -8,7 +8,8 @@ import logging
 import numpy as np  # type: ignore
 import os
 import pandas as pd  # type: ignore
-from radiantkit import __version__, const, stat
+import radiantkit as ra
+from radiantkit import const, stat
 from radiantkit.deconvolution import get_deconvolution_rescaling_factor
 from scipy import ndimage as ndi  # type: ignore
 import skimage as ski  # type: ignore
@@ -787,7 +788,7 @@ def save_tiff(
         compress=compressionLevel,
         imagej=forImageJ,
         metadata=metadata,
-        software=f"radiant v{__version__}",
+        software=f"radiant v{ra.__version__}",
         extratags=[(339, "i", 1, get_sampleformat_tag(img.dtype), False)],
         **kwargs,
     )

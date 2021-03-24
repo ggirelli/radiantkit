@@ -7,12 +7,11 @@ import argparse
 from joblib import cpu_count  # type: ignore
 import logging
 import os
-from radiantkit import __version__, const
-from radiantkit import particle, series
-from radiantkit import string
+import radiantkit as ra
+from radiantkit import const, particle, series, string
+from radiantkit import argtools as ap
 import re
 from rich.prompt import Confirm  # type: ignore
-import sys
 
 __OUTPUT__ = {
     "obj_features": "nuclear_features.tsv",
@@ -56,15 +55,6 @@ def init_parser(subparsers: argparse._SubParsersAction) -> argparse.ArgumentPars
         default=False,
         dest="exportSingleVoxel",
         help="Export also quantiles of single voxel features.",
-    )
-    parser.add_argument(
-        "--version",
-        action="version",
-        version="%s %s"
-        % (
-            sys.argv[0],
-            __version__,
-        ),
     )
 
     critical = parser.add_argument_group("critical arguments")
@@ -179,13 +169,14 @@ def init_parser(subparsers: argparse._SubParsersAction) -> argparse.ArgumentPars
         help="""Do not ask for settings confirmation and proceed.""",
     )
 
+    parser = ap.add_version_argument(parser)
     parser.set_defaults(parse=parse_arguments, run=run)
 
     return parser
 
 
 def parse_arguments(args: argparse.Namespace) -> argparse.Namespace:
-    args.version = const.__version__
+    args.version = ra.__version__
 
     if args.output is None:
         args.output = os.path.join(args.input, const.default_subfolder)

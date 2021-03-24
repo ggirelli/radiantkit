@@ -7,7 +7,7 @@ import argparse
 import logging
 import numpy as np  # type: ignore
 import os
-from radiantkit import __version__
+from radiantkit import argtools as ap
 from radiantkit.conversion import CziFile2
 from radiantkit.exception import enable_rich_exceptions
 import radiantkit.image as imt
@@ -15,6 +15,7 @@ from radiantkit.io import add_log_file_handler
 from radiantkit.string import MultiRange
 from radiantkit.string import TIFFNameTemplateFields as TNTFields
 from radiantkit.string import TIFFNameTemplate as TNTemplate
+import re
 from rich.progress import track  # type: ignore
 import sys
 from typing import Iterable, List, Tuple
@@ -25,7 +26,8 @@ def init_parser(subparsers: argparse._SubParsersAction) -> argparse.ArgumentPars
     parser = subparsers.add_parser(
         __name__.split(".")[-1],
         description=f"""
-Convert a czi file into single channel tiff images.
+Convert one or more czi files into single channel tiff images. When a folder is
+specified as input, all files matchin the inreg regular expression are converted.
 
 # File naming
 
@@ -49,14 +51,18 @@ quotes, i.e., "\\$". Alternatively, use single quotes, i.e., '$'.""",
         help="Convert a czi file into single channel tiff images.",
     )
 
-    parser.add_argument("input", type=str, help="""Path to the czi file to convert.""")
+    parser.add_argument(
+        "input",
+        type=str,
+        help="""Path a czi file to convert, or to a folder containing nd2 files.""",
+    )
 
     parser.add_argument(
         "--outdir",
         metavar="DIRPATH",
         type=str,
         help="""Path to output TIFF folder. Defaults to the input file
-        basename.""",
+        basename. This is ignored when input is a folder.""",
         default=None,
     )
     parser.add_argument(
@@ -78,11 +84,16 @@ quotes, i.e., "\\$". Alternatively, use single quotes, i.e., '$'.""",
         nargs="+",
     )
 
-    parser.add_argument(
-        "--version", action="version", version=f"{sys.argv[0]} {__version__}"
-    )
-
     advanced = parser.add_argument_group("advanced arguments")
+    default_inreg = r"^.*\.czi$"
+    advanced.add_argument(
+        "--inreg",
+        type=str,
+        metavar="REGEXP",
+        help=f"""Regular expression to identify input CZI images.
+        Default: '{default_inreg}'""",
+        default=default_inreg,
+    )
     advanced.add_argument(
         "--template",
         metavar="STRING",
@@ -110,6 +121,7 @@ quotes, i.e., "\\$". Alternatively, use single quotes, i.e., '$'.""",
         help="Describe input data and stop (nothing is converted).",
     )
 
+    parser = ap.add_version_argument(parser)
     parser.set_defaults(parse=parse_arguments, run=run)
 
     return parser
@@ -117,15 +129,6 @@ quotes, i.e., "\\$". Alternatively, use single quotes, i.e., '$'.""",
 
 @enable_rich_exceptions
 def parse_arguments(args: argparse.Namespace) -> argparse.Namespace:
-    if args.outdir is None:
-        args.outdir = os.path.splitext(os.path.basename(args.input))[0]
-        args.outdir = os.path.join(os.path.dirname(args.input), args.outdir)
-
-    assert os.path.isfile(args.input), f"input file not found: {args.input}"
-    assert not os.path.isfile(
-        args.outdir
-    ), f"output directory cannot be a file: {args.outdir}"
-
     if args.fields is not None:
         args.fields = MultiRange(args.fields)
 
@@ -175,7 +178,7 @@ def field_generator(
             )
 
 
-def convert_to_tiff(args: argparse.Namespace, czi_image: CziFile2) -> None:
+def convert_to_tiff(args: argparse.Namespace, outdir: str, czi_image: CziFile2) -> None:
     export_total = float("inf")
     if args.fields is not None and args.channels is not None:
         export_total = len(args.fields) * len(args.channels)
@@ -188,7 +191,7 @@ def convert_to_tiff(args: argparse.Namespace, czi_image: CziFile2) -> None:
     )
     for (OI, opath) in track(field_generator(args, czi_image), total=int(export_total)):
         imt.save_tiff(
-            os.path.join(args.outdir, opath),
+            os.path.join(outdir, opath),
             OI.astype(imt.get_dtype(OI.max())),
             args.doCompress,
             resolution=(
@@ -232,22 +235,27 @@ def check_argument_compatibility(
     return args
 
 
-@enable_rich_exceptions
-def run(args: argparse.Namespace) -> None:
-    czi_image = CziFile2(args.input)
+def convert_single_czi_file(args: argparse.Namespace, path: str, outdir: str = None):
+    if outdir is None:
+        outdir = os.path.splitext(os.path.basename(path))[0]
+        outdir = os.path.join(os.path.dirname(path), outdir)
+    assert os.path.isfile(path), f"input file not found: {path}"
+    assert not os.path.isfile(outdir), f"output directory cannot be a file: {outdir}"
+
+    czi_image = CziFile2(path)
     if args.dry:
         czi_image.log_details()
         sys.exit()
 
-    if not os.path.isdir(args.outdir):
-        os.mkdir(args.outdir)
-    add_log_file_handler(os.path.join(args.outdir, "czi_to_tiff.log.txt"))
+    if not os.path.isdir(outdir):
+        os.mkdir(outdir)
+    add_log_file_handler(os.path.join(outdir, "czi_to_tiff.log.txt"))
 
     czi_image.log_details()
     args = check_argument_compatibility(args, czi_image)
     assert not czi_image.isLive(), "time-course conversion images not implemented."
 
-    logging.info(f"Output directory: '{args.outdir}'")
+    logging.info(f"Output directory: '{outdir}'")
     czi_image.squeeze_axes("STCZYX")
     czi_image.reorder_axes("STCZYX")
 
@@ -257,6 +265,22 @@ def run(args: argparse.Namespace) -> None:
             "Converting only the following fields: " + f"{[x for x in args.fields]}"
         )
 
-    convert_to_tiff(args, czi_image)
+    convert_to_tiff(args, outdir, czi_image)
 
+
+def convert_folder_czi_files(args: argparse.Namespace, path: str):
+    assert os.path.isdir(path)
+    for fpath in sorted(os.listdir(path)):
+        if re.match(args.inreg, fpath) is not None:
+            logging.info(f"Working on file '{fpath}'.")
+            convert_single_czi_file(args, fpath)
+            logging.info("")
+
+
+@enable_rich_exceptions
+def run(args: argparse.Namespace) -> None:
+    if os.path.isdir(args.input):
+        convert_folder_czi_files(args, args.input)
+    else:
+        convert_single_czi_file(args, args.input, args.outdir)
     logging.info("Done. :thumbs_up: :smiley:")
