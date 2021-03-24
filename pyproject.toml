@@ -19,7 +19,7 @@ classifiers = [
 include = ["CHANGELOG.md", "LICENSE"]
 
 [tool.poetry.dependencies]
-python = "^3.7"
+python = "^3.8"
 czifile = "^2019.7.2"
 joblib = ">=0.16,<1.1"
 memory-profiler = "^0.58.0 "

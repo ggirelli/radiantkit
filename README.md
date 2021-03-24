@@ -7,7 +7,7 @@
 
 [PyPi](https://pypi.org/project/radiantkit/) | [docs](https://ggirelli.github.io/radiantkit/)
 
-**Rad**ial **I**mage **An**alysis **T**ool**kit** (RadIAnTkit)j is a Python3.7+ package containing tools for full-stack image analysis - from proprietary format conversion to tiff to cellular nuclei segmentation, from the selection of G1 nuclei to the measurement of radial patterns.
+**Rad**ial **I**mage **An**alysis **T**ool**kit** (RadIAnTkit)j is a Python3.8+ package containing tools for full-stack image analysis - from proprietary format conversion to tiff to cellular nuclei segmentation, from the selection of G1 nuclei to the measurement of radial patterns.
 
 ## Features (in short)
 
@@ -24,7 +24,7 @@ For more available features, check out our [docs](https://ggirelli.github.io/rad
 
 ## Requirements
 
-`radiantkit` has been tested with Python 3.7, 3.8, and 3.9. We recommend installing it using `pipx` (see [below](https://github.com/ggirelli/radiantkit#install)) to avoid dependency conflicts with other packages. The packages it depends on are listed in our [dependency graph](https://github.com/ggirelli/radiantkit/network/dependencies). We use [`poetry`](https://github.com/python-poetry/poetry) to handle our dependencies.
+`radiantkit` has been tested with Python 3.8 and 3.9. We recommend installing it using `pipx` (see [below](https://github.com/ggirelli/radiantkit#install)) to avoid dependency conflicts with other packages. The packages it depends on are listed in our [dependency graph](https://github.com/ggirelli/radiantkit/network/dependencies). We use [`poetry`](https://github.com/python-poetry/poetry) to handle our dependencies.
 
 ## Install
 
