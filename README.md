@@ -57,4 +57,4 @@ We welcome any contributions to `radiantkit`. In short, we use [`black`](https:/
 
 ## License
 
-`MIT License - Copyright (c) 2020 Gabriele Girelli`
+`MIT License - Copyright (c) 2020-21 Gabriele Girelli`
