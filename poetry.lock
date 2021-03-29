@@ -378,7 +378,7 @@ six = ">=1.7.0"
 
 [[package]]
 name = "rich"
-version = "9.13.0"
+version = "10.0.0"
 description = "Render rich text, tables, progress bars, syntax highlighting, markdown and more to the terminal"
 category = "main"
 optional = false
@@ -488,7 +488,7 @@ python-versions = ">=2.7, !=3.0.*, !=3.1.*, !=3.2.*, !=3.3.*"
 [metadata]
 lock-version = "1.1"
 python-versions = "^3.8"
-content-hash = "1d5d505699a84138a05971dc4b6d9b691ca852d1700f571ce12b83261e81ea0b"
+content-hash = "81efabd3c677f84ee2e61559b2e5714f56fb8abfc05906ad1fa9ed5812b67521"
 
 [metadata.files]
 atomicwrites = [
@@ -807,8 +807,8 @@ retrying = [
     {file = "retrying-1.3.3.tar.gz", hash = "sha256:08c039560a6da2fe4f2c426d0766e284d3b736e355f8dd24b37367b0bb41973b"},
 ]
 rich = [
-    {file = "rich-9.13.0-py3-none-any.whl", hash = "sha256:9004f6449c89abadf689dad6f92393e760b8c3a8a8c4ea6d8d474066307c0e66"},
-    {file = "rich-9.13.0.tar.gz", hash = "sha256:d59e94a0e3e686f0d268fe5c7060baa1bd6744abca71b45351f5850a3aaa6764"},
+    {file = "rich-10.0.0-py3-none-any.whl", hash = "sha256:01b3fcc305ae71b9ade4a645b6e371d395c6cd9ba52dcf180bfba69ef05c13b5"},
+    {file = "rich-10.0.0.tar.gz", hash = "sha256:4674bd3056a72bb282ad581e3f8092dc110cdcc456b5ba76e34965cb85a69724"},
 ]
 scikit-image = [
     {file = "scikit-image-0.18.1.tar.gz", hash = "sha256:fbb618ca911867bce45574c1639618cdfb5d94e207432b19bc19563d80d2f171"},
