@@ -449,7 +449,7 @@ six = "*"
 
 [[package]]
 name = "tifffile"
-version = "2021.3.31"
+version = "2021.4.8"
 description = "Read and write TIFF files"
 category = "main"
 optional = false
@@ -858,8 +858,8 @@ slicerator = [
     {file = "slicerator-1.0.0.tar.gz", hash = "sha256:18e60393e6765ca96986f801bbae62a617a1eba6ed57784e61b165ffc7dc1848"},
 ]
 tifffile = [
-    {file = "tifffile-2021.3.31-py3-none-any.whl", hash = "sha256:e0182c4f819688cad03788006512295875565127b7a7eeab0993304e2aa33c76"},
-    {file = "tifffile-2021.3.31.tar.gz", hash = "sha256:3a966053e09a89317e6c9bdf99db4bf5c4d3d611ca8ac455024d7824ea5772b3"},
+    {file = "tifffile-2021.4.8-py3-none-any.whl", hash = "sha256:1cfc55f5b728e200142580a7bf108b72775c4097d007b4111876559fa1fb7432"},
+    {file = "tifffile-2021.4.8.tar.gz", hash = "sha256:55aa8baad38e1567c9fe450fff52160e4a21294a612f241c5e414da80f87209b"},
 ]
 toml = [
     {file = "toml-0.10.2-py2.py3-none-any.whl", hash = "sha256:806143ae5bfb6a3c6e736a764057db0e6a0e05e338b5630894a5f779cabb4f9b"},
