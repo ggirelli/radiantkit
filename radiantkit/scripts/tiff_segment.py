@@ -108,6 +108,14 @@ Input images that have the specified prefix and suffix are not segmented.""",
     )
 
     parser.add_argument(
+        "--no-clear-XY",
+        action="store_const",
+        dest="do_clear_XY",
+        const=False,
+        default=True,
+        help="""Do not remove objects touching the XY edges of the stack.""",
+    )
+    parser.add_argument(
         "--clear-Z",
         action="store_const",
         dest="do_clear_Z",
@@ -317,6 +325,7 @@ def segment(
     binarizer = segmentation.Binarizer()
     binarizer.segmentation_type = const.SegmentationType.THREED
     binarizer.local_side = args.neighbour
+    binarizer.do_clear_XY_borders = args.do_clear_XY
     binarizer.do_clear_Z_borders = args.do_clear_Z
 
     M2D = read_mask_2d(args, imgpath)
