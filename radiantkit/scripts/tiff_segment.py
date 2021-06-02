@@ -270,8 +270,10 @@ def print_settings(args: argparse.Namespace, clear: bool = True) -> str:
      Dilate-fill-erode : {args.dilate_fill_erode}
      Minimum Z portion : {args.min_Z:.2f}
         Minimum radius : [{args.radius[0]:.2f}, {args.radius[1]:.2f}] vx
+              Clear XY : {args.do_clear_XY}
                Clear Z : {args.do_clear_Z}
 
+         Only in-focus : {args.only_focus}
           Default axes : {args.default_axes}
                Rescale : {args.do_rescaling}
                Threads : {args.threads}
