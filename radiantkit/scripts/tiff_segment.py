@@ -123,6 +123,14 @@ Input images that have the specified prefix and suffix are not segmented.""",
         default=False,
         help="""Remove objects touching the bottom/top of the stack.""",
     )
+    parser.add_argument(
+        "--only-focus",
+        action="store_const",
+        dest="only_focus",
+        const=True,
+        default=False,
+        help="""Export mask for the most in-focus slice only.""",
+    )
 
     advanced = parser.add_argument_group("advanced arguments")
     advanced.add_argument(
@@ -306,22 +314,9 @@ def read_mask_2d(
     return mask2d
 
 
-def segment(
-    args: argparse.Namespace, imgpath: str, imgdir: str, loglevel: str = "INFO"
-) -> None:
-    logging.getLogger().setLevel(loglevel)
-    logging.info(f"Segmenting image '{imgpath}'")
-
-    img = channel.ImageGrayScale.from_tiff(
-        os.path.join(imgdir, imgpath),
-        do_rescale=args.do_rescaling,
-        default_axes=args.default_axes,
-    )
-    logging.info(f"image axes: {img.axes}")
-    logging.info(f"image shape: {img.shape}")
-    if args.do_rescaling:
-        logging.info(f"rescaling factor: {img.rescale_factor}")
-
+def run_binarizer(
+    args: argparse.Namespace, imgpath: str, img: channel.ImageGrayScale
+) -> channel.ImageLabeled:
     binarizer = segmentation.Binarizer()
     binarizer.segmentation_type = const.SegmentationType.THREED
     binarizer.local_side = args.neighbour
@@ -345,9 +340,40 @@ def segment(
     logging.info(f"filtering Z size: {z_size_range}")
     L.filter_size("Z", z_size_range)
 
+    if args.only_focus:
+        z_index = img.axes.index("Z")
+        if z_index >= 0:
+            slice_condition = np.indices(img.shape)[z_index] == img.focus_slice_id()
+            new_shape = list(img.shape[:z_index])
+            new_shape.extend(img.shape[(z_index + 1) :])
+            L = channel.ImageLabeled(
+                np.extract(slice_condition, L.pixels).reshape(new_shape)
+            )
+
     if M2D is not None:
         logging.info("recovering labels from 2D mask")
         L.inherit_labels(M2D)
+
+    return L
+
+
+def segment(
+    args: argparse.Namespace, imgpath: str, imgdir: str, loglevel: str = "INFO"
+) -> None:
+    logging.getLogger().setLevel(loglevel)
+    logging.info(f"Segmenting image '{imgpath}'")
+
+    img = channel.ImageGrayScale.from_tiff(
+        os.path.join(imgdir, imgpath),
+        do_rescale=args.do_rescaling,
+        default_axes=args.default_axes,
+    )
+    logging.info(f"image axes: {img.axes}")
+    logging.info(f"image shape: {img.shape}")
+    if args.do_rescaling:
+        logging.info(f"rescaling factor: {img.rescale_factor}")
+
+    L = run_binarizer(args, imgpath, img)
 
     if 0 == L.pixels.max():
         logging.warning(f"skipped image '{imgpath}' (only background)")

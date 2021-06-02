@@ -602,26 +602,30 @@ class ImageGrayScale(Image):
             slice_descriptors = []
         return slice_descriptors
 
+    def focus_slice_id(self, slice_descriptors: Optional[List[float]] = None):
+        if slice_descriptors is None:
+            slice_descriptors = self.describe_slices()
+        return slice_descriptors.index(max(slice_descriptors))
+
     def is_in_focus(
         self,
         mode: SliceDescriptorMode = SliceDescriptorMode.GRADIENT_OF_MAGNITUDE,
         fraction: float = 0.5,
     ) -> Tuple[bool, pd.DataFrame]:
         slice_descriptors = self.describe_slices()
-        profile = pd.DataFrame.from_dict(
-            {
-                "Z-slice index": np.array(range(self.shape[0])) + 1,
-                mode.value: slice_descriptors,
-            }
-        )
-        max_slice_id = slice_descriptors.index(max(slice_descriptors))
+        max_slice_id = self.focus_slice_id(slice_descriptors)
         halfrange = self.shape[0] * fraction / 2.0
         halfstack = self.shape[0] / 2.0
         condition = max_slice_id >= (halfstack - halfrange)
         condition = condition and max_slice_id <= (halfstack + halfrange)
         return (
             condition,
-            profile,
+            pd.DataFrame.from_dict(
+                {
+                    "Z-slice index": np.array(range(self.shape[0])) + 1,
+                    mode.value: slice_descriptors,
+                }
+            ),
         )
 
 
