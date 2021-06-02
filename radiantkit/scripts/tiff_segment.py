@@ -343,6 +343,7 @@ def run_binarizer(
     L.filter_size("Z", z_size_range)
 
     if args.only_focus:
+        logging.info("selecting in-focus slice.")
         z_index = img.axes.index("Z")
         if z_index >= 0:
             slice_condition = np.indices(img.shape)[z_index] == img.focus_slice_id()
