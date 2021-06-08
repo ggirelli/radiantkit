@@ -344,7 +344,7 @@ def select_in_focus_slice(
 ) -> channel.ImageLabeled:
     z_index = img.axes.index("Z")
     if z_index >= 0:
-        L = channel.ImageLabeled(extract_slice(L, z_index, img.focus_slice_id()))
+        L = channel.ImageLabeled(extract_slice(L.pixels, z_index, img.focus_slice_id()))
     return L
 
 
@@ -356,11 +356,11 @@ def select_most_populated_slice(
         object_counts: List[int] = []
         for slice_id in range(img.shape[z_index]):
             object_counts.append(
-                ski.measure.label(extract_slice(L, z_index, slice_id)).max()
+                ski.measure.label(extract_slice(L.pixels, z_index, slice_id)).max()
             )
         max_objects: int = max(object_counts)
         if 1 == object_counts.count(max_objects):
-            return extract_slice(L, z_index, object_counts.index(max_objects))
+            return extract_slice(L.pixels, z_index, object_counts.index(max_objects))
         else:
             distances_from_focus: List[Tuple[int, int]] = [
                 (i, abs(i - img.focus_slice_id()))
@@ -371,7 +371,7 @@ def select_most_populated_slice(
                 distances_from_focus,
                 key=lambda x: x[1],
             )[0][0]
-            return extract_slice(L, z_index, most_populated_closest_to_focus)
+            return extract_slice(L.pixels, z_index, most_populated_closest_to_focus)
     return L
 
 
