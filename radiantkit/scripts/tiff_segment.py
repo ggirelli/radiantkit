@@ -360,7 +360,9 @@ def select_most_populated_slice(
             )
         max_objects: int = max(object_counts)
         if 1 == object_counts.count(max_objects):
-            return extract_slice(L.pixels, z_index, object_counts.index(max_objects))
+            return channel.ImageLabeled(
+                extract_slice(L.pixels, z_index, object_counts.index(max_objects))
+            )
         else:
             distances_from_focus: List[Tuple[int, int]] = [
                 (i, abs(i - img.focus_slice_id()))
@@ -371,7 +373,9 @@ def select_most_populated_slice(
                 distances_from_focus,
                 key=lambda x: x[1],
             )[0][0]
-            return extract_slice(L.pixels, z_index, most_populated_closest_to_focus)
+            return channel.ImageLabeled(
+                extract_slice(L.pixels, z_index, most_populated_closest_to_focus)
+            )
     return L
 
 
