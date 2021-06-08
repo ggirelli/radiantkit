@@ -391,7 +391,7 @@ def run_binarizer(
     logging.info(f"dilate-fill-erode with side {args.dilate_fill_erode}")
     M.dilate_fill_erode(args.dilate_fill_erode)
     logging.info("labeling")
-    L = M.label()
+    L: channel.ImageLabeled = M.label()
 
     size_range = stat.radius_interval_to_size(args.radius, len(L.axes))
     logging.info(f"filtering total size: {size_range}")
