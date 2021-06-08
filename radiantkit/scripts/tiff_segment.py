@@ -125,8 +125,8 @@ Input images that have the specified prefix and suffix are not segmented.""",
         help="""Remove objects touching the bottom/top of the stack.""",
     )
 
-    advanced = parser.add_argument_group("slice arguments")
-    parser.add_argument(
+    slices = parser.add_argument_group("slice arguments")
+    slices.add_argument(
         "--only-focus",
         action="store_const",
         dest="only_focus",
@@ -134,7 +134,7 @@ Input images that have the specified prefix and suffix are not segmented.""",
         default=False,
         help="""Export mask for the most in-focus slice only.""",
     )
-    parser.add_argument(
+    slices.add_argument(
         "--most-objects",
         action="store_const",
         dest="most_objects",
