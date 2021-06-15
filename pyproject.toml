@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "radiantkit"
-version = "0.0.1.20210324.2"
+version = "0.0.1.20210615.1"
 description = "Radial Image Analysis Toolkit"
 authors = ["Gabriele Girelli <gigi.ga90@gmail.com>"]
 license = "MIT"
@@ -29,7 +29,7 @@ pandas = "^1.1.2"
 pims = "^0.5"
 plotly = "^4.13.0"
 pytest = "^6.1.2"
-rich = "^9.0"
+rich = ">=9,<11"
 scikit-image = ">=0.17.2,<0.19.0"
 scipy = "^1.5.2"
 tifffile = ">=2020.9.29,<2022.0.0"

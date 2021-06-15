@@ -50,7 +50,7 @@ class Series(ChannelList):
         return self._particles
 
     @property
-    def aspect(self) -> np.ndarray:
+    def aspect(self) -> Optional[np.ndarray]:
         return super(Series, self).aspect
 
     @aspect.setter
@@ -61,7 +61,7 @@ class Series(ChannelList):
             self._aspect = list(self._channels.values())[0].aspect
         if self._particles is not None:
             for particle in self._particles:
-                particle.aspect(spacing)
+                particle.aspect = spacing
 
     def __init_particles_intensity_features(
         self, channel_names: Optional[List[str]] = None

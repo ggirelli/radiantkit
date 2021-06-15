@@ -124,7 +124,9 @@ class Image(ImageBase):
                         self.pixels, slice(1, self.pixels.shape[axes_id]), axes_id
                     )
                     self._pixels = np.squeeze(self.pixels, axes_id)
-                    self._aspect.pop(axes_id)
+                    self._aspect = np.concatenate(
+                        (self._aspect[:axes_id], self._aspect[(axes_id + 1) :])
+                    )
                     break
 
     def __add_axes(self, new_axes: str) -> None:
@@ -134,7 +136,7 @@ class Image(ImageBase):
                     self._axes_order = f"{c}{self.axes}"
                     new_shape = [1]
                     new_shape.extend(self.pixels.shape)
-                    self.pixels.shape = new_shape
+                    self.pixels.shape = tuple(new_shape)
                     self._aspect = np.append(1, self._aspect)
                     break
 
@@ -240,7 +242,7 @@ class Image(ImageBase):
                 "path_to_local not found, cannot unload: " + self._path_to_local
             )
             return
-        self._pixels = None
+        self._pixels = np.array([])
 
     def to_tiff(
         self,
@@ -266,7 +268,7 @@ class Image(ImageBase):
         )
 
     def offset(self, offset: int) -> np.ndarray:
-        return self.from_this(offset2(self.pixels, offset))
+        return self.from_this(offset2(self.pixels, offset)).pixels
 
     def copy(self) -> "Image":
         return self.from_this(self.pixels, True)
@@ -348,7 +350,7 @@ class ImageLabeled(Image):
         assert 2 == len(pass_range)
         assert pass_range[0] <= pass_range[1]
 
-        labels = np.array(labels)
+        labels_array = np.array(labels)
         filtered = np.logical_or(sizes < pass_range[0], sizes > pass_range[1])
 
         logging.info(
@@ -359,8 +361,8 @@ class ImageLabeled(Image):
                 ]
             )
         )
-        logging.debug(np.array((labels, sizes)))
-        self.pixels[np.isin(self.pixels, labels[filtered])] = 0
+        logging.debug(np.array((labels_array, sizes)))
+        self.pixels[np.isin(self.pixels, labels_array[filtered])] = 0
         self._pixels = ski.measure.label(self.pixels)
         logging.info(f"retained {self.max} labels")
 
@@ -380,7 +382,7 @@ class ImageLabeled(Image):
         self.__remove_labels_by_size(labels, sizes, pass_range)
 
     def inherit_labels(self, mask2d: "ImageLabeled") -> None:
-        self._pixels = inherit_labels(self, mask2d)
+        self._pixels = inherit_labels(self, mask2d).pixels
 
     def binarize(self) -> "ImageBinary":
         B = ImageBinary(self.pixels, None, self._axes_order)
@@ -507,11 +509,13 @@ class ImageGrayScale(Image):
 
     def __init__(
         self,
-        pixels: np.ndarray,
+        pixels: Optional[np.ndarray],
         path: Optional[str] = None,
         axes: Optional[str] = None,
         do_rescale: bool = False,
     ):
+        if pixels is None:
+            pixels = np.ndarray([])
         super(ImageGrayScale, self).__init__(pixels, path, axes)
         if do_rescale:
             self._rescale_factor = self.get_deconvolution_rescaling_factor()
@@ -574,9 +578,9 @@ class ImageGrayScale(Image):
     ) -> None:
         if isinstance(M, ImageLabeled):
             M = M.binarize()
-        M = dilate(M.pixels, block_side)
+        M = ImageBinary(dilate(M.pixels, block_side))
         self._foreground = np.median(self.pixels[M])
-        self._background = np.median(self.pixels[np.logical_not(M)])
+        self._background = np.median(self.pixels[np.logical_not(M.pixels)])
 
     def __repr__(self) -> str:
         s = super(ImageGrayScale, self).__repr__()
@@ -602,26 +606,30 @@ class ImageGrayScale(Image):
             slice_descriptors = []
         return slice_descriptors
 
+    def focus_slice_id(self, slice_descriptors: Optional[List[float]] = None):
+        if slice_descriptors is None:
+            slice_descriptors = self.describe_slices()
+        return slice_descriptors.index(max(slice_descriptors))
+
     def is_in_focus(
         self,
         mode: SliceDescriptorMode = SliceDescriptorMode.GRADIENT_OF_MAGNITUDE,
         fraction: float = 0.5,
     ) -> Tuple[bool, pd.DataFrame]:
         slice_descriptors = self.describe_slices()
-        profile = pd.DataFrame.from_dict(
-            {
-                "Z-slice index": np.array(range(self.shape[0])) + 1,
-                mode.value: slice_descriptors,
-            }
-        )
-        max_slice_id = slice_descriptors.index(max(slice_descriptors))
+        max_slice_id = self.focus_slice_id(slice_descriptors)
         halfrange = self.shape[0] * fraction / 2.0
         halfstack = self.shape[0] / 2.0
         condition = max_slice_id >= (halfstack - halfrange)
         condition = condition and max_slice_id <= (halfstack + halfrange)
         return (
             condition,
-            profile,
+            pd.DataFrame.from_dict(
+                {
+                    "Z-slice index": np.array(range(self.shape[0])) + 1,
+                    mode.value: slice_descriptors,
+                }
+            ),
         )
 
 
@@ -802,7 +810,7 @@ def z_project(img: np.ndarray, projection_type: const.ProjectionType) -> np.ndar
     return img
 
 
-def offset2(img: np.ndarray, offset: int) -> int:
+def offset2(img: np.ndarray, offset: int) -> np.ndarray:
     if 0 == offset:
         return img
     if offset < 0:

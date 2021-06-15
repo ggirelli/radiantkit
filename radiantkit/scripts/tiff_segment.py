@@ -17,7 +17,8 @@ from radiantkit.io import add_log_file_handler
 import re
 from rich.progress import track  # type: ignore
 from rich.prompt import Confirm  # type: ignore
-from typing import Optional
+import skimage as ski  # type: ignore
+from typing import List, Optional, Tuple
 
 
 @enable_rich_exceptions
@@ -108,12 +109,38 @@ Input images that have the specified prefix and suffix are not segmented.""",
     )
 
     parser.add_argument(
+        "--no-clear-XY",
+        action="store_const",
+        dest="do_clear_XY",
+        const=False,
+        default=True,
+        help="""Do not remove objects touching the XY edges of the stack.""",
+    )
+    parser.add_argument(
         "--clear-Z",
         action="store_const",
         dest="do_clear_Z",
         const=True,
         default=False,
         help="""Remove objects touching the bottom/top of the stack.""",
+    )
+
+    slices = parser.add_argument_group("slice arguments")
+    slices.add_argument(
+        "--only-focus",
+        action="store_const",
+        dest="only_focus",
+        const=True,
+        default=False,
+        help="""Export mask for the most in-focus slice only.""",
+    )
+    slices.add_argument(
+        "--most-objects",
+        action="store_const",
+        dest="most_objects",
+        const=True,
+        default=False,
+        help="""Export mask only for the slice with most objects.""",
     )
 
     advanced = parser.add_argument_group("advanced arguments")
@@ -233,6 +260,10 @@ def parse_arguments(args: argparse.Namespace) -> argparse.Namespace:
     loglvl = logging.DEBUG if args.debug_mode else 20
     logging.getLogger().level = logging.CRITICAL if args.silent else loglvl
 
+    assert not (
+        args.only_focus and args.most_objects
+    ), "cannot use --only-focus and --most-objects together."
+
     return args
 
 
@@ -254,8 +285,11 @@ def print_settings(args: argparse.Namespace, clear: bool = True) -> str:
      Dilate-fill-erode : {args.dilate_fill_erode}
      Minimum Z portion : {args.min_Z:.2f}
         Minimum radius : [{args.radius[0]:.2f}, {args.radius[1]:.2f}] vx
+              Clear XY : {args.do_clear_XY}
                Clear Z : {args.do_clear_Z}
 
+         Only in-focus : {args.only_focus}
+          Most objects : {args.most_objects}
           Default axes : {args.default_axes}
                Rescale : {args.do_rescaling}
                Threads : {args.threads}
@@ -298,6 +332,93 @@ def read_mask_2d(
     return mask2d
 
 
+def extract_slice(pixels: np.ndarray, z_index: int, i: int = 0) -> np.ndarray:
+    slice_condition = np.indices(pixels.shape)[z_index] == i
+    new_shape = list(pixels.shape[:z_index])
+    new_shape.extend(pixels.shape[(z_index + 1) :])
+    return np.extract(slice_condition, pixels).reshape(new_shape)
+
+
+def select_in_focus_slice(
+    img: channel.ImageGrayScale, L: channel.ImageLabeled
+) -> channel.ImageLabeled:
+    z_index = img.axes.index("Z")
+    if z_index >= 0:
+        L = channel.ImageLabeled(extract_slice(L.pixels, z_index, img.focus_slice_id()))
+    return L
+
+
+def select_most_populated_slice(
+    img: channel.ImageGrayScale, L: channel.ImageLabeled
+) -> channel.ImageLabeled:
+    z_index = img.axes.index("Z")
+    if z_index >= 0:
+        object_counts: List[int] = []
+        for slice_id in range(img.shape[z_index]):
+            object_counts.append(
+                ski.measure.label(extract_slice(L.pixels, z_index, slice_id)).max()
+            )
+        max_objects: int = max(object_counts)
+        if 1 == object_counts.count(max_objects):
+            return channel.ImageLabeled(
+                extract_slice(L.pixels, z_index, object_counts.index(max_objects))
+            )
+        else:
+            distances_from_focus: List[Tuple[int, int]] = [
+                (i, abs(i - img.focus_slice_id()))
+                for i in range(len(object_counts))
+                if object_counts[i] == max_objects
+            ]
+            most_populated_closest_to_focus: int = sorted(
+                distances_from_focus,
+                key=lambda x: x[1],
+            )[0][0]
+            return channel.ImageLabeled(
+                extract_slice(L.pixels, z_index, most_populated_closest_to_focus)
+            )
+    return L
+
+
+def run_binarizer(
+    args: argparse.Namespace, imgpath: str, img: channel.ImageGrayScale
+) -> channel.ImageLabeled:
+    binarizer = segmentation.Binarizer()
+    binarizer.segmentation_type = const.SegmentationType.THREED
+    binarizer.local_side = args.neighbour
+    binarizer.do_clear_XY_borders = args.do_clear_XY
+    binarizer.do_clear_Z_borders = args.do_clear_Z
+
+    M2D = read_mask_2d(args, imgpath)
+    M = binarizer.run(img, M2D)
+    assert isinstance(M, image.ImageBinary)
+
+    logging.info(f"dilate-fill-erode with side {args.dilate_fill_erode}")
+    M.dilate_fill_erode(args.dilate_fill_erode)
+    logging.info("labeling")
+    L: channel.ImageLabeled = M.label()
+
+    size_range = stat.radius_interval_to_size(args.radius, len(L.axes))
+    logging.info(f"filtering total size: {size_range}")
+    L.filter_total_size(size_range)
+    logging.info((args.min_Z, img.axis_shape("Z")))
+    z_size_range = (args.min_Z * img.axis_shape("Z"), np.inf)
+    logging.info(f"filtering Z size: {z_size_range}")
+    L.filter_size("Z", z_size_range)
+
+    if args.only_focus:
+        logging.info("selecting in-focus slice.")
+        L = select_in_focus_slice(img, L)
+    elif args.most_objects:
+        logging.info("selecting most populated slice.")
+        L = select_most_populated_slice(img, L)
+
+    if M2D is not None:
+        logging.info("recovering labels from 2D mask")
+        L.inherit_labels(M2D)
+
+    return L
+
+
 def segment(
     args: argparse.Namespace, imgpath: str, imgdir: str, loglevel: str = "INFO"
 ) -> None:
@@ -314,31 +435,7 @@ def segment(
     if args.do_rescaling:
         logging.info(f"rescaling factor: {img.rescale_factor}")
 
-    binarizer = segmentation.Binarizer()
-    binarizer.segmentation_type = const.SegmentationType.THREED
-    binarizer.local_side = args.neighbour
-    binarizer.do_clear_Z_borders = args.do_clear_Z
-
-    M2D = read_mask_2d(args, imgpath)
-    M = binarizer.run(img, M2D)
-    assert isinstance(M, image.ImageBinary)
-
-    logging.info(f"dilate-fill-erode with side {args.dilate_fill_erode}")
-    M.dilate_fill_erode(args.dilate_fill_erode)
-    logging.info("labeling")
-    L = M.label()
-
-    size_range = stat.radius_interval_to_size(args.radius, len(L.axes))
-    logging.info(f"filtering total size: {size_range}")
-    L.filter_total_size(size_range)
-    logging.info((args.min_Z, img.axis_shape("Z")))
-    z_size_range = (args.min_Z * img.axis_shape("Z"), np.inf)
-    logging.info(f"filtering Z size: {z_size_range}")
-    L.filter_size("Z", z_size_range)
-
-    if M2D is not None:
-        logging.info("recovering labels from 2D mask")
-        L.inherit_labels(M2D)
+    L = run_binarizer(args, imgpath, img)
 
     if 0 == L.pixels.max():
         logging.warning(f"skipped image '{imgpath}' (only background)")

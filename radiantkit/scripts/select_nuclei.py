@@ -273,10 +273,8 @@ def remove_labels_from_images_mask(
     if labeled:
         labeled_pixels = images.mask.pixels
         labeled_pixels[np.logical_not(np.isin(labeled_pixels, labels))] = 0
-        labeled_pixels = ImageLabeled(labeled_pixels)
-        labeled_pixels.to_tiff(
-            path.add_suffix(images.mask.path, "selected"), compressed
-        )
+        labeled_image = ImageLabeled(labeled_pixels)
+        labeled_image.to_tiff(path.add_suffix(images.mask.path, "selected"), compressed)
     else:
         if isinstance(images.mask, ImageBinary):
             labeled_pixels = images.mask.label().pixels
@@ -434,7 +432,7 @@ class ReportSelectNuclei(report.ReportBase):
     def __get_fit_gauss_data(
         self,
         data_images: np.ndarray,
-        params: List[float],
+        params: np.ndarray,
         fit_type: stat.FitType,
         fitted_axis: str,
     ) -> Tuple[Optional[Dict[str, np.ndarray]], Optional[Dict[str, np.ndarray]]]:
@@ -442,18 +440,18 @@ class ReportSelectNuclei(report.ReportBase):
         if stat.FitType.SOG == fit_type:
             return (
                 {
-                    labels[1]: stat.gaussian(data_images, *params[:3]),
+                    labels[1]: np.array(stat.gaussian(data_images, *params[:3])),
                     labels[0]: data_images,
                 },
                 {
-                    labels[1]: stat.gaussian(data_images, *params[3:]),
+                    labels[1]: np.array(stat.gaussian(data_images, *params[3:])),
                     labels[0]: data_images,
                 },
             )
         elif stat.FitType.GAUSSIAN == fit_type:
             return (
                 {
-                    labels[1]: stat.gaussian(data_images, *params[:3]),
+                    labels[1]: np.array(stat.gaussian(data_images, *params[:3])),
                     labels[0]: data_images,
                 },
                 None,
@@ -466,7 +464,7 @@ class ReportSelectNuclei(report.ReportBase):
         fig: go.Figure,
         data_type: str,
         data_images: np.ndarray,
-        params: List[float],
+        params: np.ndarray,
         fit_type: stat.FitType,
     ) -> go.Figure:
         assert data_type in ["x", "y"]

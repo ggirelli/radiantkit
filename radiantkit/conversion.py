@@ -14,7 +14,7 @@ import numpy as np  # type: ignore
 from radiantkit import stat
 from radiantkit.string import TIFFNameTemplate as TNTemplate
 import re
-import six
+import six  # type: ignore
 from typing import DefaultDict, Iterable, List, Optional, Tuple
 import warnings
 import xml.etree.ElementTree as ET

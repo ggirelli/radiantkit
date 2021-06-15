@@ -71,10 +71,10 @@ def add_derivative_xaxis_to_profiles(fig: go.Figure) -> go.Figure:
 
 def add_line_trace(
     fig: go.Figure,
-    x0: Optional[float],
-    x1: Optional[float],
-    y0: Optional[float],
-    y1: Optional[float],
+    x0: Optional[np.ndarray],
+    x1: Optional[np.ndarray],
+    y0: Optional[np.ndarray],
+    y1: Optional[np.ndarray],
     line_color: str = "#969696",
     **kwargs,
 ) -> go.Figure:

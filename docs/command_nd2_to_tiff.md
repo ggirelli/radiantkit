@@ -18,12 +18,12 @@ Run `radiant nd2_to_tiff -h` to access the command's help page.
 ```bash
 usage: radiant nd2_to_tiff [-h] [--outdir DIRPATH] [--fields STRING]
     [--channels STRING [STRING ...]] [--version] [--deltaZ FLOAT]
-    [--template STRING] [--compressed] [-n] input
+    [--inreg REGEXP] [--template STRING] [--compressed] [-i] [-l] input [input ...]
 ```
 
 ### Introduction
 
-Use `radiant nd2_to_tiff` to convert a nd2 file into single channel tiff images.
+Use `radiant nd2_to_tiff` to convert one or more nd2 files into single channel tiff images. You can specify multiple nd2 files, or multiple folders containing nd2 files, by separating them with a space. When a folder is specified as input, all files matching the "inreg" regular expression are converted. You can change the regular expression to convert a specific files subset.
 
 In the case of 3+D images, the script also checks for consistent deltaZ distance across consecutive 2D slices (i.e., dZ). If the distance is consitent, it is used to set the tiff image dZ metadata. Otherwise, the script tries to guess the correct dZ and reports it in the log. If the reported dZ is wrong, please enforce the correct one using the -Z option. If a correct dZ cannot be automatically guessed, the field of view is skipped and a warning is issued to the user. Use the --fields and -Z options to convert the skipped field(s).
 
@@ -46,11 +46,13 @@ Please, remember to escape the "$" when running from command line if using doubl
 
 ```bash
 positional arguments:
-  input                 Path to the nd2 file to convert.
+  input                 Path an nd2 file to convert, or to a folder containing nd2 files. To specify
+                        multiple inputs, separate them with a space.
 
 optional arguments:
   -h, --help            show this help message and exit
-  --outdir DIRPATH      Path to output TIFF folder. Defaults to the input file basename.
+  --outdir DIRPATH      Path to output TIFF folder. Defaults to the input file basename. This is
+                        ignored when input is a folder.
   --fields STRING       Convert only fields of view specified as when printing a set of pages. Omit if
                         all fields should be converted. E.g., '1-2,5,8-9'.
   --channels STRING [STRING ...]
@@ -62,10 +64,12 @@ advanced arguments:
   --deltaZ FLOAT, -Z FLOAT
                         If provided (in um), the script does not check delta Z consistency and instead
                         uses the provided one.
+  --inreg REGEXP        Regular expression to identify input ND2 images. Default: '^.*\.nd2$'
   --template STRING, -T STRING
                         Template for output file name. See main description for more details. Default:
                         '${channel_name}_${series_id}'
   --compressed          Write compressed TIFF as output. Useful especially for binary or low-depth
                         (e.g. labeled) images.
-  -n, --dry-run         Describe input data and stop (nothing is converted).
+  -i, --info            Show details of input nd2 files and stop (nothing is converted).
+  -l, --list            List input nd2 files and stop (nothing is converted).
 ```
