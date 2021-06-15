@@ -14,7 +14,7 @@ from radiantkit import image as imt
 from rich.progress import track  # type: ignore
 from rich.prompt import Confirm  # type: ignore
 import sys
-from typing import Iterable, List, Tuple
+from typing import Iterable, Iterator, List, Tuple
 
 
 def init_parser(subparsers: argparse._SubParsersAction) -> argparse.ArgumentParser:
@@ -256,10 +256,10 @@ def get_pixel_loss(
     assert len(side) <= N
 
     if step is None:
-        missed = [img.shape[-i - 1] % side[i] for i in range(len(side))]
+        missed = [int(img.shape[-i - 1] % side[i]) for i in range(len(side))]
     else:
         assert len(side) == len(step)
-        missed = [img.shape[-i - 1] % side[i] % step[i] for i in range(len(side))]
+        missed = [int(img.shape[-i - 1] % side[i] % step[i]) for i in range(len(side))]
 
     lost_parts = []
     for i in range(len(side)):
@@ -300,7 +300,7 @@ tsplit_fun = {2: tsplit2d, 3: tsplit3d}
 
 def tiff_split(
     img: np.ndarray, side: List[int], step: List[int], inverted: bool = False
-) -> np.ndarray:
+) -> Iterator:
     n = (img.shape[-1] // side[0]) * (img.shape[-2] // side[1])
     logging.info(f"Output {n} images.")
     assert 0 != n
@@ -313,8 +313,6 @@ def tiff_split(
 
     for (x_start, y_start) in track(xy_gen):
         yield tsplit_fun[len(img.shape)](img, x_start, y_start, side)
-
-    return
 
 
 def print_settings(args: argparse.Namespace, clear: bool = True) -> None:

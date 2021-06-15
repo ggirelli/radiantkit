@@ -55,7 +55,7 @@ class ParticleBase(ImageBinary):
     def surface(self) -> float:
         if self._surface is None:
             verts, faces, ns, vs = marching_cubes_lewiner(
-                self.offset(1).pixels, 0.0, self.aspect
+                self.offset(1), 0.0, self.aspect
             )
             self._surface = mesh_surface_area(verts, faces)
         return self._surface
@@ -77,7 +77,7 @@ class ParticleBase(ImageBinary):
         )
         return self._pixels.max(axes_idxs).sum()
 
-    def offset(self, offset: int) -> np.ndarray:
+    def offset_class(self, offset: int) -> "ParticleBase":
         pixels = offset2(self.pixels, offset)
         particle = type(self)(pixels, self.roi.offset(offset), self.axes)
         particle.aspect = self.aspect

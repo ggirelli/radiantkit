@@ -20,7 +20,7 @@ class ChannelList(object):
     _ref: Optional[str] = None
     _mask: Optional[Union[ImageBinary, ImageLabeled]] = None
     _aspect: Optional[np.ndarray] = None
-    _shape: Optional[Tuple[int]] = None
+    _shape: Optional[Tuple[int, ...]] = None
     _ground_block_side: int = 11
     __current_channel: int = 0
     _do_rescale: bool = False
@@ -48,7 +48,7 @@ class ChannelList(object):
         return list(self._channels)
 
     @property
-    def shape(self) -> Optional[Tuple[int]]:
+    def shape(self) -> Optional[Tuple[int, ...]]:
         return self._shape
 
     @property
@@ -127,7 +127,7 @@ class ChannelList(object):
             )
             sys.exit()
 
-    def __init_or_check_shape(self, shape: np.ndarray) -> None:
+    def __init_or_check_shape(self, shape: Tuple[int, ...]) -> None:
         if self.shape is None:
             self._shape = shape
         elif shape != self.shape:

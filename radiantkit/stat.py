@@ -9,7 +9,7 @@ import numpy as np  # type: ignore
 from numpy.polynomial.polynomial import Polynomial  # type: ignore
 import pandas as pd  # type: ignore
 import scipy as sp  # type: ignore
-from typing import DefaultDict, Dict, List, Optional, Tuple
+from typing import Any, DefaultDict, Dict, List, Optional, Tuple
 import warnings
 
 
@@ -110,9 +110,10 @@ def gpartial(V: np.ndarray, d: int, sigma: float) -> np.ndarray:
         return gpartial_3D(V, d, sigma)
     elif 2 == len(V.shape):
         return gpartial_2D(V, d, sigma)
+    return np.array([])
 
 
-def gaussian(x: float, k: float, loc: float, scale: float) -> float:
+def gaussian(x: np.ndarray, k: float, loc: float, scale: float) -> float:
     return k * sp.stats.norm.pdf(x, loc=loc, scale=scale)
 
 
@@ -136,7 +137,9 @@ def sog(
     loc2: float,
     scale2: float,
 ) -> float:
-    return gaussian(x, k1, loc1, scale1) + gaussian(x, k2, loc2, scale2)
+    return gaussian(np.array(x), k1, loc1, scale1) + gaussian(
+        np.array(x), k2, loc2, scale2
+    )
 
 
 def sog_fit(xx: np.ndarray) -> Optional[np.ndarray]:
@@ -163,17 +166,17 @@ def sog_fit(xx: np.ndarray) -> Optional[np.ndarray]:
     return fitted_params
 
 
-def fwhm(xx: np.ndarray) -> Tuple[float]:
+def fwhm(xx: np.ndarray) -> Any:  # Tuple[float, float]:
     raise NotImplementedError
 
 
 def cell_cycle_fit(data: np.ndarray) -> FitResult:
-    fit = (sog_fit(data), FitType.SOG)
-    if fit[0] is None:
-        fit = (gaussian_fit(data), FitType.GAUSSIAN)
-        if fit[0] is None:
-            fit = (fwhm(data), FitType.FWHM)
-    return fit
+    fit_data, fit_type = (sog_fit(data), FitType.SOG)
+    if fit_data is None:
+        fit_data, fit_type = (gaussian_fit(data), FitType.GAUSSIAN)
+        if fit_data is None:
+            fit_data, fit_type = (np.array(fwhm(data)), FitType.FWHM)
+    return (fit_data, fit_type)
 
 
 def sog_range_from_fit(
@@ -202,7 +205,7 @@ def range_from_fit(
     if FitType.GAUSSIAN == fit_type:
         return gaussian_range_from_fit(data, fitted_params, fit_type, k_sigma)
     if FitType.FWHM == fit_type:
-        return fitted_params
+        return tuple(*fitted_params)
     raise ValueError
 
 
@@ -372,12 +375,12 @@ def get_radial_profile_roots(
 
     if 0 == len(roots_der1):
         roots_der2 = roots_der2[0] if 0 != len(roots_der2) else np.nan
-        return (np.nan, roots_der2)
+        return (np.array(np.nan), roots_der2)
 
     if 0 != len(roots_der2) and not all(roots_der2 < roots_der1):
         return (roots_der1[0], roots_der2[np.argmax(roots_der2 >= roots_der1)])
 
-    return (roots_der1[0], np.nan)
+    return (roots_der1[0], np.array(np.nan))
 
 
 def list_to_hist(input_list: List[float]) -> List[Tuple[float, int]]:
