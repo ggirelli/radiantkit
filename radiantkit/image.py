@@ -103,7 +103,7 @@ class Image(ImageBase):
 
     @property
     def pixels(self) -> np.ndarray:
-        if self._pixels is None and self._path_to_local is not None:
+        if 0 == self._pixels.shape[0] and self._path_to_local is not None:
             self.load_from_local()
         return self._pixels
 
