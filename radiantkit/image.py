@@ -171,7 +171,10 @@ class Image(ImageBase):
         if not self.is_loadable():
             return True
         else:
-            return self._pixels is not None
+            if self._pixels is None:
+                return False
+            elif 0 == self._pixels.shape[0]:
+                return False
 
     @staticmethod
     def from_tiff(path: str) -> "Image":
