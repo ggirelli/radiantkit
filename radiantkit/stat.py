@@ -9,7 +9,7 @@ import numpy as np  # type: ignore
 from numpy.polynomial.polynomial import Polynomial  # type: ignore
 import pandas as pd  # type: ignore
 import scipy as sp  # type: ignore
-from typing import Any, DefaultDict, Dict, List, Optional, Tuple
+from typing import Any, Callable, DefaultDict, Dict, List, Optional, Tuple
 import warnings
 
 
@@ -142,27 +142,42 @@ def sog(
     )
 
 
+def try_sog_curve_fit(
+    xx: np.ndarray, starting_params: np.ndarray, df: Callable
+) -> Optional[np.ndarray]:
+    try:
+        with warnings.catch_warnings():
+            fitted_params, _ = sp.optimize.curve_fit(
+                sog, xx, df(xx), p0=starting_params
+            )
+            if fitted_params[1] > fitted_params[4]:
+                fitted_params = np.array([*fitted_params[3:], *fitted_params[:3]])
+    except RuntimeError:
+        return None  # Error occurred
+    return fitted_params
+
+
 def sog_fit(xx: np.ndarray) -> Optional[np.ndarray]:
     df = sp.stats.gaussian_kde(xx)
     loc2 = np.mean(xx) + 2.5 * np.std(xx)
     sd1 = np.std(xx)
-    params = [
-        df(xx).max() * sd1 / 4 * np.sqrt(2 * np.pi),
-        np.mean(xx),
-        sd1,
-        df(loc2)[0] * sd1 / 4 * np.sqrt(2 * np.pi),
-        loc2,
-        sd1 / 4,
-    ]
-    try:
-        with warnings.catch_warnings():
-            fitted_params, _ = sp.optimize.curve_fit(sog, xx, df(xx), p0=params)
-            if fitted_params[1] > fitted_params[4]:
-                fitted_params = np.array([*fitted_params[3:], *fitted_params[:3]])
-    except RuntimeError:
-        return None
-    if all(fitted_params == params):
-        return None
+    starting_params = np.array(
+        [
+            df(xx).max() * sd1 / 4 * np.sqrt(2 * np.pi),
+            np.mean(xx),
+            sd1,
+            df(loc2)[0] * sd1 / 4 * np.sqrt(2 * np.pi),
+            loc2,
+            sd1 / 4,
+        ]
+    )
+    fitted_params = try_sog_curve_fit(xx, starting_params, df)
+    if fitted_params is None:
+        return None  # Error occurred
+    if all(fitted_params == starting_params):
+        return None  # No fitting
+    if fitted_params[0] <= 0 or fitted_params[3] <= 0:
+        return None  # Negative Gaussian
     return fitted_params
 
 
