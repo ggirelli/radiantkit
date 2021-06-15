@@ -74,7 +74,7 @@ class Series(ChannelList):
             self.unload(name)
 
     def __run_particle_finder(self, particleClass: Type[Particle] = Particle) -> None:
-        if self.mask is None or 0 == self.mask.pixels.max():
+        if not self.mask_is_not_empty():
             self._particles = []
             return
         if isinstance(self.mask, ImageLabeled):
