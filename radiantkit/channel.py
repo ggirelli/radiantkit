@@ -118,6 +118,15 @@ class ChannelList(object):
     def is_labeled(self) -> bool:
         return isinstance(self._mask, ImageLabeled)
 
+    def mask_is_not_empty(self) -> bool:
+        if self._mask is None:
+            return False
+        elif 0 == self._mask.pixels.shape[0]:
+            return False
+        elif 0 == self._mask.pixels.max():
+            return False
+        return True
+
     def __init_or_check_aspect(self, spacing: np.ndarray) -> None:
         if self.aspect is None:
             self._aspect = spacing

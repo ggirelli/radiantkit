@@ -103,7 +103,8 @@ class Image(ImageBase):
 
     @property
     def pixels(self) -> np.ndarray:
-        if self._pixels is None and self._path_to_local is not None:
+        if not self.loaded:
+            assert self.is_loadable()
             self.load_from_local()
         return self._pixels
 
@@ -168,10 +169,7 @@ class Image(ImageBase):
 
     @property
     def loaded(self):
-        if not self.is_loadable():
-            return True
-        else:
-            return self._pixels is not None
+        return 0 < self._pixels.shape[0]
 
     @staticmethod
     def from_tiff(path: str) -> "Image":
@@ -509,13 +507,11 @@ class ImageGrayScale(Image):
 
     def __init__(
         self,
-        pixels: Optional[np.ndarray],
+        pixels: np.ndarray,
         path: Optional[str] = None,
         axes: Optional[str] = None,
         do_rescale: bool = False,
     ):
-        if pixels is None:
-            pixels = np.ndarray([])
         super(ImageGrayScale, self).__init__(pixels, path, axes)
         if do_rescale:
             self._rescale_factor = self.get_deconvolution_rescaling_factor()
@@ -540,9 +536,7 @@ class ImageGrayScale(Image):
 
     @property
     def pixels(self) -> np.ndarray:
-        if self._pixels is None and self._path_to_local is not None:
-            self.load_from_local()
-        return self._pixels / self._rescale_factor
+        return super(ImageGrayScale, self).pixels / self._rescale_factor
 
     @staticmethod
     def from_tiff(
