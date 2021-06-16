@@ -121,7 +121,7 @@ class ChannelList(object):
     def mask_is_not_empty(self) -> bool:
         if self._mask is None:
             return False
-        elif 0 == self._mask.shape[0]:
+        elif 0 == self._mask.pixels.shape[0]:
             return False
         elif 0 == self._mask.pixels.max():
             return False
