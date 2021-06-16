@@ -103,7 +103,8 @@ class Image(ImageBase):
 
     @property
     def pixels(self) -> np.ndarray:
-        if 0 == self._pixels.shape[0] and self._path_to_local is not None:
+        if not self.loaded:
+            assert self.is_loadable()
             self.load_from_local()
         return self._pixels
 
@@ -168,10 +169,7 @@ class Image(ImageBase):
 
     @property
     def loaded(self):
-        if not self.is_loadable():
-            return True
-        else:
-            return 0 < self._pixels.shape[0]
+        return 0 < self._pixels.shape[0]
 
     @staticmethod
     def from_tiff(path: str) -> "Image":
