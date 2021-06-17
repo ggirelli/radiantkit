@@ -266,7 +266,7 @@ class Image(ImageBase):
         )
 
     def offset(self, offset: int) -> np.ndarray:
-        return self.from_this(offset2(self.pixels, offset)).pixels
+        return offset2(self.pixels, offset)
 
     def copy(self) -> "Image":
         return self.from_this(self.pixels, True)

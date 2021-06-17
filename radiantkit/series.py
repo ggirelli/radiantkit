@@ -128,8 +128,8 @@ class Series(ChannelList):
 
                 nucleus.to_tiff(os.path.join(path, f"mask_{basename}.tif"), compressed)
 
-                if nucleus.has_distances():
-                    center_dist, lamina_dist = nucleus.distances
+                center_dist, lamina_dist = nucleus.distances
+                if center_dist is not None and lamina_dist is not None:
 
                     ImageGrayScale(center_dist).to_tiff(
                         os.path.join(path, f"centerDist_{basename}.tif"), compressed
