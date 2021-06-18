@@ -176,8 +176,8 @@ def sog_fit(xx: np.ndarray) -> Optional[np.ndarray]:
         return None  # Error occurred
     if all(fitted_params == starting_params):
         return None  # No fitting
-    if fitted_params[0] <= 0 or fitted_params[3] <= 0:
-        return None  # Negative Gaussian
+    if any(fitted_params <= 0):
+        return None  # Negative Gaussian amplitude or location
     return fitted_params
 
 
