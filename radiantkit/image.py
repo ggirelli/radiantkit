@@ -110,7 +110,7 @@ class Image(ImageBase):
 
     @property
     def dtype(self) -> str:
-        return get_dtype(self.pixels.max())
+        return get_dtype(int(self.pixels.max()))
 
     @property
     def path(self):
@@ -215,7 +215,7 @@ class Image(ImageBase):
             pixels = self.pixels.max(axes_to_flatten, keepdims=True)
         else:
             raise ValueError
-        return self.from_this(pixels)
+        return self.from_this(np.array(pixels))
 
     def z_project(self, projection_type: const.ProjectionType) -> np.ndarray:
         return z_project(self.pixels, projection_type)
@@ -408,8 +408,8 @@ class ImageBinary(Image):
         if doRebinarize:
             self._rebinarize()
         self._pixels = self._pixels.astype(bool)
-        self._foreground = self.pixels.sum()
-        self._background = np.prod(self.pixels.shape) - self._foreground
+        self._foreground = float(self.pixels.sum())
+        self._background = float(np.prod(self.pixels.shape) - self._foreground)
 
     @property
     def background(self):
@@ -798,9 +798,9 @@ def save_tiff(
 
 def z_project(img: np.ndarray, projection_type: const.ProjectionType) -> np.ndarray:
     if projection_type == const.ProjectionType.SUM:
-        img = img.sum(0).astype(img.dtype)
+        img = np.array(img.sum(0).astype(img.dtype))
     elif projection_type == const.ProjectionType.MAX:
-        img = img.max(0).astype(img.dtype)
+        img = np.array(img.max(0).astype(img.dtype))
     return img
 
 

@@ -46,7 +46,7 @@ def get_huygens_rescaling_factor(path: str) -> float:
     elif 1 == len(factor):
         return float(factor[0].strip().split(" ")[-1])
     else:
-        return np.prod([float(f.strip().split(" ")[-1]) for f in factor])
+        return float(np.prod([float(f.strip().split(" ")[-1]) for f in factor]))
 
 
 def get_deconwolf_rescaling_factor(path: str) -> float:
@@ -63,4 +63,4 @@ def get_deconwolf_rescaling_factor(path: str) -> float:
     elif 1 == len(factor):
         return float(factor[0].strip().split(" ")[-1])
     else:
-        return np.prod([float(f.strip().split(" ")[-1]) for f in factor])
+        return float(np.prod([float(f.strip().split(" ")[-1]) for f in factor]))
