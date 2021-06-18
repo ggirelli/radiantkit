@@ -49,7 +49,7 @@ class ParticleBase(ImageBinary):
 
     @property
     def volume(self) -> int:
-        return self.total_size * np.prod(self.aspect)
+        return int(self.total_size * np.prod(self.aspect))
 
     @property
     def surface(self) -> float:
@@ -75,7 +75,7 @@ class ParticleBase(ImageBinary):
         axes_idxs = tuple(
             [self.axes.index(a) for a in self.axes if a not in axes_to_measure]
         )
-        return self._pixels.max(axes_idxs).sum()
+        return int(self._pixels.max(axes_idxs).sum())
 
     def offset_class(self, offset: int) -> "ParticleBase":
         pixels = offset2(self.pixels, offset)
@@ -129,7 +129,7 @@ class Particle(ParticleBase):
         pixels = self._region_of_interest.apply(img)[self.pixels]
         if img.background is not None:
             pixels -= img.background
-        self._intensity[channel_name]["mean"] = np.mean(pixels)
+        self._intensity[channel_name]["mean"] = float(np.mean(pixels))
         self._intensity[channel_name]["sum"] = np.sum(pixels)
 
     def get_intensity_value_counts(self, img: ImageGrayScale) -> List[np.ndarray]:

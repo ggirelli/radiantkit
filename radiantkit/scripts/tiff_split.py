@@ -251,7 +251,7 @@ def enlarge_XY_tiff(img: np.ndarray, offset: List[int]) -> np.ndarray:
 
 def get_pixel_loss(
     img: np.ndarray, side: List[int], step: List[float]
-) -> Tuple[int, ...]:
+) -> Tuple[int, int, int, float]:
     N = len(img.shape)
     assert len(side) <= N
 
@@ -268,7 +268,7 @@ def get_pixel_loss(
         lost_parts.append(np.prod(otherd))
     loss = int(np.sum(lost_parts) - np.prod(img.shape[:-2]) * np.prod(missed))
 
-    return (*missed, loss, loss / np.prod(img.shape) * 100)
+    return (missed[0], missed[1], loss, float(loss / np.prod(img.shape) * 100))
 
 
 def init_xy(

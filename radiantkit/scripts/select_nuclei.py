@@ -274,7 +274,9 @@ def remove_labels_from_images_mask(
         labeled_pixels = images.mask.pixels
         labeled_pixels[np.logical_not(np.isin(labeled_pixels, labels))] = 0
         labeled_image = ImageLabeled(labeled_pixels)
-        labeled_image.to_tiff(path.add_suffix(images.mask.path, "selected"), compressed)
+        labeled_image.to_tiff(
+            path.add_suffix(images.mask.path, "selected", "_"), compressed
+        )
     else:
         if isinstance(images.mask, ImageBinary):
             labeled_pixels = images.mask.label().pixels
@@ -282,7 +284,7 @@ def remove_labels_from_images_mask(
             labeled_pixels = images.mask.pixels
         labeled_pixels[np.logical_not(np.isin(labeled_pixels, labels))] = 0
         mask = ImageBinary(labeled_pixels)
-        mask.to_tiff(path.add_suffix(images.mask.path, "selected"), compressed)
+        mask.to_tiff(path.add_suffix(images.mask.path, "selected", "_"), compressed)
 
     images.unload()
     return images
