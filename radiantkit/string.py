@@ -141,15 +141,23 @@ class TIFFNameTemplate(Template):
         return True
 
 
-def add_leading_dot(suffix: str) -> str:
+def add_leading_delim(suffix: str, delim: str = ".") -> str:
     if 0 != len(suffix):
-        if not suffix.startswith("."):
-            suffix = f".{suffix}"
+        if not suffix.startswith(delim):
+            suffix = f"{delim}{suffix}"
     return suffix
 
 
-def add_trailing_dot(prefix: str) -> str:
+def add_leading_dot(suffix: str) -> str:
+    return add_leading_delim(suffix)
+
+
+def add_trailing_delim(prefix: str, delim: str = ".") -> str:
     if 0 != len(prefix):
-        if not prefix.endswith("."):
-            prefix = f"{prefix}."
+        if not prefix.endswith(delim):
+            prefix = f"{prefix}{delim}"
     return prefix
+
+
+def add_trailing_dot(prefix: str) -> str:
+    return add_trailing_delim(prefix)

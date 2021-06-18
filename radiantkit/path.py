@@ -17,12 +17,12 @@ RawMaskPair = Tuple[str, str]
 def add_suffix(path: str, suffix: str, delim: str = ".") -> str:
     fname, fext = os.path.splitext(path)
     if not fname.endswith(suffix):
-        fname += string.add_leading_dot(suffix)
+        fname += string.add_leading_delim(suffix, delim)
     return f"{fname}{fext}"
 
 
-def add_extension(path: str, ext: str) -> str:
-    ext = string.add_leading_dot(ext)
+def add_extension(path: str, ext: str, delim: str = ".") -> str:
+    ext = string.add_leading_delim(ext, delim)
     if not path.endswith(ext):
         path += ext
     return path
