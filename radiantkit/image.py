@@ -586,7 +586,7 @@ class ImageGrayScale(Image):
         self, mode: SliceDescriptorMode = SliceDescriptorMode.GRADIENT_OF_MAGNITUDE
     ) -> List[float]:
         slice_descriptors = []
-        if SliceDescriptorMode.GRADIENT_OF_MAGNITUDE == mode:
+        if SliceDescriptorMode.INTENSITY_SUM == mode:
             for zi in range(self.shape[0]):
                 slice_descriptors.append(self.pixels[zi].sum())
         elif SliceDescriptorMode.GRADIENT_OF_MAGNITUDE == mode:
