@@ -451,7 +451,7 @@ doc = ["reno", "sphinx", "tornado (>=4.5)"]
 
 [[package]]
 name = "tifffile"
-version = "2021.7.30"
+version = "2021.8.8"
 description = "Read and write TIFF files"
 category = "main"
 optional = false
@@ -863,8 +863,8 @@ tenacity = [
     {file = "tenacity-7.0.0.tar.gz", hash = "sha256:5bd16ef5d3b985647fe28dfa6f695d343aa26479a04e8792b9d3c8f49e361ae1"},
 ]
 tifffile = [
-    {file = "tifffile-2021.7.30-py3-none-any.whl", hash = "sha256:ee2c2d6dfc2ac35308e3ef923d8871551e2fcaad7af17ab3ee8aa8dbb8fea71b"},
-    {file = "tifffile-2021.7.30.tar.gz", hash = "sha256:c96e7497b1037897c726d8f8284653af3437d2cd58ef68d44cf65f02020910a0"},
+    {file = "tifffile-2021.8.8-py3-none-any.whl", hash = "sha256:1309d1f5cc2ee2e8274916dc609922cb2364f947a9d09b388069c63180710dfd"},
+    {file = "tifffile-2021.8.8.tar.gz", hash = "sha256:8260f31c4700143e8374ff6cde5cef7fe54fc9b7313afe88329f407881901dc5"},
 ]
 toml = [
     {file = "toml-0.10.2-py2.py3-none-any.whl", hash = "sha256:806143ae5bfb6a3c6e736a764057db0e6a0e05e338b5630894a5f779cabb4f9b"},
