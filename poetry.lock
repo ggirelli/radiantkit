@@ -258,7 +258,7 @@ slicerator = ">=0.9.8"
 
 [[package]]
 name = "plotly"
-version = "5.1.0"
+version = "5.2.1"
 description = "An open-source, interactive data visualization library for Python"
 category = "main"
 optional = false
@@ -711,8 +711,8 @@ pims = [
     {file = "PIMS-0.5.tar.gz", hash = "sha256:a02cdcbb153e2792042fb0bae7df4f30878bbba1f2d176114a87ee0dc18715a0"},
 ]
 plotly = [
-    {file = "plotly-5.1.0-py2.py3-none-any.whl", hash = "sha256:d60412ee21d85102f67e5c7134d59feb5e42a5cbbfb1e580ad67cbdf7589d80c"},
-    {file = "plotly-5.1.0.tar.gz", hash = "sha256:71f6744acdc524c22236c226d7cf1072d1a58ebacaf749c640998298472c8c44"},
+    {file = "plotly-5.2.1-py2.py3-none-any.whl", hash = "sha256:bf7c8123541a2c6579c309561a8e1058c129434c67419651efbdc4922b11da8f"},
+    {file = "plotly-5.2.1.tar.gz", hash = "sha256:1575c34f87313818fc109a3d3326f2b91363d049c1e80cbf68561c8df24fb47c"},
 ]
 pluggy = [
     {file = "pluggy-0.13.1-py2.py3-none-any.whl", hash = "sha256:966c145cd83c96502c3c3868f50408687b38434af77734af1e9ca461a4081d2d"},
