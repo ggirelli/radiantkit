@@ -15,7 +15,7 @@ from radiantkit import stat
 from radiantkit.string import TIFFNameTemplate as TNTemplate
 import re
 import six  # type: ignore
-from typing import DefaultDict, Iterable, List, Optional, Tuple
+from typing import DefaultDict, Iterable, List, Optional, Set, Tuple
 import warnings
 import xml.etree.ElementTree as ET
 
@@ -151,6 +151,10 @@ class ND2Reader2(ND2Reader):
         assert len(list(self.get_channel_names())) == n, "channel count mismatch."
         return n
 
+    def set_iter_axes(self, iter_axes: str) -> None:
+        if all(a in self.axes for a in iter_axes):
+            self.iter_axes = iter_axes
+
     def set_axes_for_bundling(self):
         if self.is3D():
             self.bundle_axes = "zyxc" if self.has_multi_channels() else "zyx"
@@ -190,10 +194,10 @@ class ND2Reader2(ND2Reader):
             Zdata = Zdata[Zlevels]
             return np.round(np.diff(Zdata), 3).tolist()
 
-    def select_channels(self, channels: List[str]) -> List[str]:
-        return [
-            c.lower() for c in channels if c.lower() in list(self.get_channel_names())
-        ]
+    def select_channels(self, channels: Set[str]) -> Set[str]:
+        return set(
+            [c.lower() for c in channels if c.lower() in list(self.get_channel_names())]
+        )
 
     def get_tiff_path(
         self, template: TNTemplate, channel_id: int, field_id: int
@@ -206,6 +210,48 @@ class ND2Reader2(ND2Reader):
             axes_order="".join(self.bundle_axes),
         )
         return f"{template.safe_substitute(d)}.tiff"
+
+    @staticmethod
+    def get_dz_mode(
+        z_steps: List[float], field_id: int, verbose: bool = False
+    ) -> float:
+        z_mode = stat.get_hist_mode(stat.list_to_hist(z_steps))
+        if np.isnan(z_mode):
+            if verbose:
+                logging.error(
+                    " ".join(
+                        [
+                            f"Z resolution is not constant in field #{field_id+1}:",
+                            f"{set(z_steps)}. Cannot automatically identify a delta Z",
+                            f"for field #{field_id+1}. Skipping this field. Please",
+                            "enforce a delta Z manually using the --deltaZ option.",
+                        ]
+                    )
+                )
+            return np.nan
+        if verbose:
+            logging.info(
+                " ".join(
+                    [
+                        f"Z resolution is not constant in field #{field_id+1}:",
+                        f"{set(z_steps)}.",
+                        f"Using a Z resolution of {z_mode} um.",
+                    ]
+                )
+            )
+        return z_mode
+
+    def get_dz(self, field_id: int, enforce: Optional[float] = None) -> float:
+        if not self.is3D():
+            return 0.0
+
+        if enforce is not None:
+            return enforce
+
+        z_steps = self.get_field_resolutionZ(field_id)
+        if 1 < len(set(z_steps)):
+            return self.get_resolution_Z_mode(z_steps, field_id, True)
+        return z_steps[0]
 
 
 class CziFile2(CziFile):

@@ -5,7 +5,7 @@
 
 import re
 from string import Template
-from typing import Iterator, List, Optional, Pattern, Tuple
+from typing import Iterator, List, Optional, Pattern, Set, Tuple
 
 
 class MultiRange(object):
@@ -109,7 +109,7 @@ class TIFFNameTemplate(Template):
         super(TIFFNameTemplate, self).__init__(s)
 
     def can_export_fields(
-        self, n_fields: int, selected_fields: Optional[List[int]] = None
+        self, n_fields: int, selected_fields: Optional[Set[int]] = None
     ) -> bool:
         if 1 < n_fields:
             if TIFFNameTemplateFields.SERIES_ID not in self.template:
@@ -121,7 +121,7 @@ class TIFFNameTemplate(Template):
         return True
 
     def can_export_channels(
-        self, n_channels: int, selected_channels: Optional[List[str]]
+        self, n_channels: int, selected_channels: Optional[Set[str]]
     ) -> bool:
         seeds_missing = all(
             [
