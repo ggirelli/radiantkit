@@ -106,7 +106,7 @@ class Settings(object):
 
     _input_paths: Set[str] = set()
     _output_dirpath: Optional[str] = None
-    _fields: Optional[ra.string.MultiRange] = None
+    _fields: Optional[Set[int]] = None
     _channels: Optional[Set[str]] = None
     dz: Optional[float] = None
     input_re: str = ra.const.DEFAULT_INPUT_RE["nd2"]
@@ -175,13 +175,13 @@ class Settings(object):
         self._output_dirpath = path
 
     @property
-    def fields(self) -> Optional[ra.string.MultiRange]:
+    def fields(self) -> Optional[Set[int]]:
         return self._fields
 
     @fields.setter
     def fields(self, fields_str: Optional[str]) -> None:
         if fields_str is not None:
-            self._fields = ra.string.MultiRange(fields_str)
+            self._fields = set(ra.string.MultiRange(fields_str))
         else:
             self._fields = None
 
