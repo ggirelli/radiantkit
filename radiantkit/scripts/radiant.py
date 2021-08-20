@@ -3,7 +3,7 @@
 @contact: gigi.ga90@gmail.com
 """
 
-import click
+import click  # type: ignore
 import radiantkit as ra
 
 

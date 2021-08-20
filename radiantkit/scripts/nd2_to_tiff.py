@@ -3,9 +3,9 @@
 @contact: gigi.ga90@gmail.com
 """
 
-import click
+import click  # type: ignore
 import logging
-import numpy as np
+import numpy as np  # type: ignore
 from os import listdir, mkdir
 from os.path import basename, dirname, isdir, isfile, join as join_paths, splitext
 import radiantkit as ra
