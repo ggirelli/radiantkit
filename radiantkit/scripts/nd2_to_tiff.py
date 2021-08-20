@@ -12,7 +12,7 @@ import radiantkit as ra
 from radiantkit.string import TIFFNameTemplate as TNTemplate
 from radiantkit.string import TIFFNameTemplateFields as TNTFields
 import re
-from rich.progress import track
+from rich.progress import track  # type: ignore
 import sys
 from typing import Any, Dict, List, Optional, Set, Union
 
