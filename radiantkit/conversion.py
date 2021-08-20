@@ -3,7 +3,6 @@
 @contact: gigi.ga90@gmail.com
 """
 
-import argparse
 from collections import defaultdict
 from czifile import CziFile  # type: ignore
 import logging

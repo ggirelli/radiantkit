@@ -14,7 +14,6 @@ from radiantkit.scripts.conversion.settings import ConversionSettings
 from radiantkit.scripts.conversion.common import CONVERSION_TEMPLATE_LONG_HELP_STRING
 from radiantkit.scripts.conversion.common import convert_folder
 from radiantkit.string import TIFFNameTemplateFields as TNTFields
-from radiantkit.string import TIFFNameTemplate as TNTemplate
 from radiantkit.conversion import CziFile2
 from rich.progress import track  # type: ignore
 import sys
