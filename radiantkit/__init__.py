@@ -13,8 +13,4 @@ try:
 except Exception as e:
     raise e
 
-__all__ = [
-    "__version__",
-    "const",
-    "scripts"
-]
+__all__ = ["__version__", "const", "scripts"]
