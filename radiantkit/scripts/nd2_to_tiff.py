@@ -20,7 +20,7 @@ from typing import Any, Dict, List, Optional, Set, Union
 @click.command(
     name="nd2_to_tiff",
     context_settings=ra.const.CONTEXT_SETTINGS,
-    help=f"""
+    help="""
 Convert ND2 file(s) into TIFF.
 
 To convert a single file, provide its path as INPUT. To convert all nd2 files in a
