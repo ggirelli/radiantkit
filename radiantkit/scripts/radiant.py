@@ -6,7 +6,7 @@
 import click  # type: ignore
 from radiantkit import __version__
 from radiantkit.const import CONTEXT_SETTINGS
-from radiantkit.scripts.conversion import czi_to_tiff, nd2_to_tiff
+from radiantkit.scripts import conversion
 
 
 @click.group(
@@ -26,5 +26,4 @@ def main():
     pass
 
 
-main.add_command(czi_to_tiff.run)
-main.add_command(nd2_to_tiff.run)
+main.add_command(conversion.run.main)
