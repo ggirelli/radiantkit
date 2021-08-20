@@ -66,4 +66,4 @@ OutputFileDirpath = Dict[stub, OutputFileDetails]
 
 CONTEXT_SETTINGS = dict(help_option_names=["-h", "--help"])
 
-DEFAULT_INPUT_RE = dict(nd2=r"^.*\.nd2$")
+DEFAULT_INPUT_RE = dict(nd2=r"^.*\.nd2$", czi=r"^.*\.czi$")

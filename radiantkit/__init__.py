@@ -4,6 +4,7 @@
 """
 
 from radiantkit import const
+from radiantkit import conversion
 from radiantkit import scripts
 
 from importlib.metadata import version
@@ -13,4 +14,4 @@ try:
 except Exception as e:
     raise e
 
-__all__ = ["__version__", "const", "scripts"]
+__all__ = ["__version__", "const", "conversion", "scripts"]

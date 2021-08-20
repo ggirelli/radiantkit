@@ -366,7 +366,7 @@ class CziFile2(CziFile):
         self.axes = "".join(bundle_axes_list)
 
     def get_channel_pixels(
-        self, args: argparse.Namespace, field_id: Optional[int] = None
+        self, field_id: Optional[int] = None
     ) -> Iterable[Tuple[np.ndarray, int]]:
         if field_id is not None:
             field = self.pixels[field_id, :]
@@ -376,10 +376,10 @@ class CziFile2(CziFile):
         for channel_id in range(self.channel_count()):
             yield (field[channel_id], channel_id)
 
-    def select_channels(self, channels: List[str]) -> List[str]:
-        return [
-            c.lower() for c in channels if c.lower() in list(self.get_channel_names())
-        ]
+    def select_channels(self, channels: Set[str]) -> Set[str]:
+        return set(
+            [c.lower() for c in channels if c.lower() in list(self.get_channel_names())]
+        )
 
     def get_tiff_path(
         self, template: TNTemplate, channel_id: int, field_id: int
