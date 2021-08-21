@@ -15,7 +15,7 @@ from radiantkit.scripts.conversion import czi_to_tiff, nd2_to_tiff
     help="Tools to convert proprietary formats to tiff",
 )
 @click.version_option(__version__)
-def main():
+def main() -> None:
     pass
 
 
