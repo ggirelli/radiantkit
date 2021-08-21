@@ -7,6 +7,8 @@ import click  # type: ignore
 from radiantkit import __version__
 from radiantkit.const import CONTEXT_SETTINGS
 from radiantkit.scripts import conversion
+import webbrowser
+import sys
 
 
 @click.group(
@@ -22,8 +24,18 @@ Radial Image Analisys Toolkit (RadIAnTkit) is a Python3.6+ package containing
 tools for radial analysis of microscopy image.""",
 )
 @click.version_option(__version__)
-def main():
+def main() -> None:
     pass
 
 
+@click.command(
+    "docs",
+    help="Open online documentation on your favorite browser.",
+)
+def open_documentation() -> None:
+    webbrowser.open("https://ggirelli.github.io/radiantkit/")
+    sys.exit()
+
+
+main.add_command(open_documentation)
 main.add_command(conversion.run.main)
