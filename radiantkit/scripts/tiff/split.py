@@ -8,9 +8,9 @@ from radiantkit.const import CONTEXT_SETTINGS
 
 
 @click.command(
-    name="report",
+    name="split",
     context_settings=CONTEXT_SETTINGS,
-    help="""Generate radiant HTML report.""",
+    help="""Split TIFF images.""",
 )
 def run() -> None:
     pass

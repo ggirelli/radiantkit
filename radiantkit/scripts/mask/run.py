@@ -6,20 +6,20 @@
 import click  # type: ignore
 from radiantkit import __version__
 from radiantkit.const import CONTEXT_SETTINGS
-from radiantkit.scripts.tiff import compress, out_of_focus, split
+from radiantkit.scripts.mask import extract, measure, make, select
 
 
 @click.group(
-    name="tiff",
+    name="mask",
     context_settings=CONTEXT_SETTINGS,
-    help="Tools to manipulate TIFF files",
+    help="Tools to manipulate masks.",
 )
 @click.version_option(__version__)
 def main() -> None:
     pass
 
 
-main.add_command(compress.run_compress)
-main.add_command(compress.run_uncompress)
-main.add_command(out_of_focus.run)
-main.add_command(split.run)
+main.add_command(extract.run)
+main.add_command(measure.run)
+main.add_command(make.run)
+main.add_command(select.run)

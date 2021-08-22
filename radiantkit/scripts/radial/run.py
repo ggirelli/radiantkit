@@ -6,20 +6,17 @@
 import click  # type: ignore
 from radiantkit import __version__
 from radiantkit.const import CONTEXT_SETTINGS
-from radiantkit.scripts.tiff import compress, out_of_focus, split
+from radiantkit.scripts.radial import population
 
 
 @click.group(
-    name="tiff",
+    name="radial",
     context_settings=CONTEXT_SETTINGS,
-    help="Tools to manipulate TIFF files",
+    help="Tools to generate radial profiles.",
 )
 @click.version_option(__version__)
 def main() -> None:
     pass
 
 
-main.add_command(compress.run_compress)
-main.add_command(compress.run_uncompress)
-main.add_command(out_of_focus.run)
-main.add_command(split.run)
+main.add_command(population.run)

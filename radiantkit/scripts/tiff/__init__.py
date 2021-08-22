@@ -4,6 +4,12 @@
 """
 
 from radiantkit.scripts.tiff import run, settings
-from radiantkit.scripts.tiff import compress, out_of_focus
+from radiantkit.scripts.tiff import compress, out_of_focus, split
 
-__all__ = ["run", "settings", "compress", "out_of_focus"]
+__all__ = [
+    "run",
+    "settings",
+    "compress",
+    "out_of_focus",
+    "split",
+]

@@ -28,13 +28,14 @@ Convert CZI file(s) into TIFF.
 
 {SCRITPS_INPUT_HELP}""",
 )
-@click.argument("input", nargs=-1, type=click.Path(exists=True))
+@click.argument("input_paths", metavar="INPUT", nargs=-1, type=click.Path(exists=True))
 @click.option("--info", is_flag=True, help="Show INPUT details and stop.")
 @click.option("--list", is_flag=True, help="List INPUT files and stop.")
 @click.option("--long-help", is_flag=True, help="Show long help page and stop.")
 @click.option(
     "--output",
     "-o",
+    "output_dirpath",
     type=click.Path(exists=False),
     help="Output folder path. Defaults to INPUT without extension.",
 )

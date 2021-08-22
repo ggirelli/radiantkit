@@ -6,7 +6,8 @@
 import click  # type: ignore
 from radiantkit import __version__
 from radiantkit.const import CONTEXT_SETTINGS
-from radiantkit.scripts import conversion, tiff
+from radiantkit.scripts import conversion, mask, radial, tiff
+from radiantkit.scripts import report
 import webbrowser
 import sys
 
@@ -39,4 +40,7 @@ def open_documentation() -> None:
 
 main.add_command(open_documentation)
 main.add_command(conversion.run.main)
+main.add_command(mask.run.main)
+main.add_command(radial.run.main)
 main.add_command(tiff.run.main)
+main.add_command(report.run)
