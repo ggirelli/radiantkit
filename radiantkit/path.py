@@ -29,12 +29,11 @@ def add_extension(path: str, ext: str, delim: str = ".") -> str:
 
 
 def find_re(ipath: str, ireg: Pattern) -> FileList:
-    flist = [
+    return [
         f
         for f in os.listdir(ipath)
         if (os.path.isfile(os.path.join(ipath, f)) and re.match(ireg, f) is not None)
     ]
-    return flist
 
 
 def select_by_prefix_and_suffix(

@@ -6,59 +6,39 @@
 import logging
 import numpy as np  # type: ignore
 from os.path import basename, dirname, isdir, isfile, join as join_paths, splitext
-import radiantkit as ra
+from radiantkit.const import DEFAULT_INPUT_RE
+from radiantkit.conversion import ND2Reader2, CziFile2
 from radiantkit.string import TIFFNameTemplateFields as TNTFields
 from radiantkit.string import TIFFNameTemplate as TNTemplate
+from radiantkit.string import MultiRange
 import sys
-from typing import List, Optional, Set, Union
+from typing import Optional, Set, Union
 
 
 class ConversionSettings(object):
-    """docstring for ND2toTIFFsettings"""
-
     _input_paths: Set[str] = set()
     _output_dirpath: Optional[str] = None
     _fields: Optional[Set[int]] = None
     _channels: Optional[Set[str]] = None
     dz: Optional[float] = None
-    input_re: str = ra.const.DEFAULT_INPUT_RE["nd2"]
+    input_re: str = DEFAULT_INPUT_RE[""]
     template: TNTemplate
     compress: bool = False
     just_info: bool = False
     just_list: bool = False
 
-    def __init__(self, **args):
+    def __init__(self, input_paths: Set[str], input_re: str, template: str):
         super(ConversionSettings, self).__init__()
-        for field in [
-            "input",
-            "output",
-            "fields",
-            "channels",
-            "dz",
-            "input_re",
-            "template",
-            "compress",
-            "info",
-            "list",
-        ]:
-            assert field in args, f"missing field '{field}'"
-        self.input_paths = args["input"]
-        self.output_dirpath = args["output"]
-        self.fields = args["fields"]
-        self.channels = args["channels"]
-        self.dz = args["dz"]
-        self.input_re = args["input_re"]
-        self.template = TNTemplate(args["template"])
-        self.compress = args["compress"]
-        self.just_info = args["info"]
-        self.just_list = args["list"]
+        self.input_paths = input_paths
+        self.input_re = input_re
+        self.template = TNTemplate(template)
 
     @property
     def input_paths(self) -> Set[str]:
         return self._input_paths
 
     @input_paths.setter
-    def input_paths(self, path_list: List[str]) -> None:
+    def input_paths(self, path_list: Set[str]) -> None:
         file_count = 0
         dir_count = 0
         for path in set(path_list):
@@ -90,10 +70,9 @@ class ConversionSettings(object):
     def fields(self) -> Optional[Set[int]]:
         return self._fields
 
-    @fields.setter
-    def fields(self, fields_str: Optional[str]) -> None:
+    def set_fields(self, fields_str: Optional[str]) -> None:
         if fields_str is not None:
-            self._fields = set(ra.string.MultiRange(fields_str))
+            self._fields = set(MultiRange(fields_str))
         else:
             self._fields = None
 
@@ -101,17 +80,16 @@ class ConversionSettings(object):
     def channels(self) -> Optional[Set[str]]:
         return self._channels
 
-    @channels.setter
-    def channels(self, channels_str: Optional[str]) -> None:
-        if channels_str is not None:
-            self._channels = set(channels_str.split(","))
+    def set_channels(self, channel_str: Optional[str]) -> None:
+        if channel_str is not None:
+            self._channels = set(channel_str.split(","))
         else:
             self._channels = None
 
     @staticmethod
     def select_fields(
         fields: Optional[Set[int]],
-        image: Union[ra.conversion.ND2Reader2, ra.conversion.CziFile2],
+        image: Union[ND2Reader2, CziFile2],
         verbose: bool = True,
     ) -> Set[int]:
         if fields is None:
@@ -134,10 +112,8 @@ class ConversionSettings(object):
                 )
             return set([x - 1 for x in fields if x <= image.field_count()])
 
-    def check_fields(
-        self, image: Union[ra.conversion.ND2Reader2, ra.conversion.CziFile2]
-    ) -> bool:
-        self.fields = self.select_fields(self.fields, image, False)
+    def check_fields(self, image: Union[ND2Reader2, CziFile2]) -> bool:
+        self._fields = self.select_fields(self.fields, image, False)
         assert self.template.can_export_fields(
             image.field_count(), self.fields
         ), "".join(
@@ -152,7 +128,7 @@ class ConversionSettings(object):
     @staticmethod
     def select_channels(
         channels: Optional[Set[str]],
-        image: Union[ra.conversion.ND2Reader2, ra.conversion.CziFile2],
+        image: Union[ND2Reader2, CziFile2],
         verbose: bool = True,
     ) -> Set[str]:
         if channels is None:
@@ -166,10 +142,8 @@ class ConversionSettings(object):
                 logging.info(f"Converting only the following channels: {channels}")
         return channels
 
-    def check_channels(
-        self, image: Union[ra.conversion.ND2Reader2, ra.conversion.CziFile2]
-    ) -> bool:
-        self.channels = self.select_channels(self.channels, image, False)
+    def check_channels(self, image: Union[ND2Reader2, CziFile2]) -> bool:
+        self._channels = self.select_channels(self.channels, image, False)
         assert self.template.can_export_channels(
             image.channel_count(), self.channels
         ), "".join(
@@ -182,7 +156,7 @@ class ConversionSettings(object):
         )
         return True
 
-    def check_nd2_dz(self, nd2_image: ra.conversion.ND2Reader2) -> bool:
+    def check_nd2_dz(self, nd2_image: ND2Reader2) -> bool:
         if self.dz is not None:
             logging.info(f"Enforcing a deltaZ of {self.dz:.3f} um.")
         elif 1 < len(nd2_image.z_resolution):
@@ -199,14 +173,14 @@ class ConversionSettings(object):
             logging.debug(f"Z steps histogram: {nd2_image.z_resolution}.")
         return True
 
-    def is_nd2_compatible(self, nd2_image: ra.conversion.ND2Reader2) -> bool:
+    def is_nd2_compatible(self, nd2_image: ND2Reader2) -> bool:
         assert not nd2_image.isLive(), "time-course conversion images not implemented."
         self.check_fields(nd2_image)
         self.check_channels(nd2_image)
         self.check_nd2_dz(nd2_image)
         return True
 
-    def is_czi_compatible(self, czi_image: ra.conversion.CziFile2) -> bool:
+    def is_czi_compatible(self, czi_image: CziFile2) -> bool:
         assert not czi_image.isLive(), "time-course conversion images not implemented."
         self.check_fields(czi_image)
         self.check_channels(czi_image)

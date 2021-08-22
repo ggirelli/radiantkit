@@ -8,7 +8,7 @@ import logging
 import numpy as np  # type: ignore
 from os import mkdir
 from os.path import isdir, isfile, join as join_paths
-from radiantkit.const import CONTEXT_SETTINGS, DEFAULT_INPUT_RE
+from radiantkit.const import CONTEXT_SETTINGS, DEFAULT_INPUT_RE, SCRITPS_INPUT_HELP
 from radiantkit.conversion import ND2Reader2
 from radiantkit.image import save_tiff
 from radiantkit.io import add_log_file_handler
@@ -18,19 +18,16 @@ from radiantkit.scripts.conversion.common import convert_folder
 from radiantkit.string import TIFFNameTemplateFields as TNTFields
 from rich.progress import track  # type: ignore
 import sys
-from typing import Any, Dict, List, Optional, Union
+from typing import List, Optional, Union
 
 
 @click.command(
     name="nd2_to_tiff",
     context_settings=CONTEXT_SETTINGS,
-    help="""
+    help=f"""
 Convert ND2 file(s) into TIFF.
 
-To convert a single file, provide its path as INPUT. To convert all nd2 files in a
-folder, instead, specify the folder path as INPUT. To convert specific files, specify
-them one after the other as INPUT.
-""",
+{SCRITPS_INPUT_HELP}""",
 )
 @click.argument("input", nargs=-1, type=click.Path(exists=True))
 @click.option("--info", is_flag=True, help="Show INPUT details and stop.")
@@ -85,16 +82,36 @@ them one after the other as INPUT.
     default=f"{TNTFields.CHANNEL_NAME}_{TNTFields.SERIES_ID}",
 )
 @click.option(
-    "--compress/--no-compress",
+    "--compress",
+    is_flag=True,
     help="Compress output TIFF files. Useful with low bit-depth output.",
-    default=False,
 )
-def run(**args: Dict[str, Any]) -> None:
-    if args["long_help"]:
+def run(
+    input_paths: List[str],
+    info: bool,
+    list: bool,
+    long_help: bool,
+    output_dirpath: str,
+    fields: str,
+    channels: str,
+    dz: float,
+    input_re: str,
+    template: str,
+    compress: bool,
+) -> None:
+    if long_help:
         print_long_help()
         return
 
-    settings = ConversionSettings(**args)
+    settings = ConversionSettings(set(input_paths), input_re, template)
+    settings.output_dirpath = output_dirpath
+    settings.set_fields(fields)
+    settings.set_channels(channels)
+    settings.dz = dz
+    settings.compress = compress
+    settings.just_info = info
+    settings.just_list = list
+
     logging.info(f"Input: {settings.input_paths}")
     for path in settings.input_paths:
         if isdir(path):

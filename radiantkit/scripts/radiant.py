@@ -6,7 +6,7 @@
 import click  # type: ignore
 from radiantkit import __version__
 from radiantkit.const import CONTEXT_SETTINGS
-from radiantkit.scripts import conversion
+from radiantkit.scripts import conversion, tiff
 import webbrowser
 import sys
 
@@ -29,7 +29,7 @@ def main() -> None:
 
 
 @click.command(
-    "docs",
+    "_docs",
     help="Open online documentation on your favorite browser.",
 )
 def open_documentation() -> None:
@@ -39,3 +39,4 @@ def open_documentation() -> None:
 
 main.add_command(open_documentation)
 main.add_command(conversion.run.main)
+main.add_command(tiff.run.main)
