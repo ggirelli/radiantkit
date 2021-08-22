@@ -41,6 +41,7 @@ mypy = "^0.910"
 
 [tool.poetry.scripts]
 "radiant" = "radiantkit.scripts.radiant:main"
+"radiant-autocomplete" = "radiantkit.scripts.autocomplete:__main"
 
 [build-system]
 requires = ["poetry>=0.12"]
