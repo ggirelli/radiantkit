@@ -71,6 +71,21 @@ DEFAULT_INPUT_RE: DefaultDict[str, str] = defaultdict(lambda: ".*")
 DEFAULT_INPUT_RE["nd2"] = r"^.*\.nd2$"
 DEFAULT_INPUT_RE["czi"] = r"^.*\.czi$"
 DEFAULT_INPUT_RE["tiff"] = r"^.*\.tiff?$"
+DEFAULT_INPUT_RE["tiff_with_fields"] = "".join(
+    [
+        "^(?P<dw_flag>dw_)?",  # Deconwolf compatible
+        "([^\\.]*\\.)?",  # Prefix
+        "(?P<channel_name>[^/]*)_(?P<series_id>[0-9]+)",  # channel_series block
+        "".join(
+            [
+                "(?P<ext>",  # Extension block
+                "(_cmle)?",  # Huygens-compatible
+                "(\\.[^\\.]*)?",  # Suffix
+                "\\.tiff?)$",  # Extension
+            ]
+        ),
+    ]
+)
 
 SCRITPS_INPUT_HELP = """
 To apply to a single file, provide its path as INPUT. To apply to all files in a folder,

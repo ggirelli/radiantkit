@@ -8,7 +8,7 @@ from joblib import cpu_count  # type: ignore
 from radiantkit.const import DEFAULT_INPUT_RE
 from radiantkit.path import add_suffix, find_re
 import re
-from typing import Iterator, Set, Tuple
+from typing import Iterator, Optional, Set, Tuple
 
 
 class CompressionSettings(object):
@@ -68,3 +68,20 @@ class CompressionSettings(object):
     def iterate_input_output(self) -> Iterator[Tuple[str, str]]:
         for input_path in self.input_paths:
             yield (input_path, add_suffix(input_path, self.output_suffix))
+
+
+class OutOfFocusSettings(object):
+    _input_dirpath: str
+    _reference: str
+    _input_re: str
+    _output_dirpath: Optional[str]
+    _mode: str = "GOM"
+    _fraction: float = 0.5
+    rename: bool = True
+    suffix: str = ".oof.old"
+
+    def __init__(self, input_dirpath: str, reference: str, input_re: str):
+        super(OutOfFocusSettings, self).__init__()
+        self._input_dirpath = input_dirpath
+        self._reference = reference
+        self._input_re = input_re
