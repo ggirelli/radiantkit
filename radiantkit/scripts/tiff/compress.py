@@ -27,6 +27,7 @@ Compress TIFF images.
     "-S",
     type=click.STRING,
     help="Suffix for compressed output files.",
+    default=".compressed",
 )
 @click.option(
     "--input-re",
@@ -78,6 +79,7 @@ Uncompress TIFF images.
     "-S",
     type=click.STRING,
     help="Suffix for uncompressed output files.",
+    default=".uncompressed",
 )
 @click.option(
     "--input-re",
