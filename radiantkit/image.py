@@ -642,9 +642,7 @@ def get_bundle_axes_from_metadata(
     for metadata_field in metadata_field_list:
         metadata = getattr(t, metadata_field)
         if metadata is not None and "axes" in metadata:
-            logging.debug(
-                f"read axes field from {metadata_field}: {metadata['axes']}"
-            )
+            logging.debug(f"read axes field from {metadata_field}: {metadata['axes']}")
             return metadata["axes"]
     return bundle_axes[-len(t.asarray().shape) :]
 
@@ -811,10 +809,7 @@ def offset2(img: np.ndarray, offset: int) -> np.ndarray:
     else:
         canvas = np.zeros(np.array(img.shape) + 2 * offset)
         canvas[
-            tuple(
-                slice(offset, img.shape[a] + offset)
-                for a in range(len(img.shape))
-            )
+            tuple(slice(offset, img.shape[a] + offset) for a in range(len(img.shape)))
         ] = img
 
         return canvas

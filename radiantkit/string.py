@@ -121,10 +121,13 @@ class TIFFNameTemplate(Template):
     def can_export_channels(
         self, n_channels: int, selected_channels: Optional[Set[str]]
     ) -> bool:
-        seeds_missing = all(x not in self.template for x in [
-                        TIFFNameTemplateFields.CHANNEL_ID,
-                        TIFFNameTemplateFields.CHANNEL_NAME,
-                    ])
+        seeds_missing = all(
+            x not in self.template
+            for x in [
+                TIFFNameTemplateFields.CHANNEL_ID,
+                TIFFNameTemplateFields.CHANNEL_NAME,
+            ]
+        )
         return (
             n_channels <= 1
             or not seeds_missing

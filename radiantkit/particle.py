@@ -227,11 +227,14 @@ class NucleiList(object):
         threads: int = 1,
     ) -> "NucleiList":
         if threads == 1:
-            nuclei = [NucleiList.from_field_of_view(
-                        os.path.join(ipath, maskpath),
-                        os.path.join(ipath, rawpath),
-                        do_rescale,
-                    ) for rawpath, maskpath in track(masklist)]
+            nuclei = [
+                NucleiList.from_field_of_view(
+                    os.path.join(ipath, maskpath),
+                    os.path.join(ipath, rawpath),
+                    do_rescale,
+                )
+                for rawpath, maskpath in track(masklist)
+            ]
         else:
             nuclei = joblib.Parallel(n_jobs=threads, verbose=11)(
                 joblib.delayed(NucleiList.from_field_of_view)(

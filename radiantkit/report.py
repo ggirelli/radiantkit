@@ -145,7 +145,6 @@ class ReportBase(OutputDirectories):
             for dpath, log in sorted(log_data["log"].items(), key=lambda x: x[0])
         )
 
-
         return self._make_panel_page(
             "log",
             panels,
@@ -166,7 +165,6 @@ class ReportBase(OutputDirectories):
             for dpath, args in sorted(arg_data["args"].items(), key=lambda x: x[0])
         )
 
-
         return self._make_panel_page(
             "args",
             panels,
@@ -177,13 +175,14 @@ class ReportBase(OutputDirectories):
     def _make_plot_panels(self, fig_data: Dict[str, Dict[str, go.Figure]]) -> str:
         assert self._stub in fig_data
 
-        panels: str = "\n\t".join(self.figure_to_html(
-                    fig,
-                    classes=[self._stub, "plot-panel", "hidden"],
-                    data=dict(condition=os.path.basename(dpath)),
-                ) for dpath, fig in sorted(
-                        fig_data[self._stub].items(), key=lambda x: x[0]
-                    ))
+        panels: str = "\n\t".join(
+            self.figure_to_html(
+                fig,
+                classes=[self._stub, "plot-panel", "hidden"],
+                data=dict(condition=os.path.basename(dpath)),
+            )
+            for dpath, fig in sorted(fig_data[self._stub].items(), key=lambda x: x[0])
+        )
 
         return self._make_panel_page(
             "plot",

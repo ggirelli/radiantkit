@@ -290,12 +290,15 @@ def radial_fit(
 
     x_IDs = list(set(bin_IDs))
     x_mids = bins[x_IDs] + np.diff(bins).min().round(12) / 2
-    yy_stubs = [np.hstack(
-                [
-                    np.quantile(y[bi == bin_IDs], (0.25, 0.5, 0.75)),
-                    np.mean(y[bi == bin_IDs]),
-                ]
-            ) for bi in x_IDs]
+    yy_stubs = [
+        np.hstack(
+            [
+                np.quantile(y[bi == bin_IDs], (0.25, 0.5, 0.75)),
+                np.mean(y[bi == bin_IDs]),
+            ]
+        )
+        for bi in x_IDs
+    ]
     yy = np.vstack(yy_stubs)
 
     return (

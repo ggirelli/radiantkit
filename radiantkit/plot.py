@@ -285,13 +285,14 @@ class ProfileMultiConditionNorm(object):
         self, output_data: DefaultDict[str, Dict[str, Any]]
     ) -> Tuple[str, List[str]]:
         fig_data = self._plot(output_data)
-        panels = "\n\t".join(report.ReportBase.figure_to_html(
-                    fig,
-                    classes=[self._stub, f"{self.html_class}-panel", "hidden"],
-                    data=dict(condition=os.path.basename(dpath)),
-                ) for dpath, fig in sorted(
-                        fig_data[self._stub].items(), key=lambda x: x[0]
-                    ))
+        panels = "\n\t".join(
+            report.ReportBase.figure_to_html(
+                fig,
+                classes=[self._stub, f"{self.html_class}-panel", "hidden"],
+                data=dict(condition=os.path.basename(dpath)),
+            )
+            for dpath, fig in sorted(fig_data[self._stub].items(), key=lambda x: x[0])
+        )
         return (panels, sorted(fig_data[self._stub].keys()))
 
 
@@ -511,13 +512,14 @@ class ProfileMultiCondition(object):
         self, output_data: DefaultDict[str, Dict[str, Any]]
     ) -> Tuple[str, List[str]]:
         fig_data = self._plot(output_data)
-        panels = "\n\t".join(report.ReportBase.figure_to_html(
-                    fig,
-                    classes=[self._stub, f"{self.html_class}-panel", "hidden"],
-                    data=dict(condition=os.path.basename(dpath)),
-                ) for dpath, fig in sorted(
-                        fig_data[self._stub].items(), key=lambda x: x[0]
-                    ))
+        panels = "\n\t".join(
+            report.ReportBase.figure_to_html(
+                fig,
+                classes=[self._stub, f"{self.html_class}-panel", "hidden"],
+                data=dict(condition=os.path.basename(dpath)),
+            )
+            for dpath, fig in sorted(fig_data[self._stub].items(), key=lambda x: x[0])
+        )
         return (panels, sorted(fig_data[self._stub].keys()))
 
 
@@ -719,11 +721,12 @@ class ProfileSingleCondition(object):
         self, output_data: DefaultDict[str, Dict[str, Any]]
     ) -> Tuple[str, List[str]]:
         fig_data = self._plot(output_data)
-        panels = "\n\t".join(report.ReportBase.figure_to_html(
-                    fig,
-                    classes=[self._stub, f"{self.html_class}-panel", "hidden"],
-                    data=dict(condition=os.path.basename(dpath)),
-                ) for dpath, fig in sorted(
-                        fig_data[self._stub].items(), key=lambda x: x[0]
-                    ))
+        panels = "\n\t".join(
+            report.ReportBase.figure_to_html(
+                fig,
+                classes=[self._stub, f"{self.html_class}-panel", "hidden"],
+                data=dict(condition=os.path.basename(dpath)),
+            )
+            for dpath, fig in sorted(fig_data[self._stub].items(), key=lambda x: x[0])
+        )
         return (panels, sorted(fig_data[self._stub].keys()))

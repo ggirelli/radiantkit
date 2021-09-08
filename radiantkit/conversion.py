@@ -192,9 +192,7 @@ class ND2Reader2(ND2Reader):
 
     def select_channels(self, channels: Set[str]) -> Set[str]:
         return {
-            c.lower()
-            for c in channels
-            if c.lower() in list(self.get_channel_names())
+            c.lower() for c in channels if c.lower() in list(self.get_channel_names())
         }
 
     def get_tiff_path(
@@ -369,9 +367,7 @@ class CziFile2(CziFile):
 
     def select_channels(self, channels: Set[str]) -> Set[str]:
         return {
-            c.lower()
-            for c in channels
-            if c.lower() in list(self.get_channel_names())
+            c.lower() for c in channels if c.lower() in list(self.get_channel_names())
         }
 
     def get_tiff_path(

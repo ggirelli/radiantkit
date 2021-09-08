@@ -222,9 +222,7 @@ def export_channels(
             save_tiff(
                 join_paths(
                     outdir,
-                    nd2_image.get_tiff_path(
-                        args.template, channel_id, field_id
-                    ),
+                    nd2_image.get_tiff_path(args.template, channel_id, field_id),
                 ),
                 get_field(nd2_image, field_id, channel_id),
                 args.compress,
@@ -232,12 +230,8 @@ def export_channels(
                 inMicrons=True,
                 z_resolution=z_resolution,
                 resolution=(
-                    0
-                    if 0 == nd2_image.xy_resolution
-                    else 1 / nd2_image.xy_resolution,
-                    0
-                    if nd2_image.xy_resolution == 0
-                    else 1 / nd2_image.xy_resolution,
+                    0 if 0 == nd2_image.xy_resolution else 1 / nd2_image.xy_resolution,
+                    0 if nd2_image.xy_resolution == 0 else 1 / nd2_image.xy_resolution,
                     None,
                 ),
             )
