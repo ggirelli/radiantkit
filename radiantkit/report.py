@@ -134,18 +134,17 @@ class ReportBase(OutputDirectories):
 
     def _make_log_panels(self, log_data: DefaultDict[str, Dict[str, Any]]) -> str:
         panels: str = "\n\t".join(
-            [
-                f"""<div class='{self._stub} log-panel hidden'
+            f"""<div class='{self._stub} log-panel hidden'
                     data-condition='{os.path.basename(dpath)}'>
                     <pre style='overflow: auto;'><code>
                 {log.strip()}
                     </code></pre>
                 </div>""".replace(
-                    f"\n{' '*4*3}", "\n"
-                )
-                for dpath, log in sorted(log_data["log"].items(), key=lambda x: x[0])
-            ]
+                f"\n{' '*4*3}", "\n"
+            )
+            for dpath, log in sorted(log_data["log"].items(), key=lambda x: x[0])
         )
+
 
         return self._make_panel_page(
             "log",
@@ -156,18 +155,17 @@ class ReportBase(OutputDirectories):
 
     def _make_arg_panels(self, arg_data: DefaultDict[str, Dict[str, Any]]) -> str:
         panels: str = "\n\t".join(
-            [
-                f"""<div class='{self._stub} args-panel hidden'
+            f"""<div class='{self._stub} args-panel hidden'
                     data-condition='{os.path.basename(dpath)}'>
                     <pre style='overflow: auto;'><code>
                 {args}
                     </code></pre>
                 </div>""".replace(
-                    f"\n{' '*4*3}", "\n"
-                )
-                for dpath, args in sorted(arg_data["args"].items(), key=lambda x: x[0])
-            ]
+                f"\n{' '*4*3}", "\n"
+            )
+            for dpath, args in sorted(arg_data["args"].items(), key=lambda x: x[0])
         )
+
 
         return self._make_panel_page(
             "args",
@@ -179,18 +177,13 @@ class ReportBase(OutputDirectories):
     def _make_plot_panels(self, fig_data: Dict[str, Dict[str, go.Figure]]) -> str:
         assert self._stub in fig_data
 
-        panels: str = "\n\t".join(
-            [
-                self.figure_to_html(
+        panels: str = "\n\t".join(self.figure_to_html(
                     fig,
                     classes=[self._stub, "plot-panel", "hidden"],
                     data=dict(condition=os.path.basename(dpath)),
-                )
-                for dpath, fig in sorted(
-                    fig_data[self._stub].items(), key=lambda x: x[0]
-                )
-            ]
-        )
+                ) for dpath, fig in sorted(
+                        fig_data[self._stub].items(), key=lambda x: x[0]
+                    ))
 
         return self._make_panel_page(
             "plot",
@@ -253,13 +246,13 @@ class ReportPage(object):
     def html_id(self):
         return (
             self._page_id
-            if 0 == self._nesting_level
+            if self._nesting_level == 0
             else f"{self._page_id}-{self._nesting_level}"
         )
 
     @property
     def html_class(self):
-        return "page" if 0 == self._nesting_level else f"page-{self._nesting_level}"
+        return "page" if self._nesting_level == 0 else f"page-{self._nesting_level}"
 
     def add_panel(self, idx: str, label: str, content: str) -> None:
         if idx in self._panels:
@@ -411,14 +404,13 @@ class ReportMaker(OutputDirectories):
         )
 
     def __make_body(self) -> str:
-        report_pages = dict(
-            (
-                (report, report.make().replace("\n", f"\n{' '*4*3}"))
-                for report in self.__reportable
-            )
-        )
+        report_pages = {
+            report: report.make().replace("\n", f"\n{' '*4*3}")
+            for report in self.__reportable
+        }
+
         for (report, page) in list(report_pages.items()):
-            if 0 == len(page):
+            if len(page) == 0:
                 report_pages.pop(report, None)
 
         body = """
@@ -440,7 +432,7 @@ class ReportMaker(OutputDirectories):
                 <div id='index-list' class='three columns'>""".replace(
             f"\n{' '*4*2}", "\n"
         )
-        for report in report_pages.keys():
+        for report in report_pages:
             body += f"""
             <a class='button u-full-width'
                 href='#' data-page='{report.stub}'>{report.title}</a>"""
@@ -448,7 +440,7 @@ class ReportMaker(OutputDirectories):
         </div>
         <!--Report results-->
         <div id='report-list' class='nine columns'>"""
-        body += "\n".join([page for page in report_pages.values()])
+        body += "\n".join(report_pages.values())
         body += f"""
                 </div>
             </div>

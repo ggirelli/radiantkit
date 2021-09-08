@@ -52,7 +52,7 @@ class RadialDistanceCalculator(object):
         super(RadialDistanceCalculator, self).__init__()
 
         if bundle_axes is not None:
-            assert all([a in Image._ALLOWED_AXES for a in bundle_axes])
+            assert all(a in Image._ALLOWED_AXES for a in bundle_axes)
             self._flatten_axes = bundle_axes
 
         if center_type in CenterType:
@@ -87,7 +87,7 @@ class RadialDistanceCalculator(object):
         center_dist = stat.array_cells_distance_to_point(
             contour_dist.pixels, center_of_mass_coords, aspect=C.aspect
         )
-        center_dist[0 == contour_dist.pixels] = np.inf
+        center_dist[contour_dist.pixels == 0] = np.inf
         return contour_dist.from_this(center_dist)
 
     def __calc_centroid(self, contour_dist: Image) -> Optional[Image]:
@@ -95,24 +95,24 @@ class RadialDistanceCalculator(object):
         center_dist = stat.array_cells_distance_to_point(
             contour_dist.pixels, centroid, aspect=contour_dist.aspect
         )
-        center_dist[0 == contour_dist.pixels] = np.inf
+        center_dist[contour_dist.pixels == 0] = np.inf
         return contour_dist.from_this(center_dist)
 
     def __calc_max(self, contour_dist: Image) -> Optional[Image]:
         center_dist = distance_transform_edt(
             contour_dist.pixels != contour_dist.pixels.max(), contour_dist.aspect
         )
-        center_dist[0 == contour_dist.pixels] = np.inf
+        center_dist[contour_dist.pixels == 0] = np.inf
         return contour_dist.from_this(center_dist)
 
     def __calc_quantile(self, contour_dist: Image) -> Optional[Image]:
         q = self.quantile(contour_dist)
         qvalue = np.quantile(contour_dist.pixels[contour_dist.pixels != 0], q)
         center = contour_dist.pixels < qvalue
-        if 0 == center.sum():
+        if center.sum() == 0:
             return None
         center_dist = distance_transform_edt(center, contour_dist.aspect)
-        center_dist[0 == contour_dist.pixels] = np.inf
+        center_dist[contour_dist.pixels == 0] = np.inf
         return contour_dist.from_this(center_dist)
 
     def __flatten(self, img: Image) -> Image:

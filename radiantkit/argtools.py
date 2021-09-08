@@ -15,7 +15,7 @@ import sys
 
 def check_axes(axes: str) -> None:
     if axes is not None:
-        assert all([a in const.default_axes for a in axes])
+        assert all(a in const.default_axes for a in axes)
 
 
 def check_output_folder_path(opath: str) -> None:

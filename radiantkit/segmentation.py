@@ -80,10 +80,10 @@ class Binarizer(BinarizerSettings):
         if self.do_global:
             mask_list.append(self.__do_global_threshold(img))
 
-        if self.do_local and 1 < self.local_side:
+        if self.do_local and self.local_side > 1:
             mask_list.append(self.__do_local_threshold(img))
 
-        while 1 < len(mask_list):
+        while len(mask_list) > 1:
             mask_list[0].logical_and(mask_list[1])
             mask_list.pop(1)
 

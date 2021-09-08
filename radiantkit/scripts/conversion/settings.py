@@ -48,7 +48,7 @@ class ConversionSettings(object):
                 dir_count += 1
             else:
                 assert False, f"input path not found: {path}"
-        if 0 < dir_count:
+        if dir_count > 0:
             assert 1 == dir_count, "only one directory is allowed per run"
             assert (
                 0 == file_count
@@ -71,10 +71,7 @@ class ConversionSettings(object):
         return self._fields
 
     def set_fields(self, fields_str: Optional[str]) -> None:
-        if fields_str is not None:
-            self._fields = set(MultiRange(fields_str))
-        else:
-            self._fields = None
+        self._fields = set(MultiRange(fields_str)) if fields_str is not None else None
 
     @property
     def channels(self) -> Optional[Set[str]]:
@@ -110,7 +107,7 @@ class ConversionSettings(object):
                 logging.info(
                     "Converting only the following fields: " + f"{[x for x in fields]}"
                 )
-            return set([x - 1 for x in fields if x <= image.field_count()])
+            return {x - 1 for x in fields if x <= image.field_count()}
 
     def check_fields(self, image: Union[ND2Reader2, CziFile2]) -> bool:
         self._fields = self.select_fields(self.fields, image, False)
@@ -135,7 +132,7 @@ class ConversionSettings(object):
             channels = set(image.get_channel_names())
         else:
             channels = set(image.select_channels(channels))
-            if 0 == len(channels):
+            if not channels:
                 logging.error("None of the specified channels was found.")
                 sys.exit()
             if verbose:
@@ -159,7 +156,7 @@ class ConversionSettings(object):
     def check_nd2_dz(self, nd2_image: ND2Reader2) -> bool:
         if self.dz is not None:
             logging.info(f"Enforcing a deltaZ of {self.dz:.3f} um.")
-        elif 1 < len(nd2_image.z_resolution):
+        elif len(nd2_image.z_resolution) > 1:
             logging.warning(
                 " ".join(
                     [

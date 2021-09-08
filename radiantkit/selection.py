@@ -21,7 +21,7 @@ class BoundingElement(object):
 
     @property
     def shape(self) -> Tuple[int, ...]:
-        return tuple([int(r.stop - r.start) for r in self.bounds])
+        return tuple(int(r.stop - r.start) for r in self.bounds)
 
     @staticmethod
     def from_binary_pixels(pixels: np.ndarray) -> "BoundingElement":

@@ -43,7 +43,7 @@ class Series(ChannelList):
 
     @property
     def particles(self) -> List[Nucleus]:
-        if 0 == len(self._particles):
+        if len(self._particles) == 0:
             logging.warning(
                 "particle attribute accessible after running '.extract_particles()'."
             )
@@ -55,7 +55,7 @@ class Series(ChannelList):
 
     @aspect.setter
     def aspect(self, spacing: np.ndarray) -> None:
-        if 0 != len(self):
+        if len(self) != 0:
             for name, channel in self._channels.items():
                 channel.aspect = spacing
             self._aspect = list(self._channels.values())[0].aspect
@@ -93,7 +93,7 @@ class Series(ChannelList):
         reInit: bool = False,
     ) -> None:
         logging.info(f"initializing particles in series {self.ID}")
-        if 0 != len(self._particles) and not reInit:
+        if len(self._particles) != 0 and not reInit:
             return
 
         if self.mask is None:
@@ -169,10 +169,10 @@ class Series(ChannelList):
         return series.init_particles_distances(rdc, reInit)
 
     def get_particles_intensity_at_distance(self, channel_name: str) -> pd.DataFrame:
-        if 0 == len(self._particles):
+        if len(self._particles) == 0:
             return pd.DataFrame()
         assert channel_name in self.names
-        assert all([p.has_distances for p in self._particles])
+        assert all(p.has_distances for p in self._particles)
 
         particle_details: List[pd.DataFrame] = []
         if self.reference is not None and self.reference != channel_name:
@@ -324,7 +324,7 @@ class SeriesList(object):
                 ref, dpath, series, masks, inreg, labeled, aspect, ground_block_side
             )
 
-        clen = len(set([len(s) for s in series.values()]))
+        clen = len({len(s) for s in series.values()})
         assert 1 == clen, f"inconsistent number of channels in '{dpath}' series"
 
         return SeriesList(os.path.basename(dpath), list(series.values()))
@@ -336,7 +336,7 @@ class SeriesList(object):
         threads: int = 1,
     ) -> None:
         threads = max(1, min(cpu_count(), threads))
-        if 1 == threads:
+        if threads == 1:
             for series in track(self):
                 series.init_particles(particleClass, channel_list)
         else:
@@ -389,8 +389,7 @@ class SeriesList(object):
         for s in self:
             if s.particles is None:
                 continue
-            for p in s.particles:
-                yield p
+            yield from s.particles
 
     def get_particle_single_px_stats(self) -> pd.DataFrame:
         box_stats = []
@@ -451,7 +450,7 @@ class SeriesList(object):
     ) -> None:
         threads = max(1, min(cpu_count(), threads))
         assert os.path.isdir(path)
-        if 1 == threads:
+        if threads == 1:
             for series in track(self, description="series"):
                 series.export_particles(path, compressed)
         else:
@@ -468,7 +467,7 @@ class SeriesList(object):
         reInit: bool = False,
     ) -> pd.DataFrame:
         assert threads > 0
-        if 1 == threads:
+        if threads == 1:
             channel_idata_dflist = []
             for s in self.series:
                 s.init_particles_distances(rdc, reInit)

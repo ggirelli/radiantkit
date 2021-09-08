@@ -192,7 +192,7 @@ class ProfileMultiConditionNorm(object):
                 zeroline=False,
                 visible=False,
             )
-            if "y" != get_axis_label("y", ii):
+            if get_axis_label("y", ii) != "y":
                 yaxes_props[get_axis_label("yaxis", ii)]["overlaying"] = "y"
         return yaxes_props
 
@@ -285,18 +285,13 @@ class ProfileMultiConditionNorm(object):
         self, output_data: DefaultDict[str, Dict[str, Any]]
     ) -> Tuple[str, List[str]]:
         fig_data = self._plot(output_data)
-        panels = "\n\t".join(
-            [
-                report.ReportBase.figure_to_html(
+        panels = "\n\t".join(report.ReportBase.figure_to_html(
                     fig,
                     classes=[self._stub, f"{self.html_class}-panel", "hidden"],
                     data=dict(condition=os.path.basename(dpath)),
-                )
-                for dpath, fig in sorted(
-                    fig_data[self._stub].items(), key=lambda x: x[0]
-                )
-            ]
-        )
+                ) for dpath, fig in sorted(
+                        fig_data[self._stub].items(), key=lambda x: x[0]
+                    ))
         return (panels, sorted(fig_data[self._stub].keys()))
 
 
@@ -516,18 +511,13 @@ class ProfileMultiCondition(object):
         self, output_data: DefaultDict[str, Dict[str, Any]]
     ) -> Tuple[str, List[str]]:
         fig_data = self._plot(output_data)
-        panels = "\n\t".join(
-            [
-                report.ReportBase.figure_to_html(
+        panels = "\n\t".join(report.ReportBase.figure_to_html(
                     fig,
                     classes=[self._stub, f"{self.html_class}-panel", "hidden"],
                     data=dict(condition=os.path.basename(dpath)),
-                )
-                for dpath, fig in sorted(
-                    fig_data[self._stub].items(), key=lambda x: x[0]
-                )
-            ]
-        )
+                ) for dpath, fig in sorted(
+                        fig_data[self._stub].items(), key=lambda x: x[0]
+                    ))
         return (panels, sorted(fig_data[self._stub].keys()))
 
 
@@ -711,7 +701,7 @@ class ProfileSingleCondition(object):
             distance_type = distance.DistanceType.LAMINA_NORM
             for channel_lab in set(dirdata["channel"]):
                 distdata = dirdata.loc[distance_type.value == dirdata["distance_type"]]
-                if 0 == distdata.shape[0]:
+                if distdata.shape[0] == 0:
                     continue
                 fig_data[self._stub][
                     f"{channel_lab}-{condition_lab}"
@@ -729,16 +719,11 @@ class ProfileSingleCondition(object):
         self, output_data: DefaultDict[str, Dict[str, Any]]
     ) -> Tuple[str, List[str]]:
         fig_data = self._plot(output_data)
-        panels = "\n\t".join(
-            [
-                report.ReportBase.figure_to_html(
+        panels = "\n\t".join(report.ReportBase.figure_to_html(
                     fig,
                     classes=[self._stub, f"{self.html_class}-panel", "hidden"],
                     data=dict(condition=os.path.basename(dpath)),
-                )
-                for dpath, fig in sorted(
-                    fig_data[self._stub].items(), key=lambda x: x[0]
-                )
-            ]
-        )
+                ) for dpath, fig in sorted(
+                        fig_data[self._stub].items(), key=lambda x: x[0]
+                    ))
         return (panels, sorted(fig_data[self._stub].keys()))

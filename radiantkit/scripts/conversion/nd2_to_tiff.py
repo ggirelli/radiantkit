@@ -222,7 +222,9 @@ def export_channels(
             save_tiff(
                 join_paths(
                     outdir,
-                    nd2_image.get_tiff_path(args.template, channel_id, field_id),
+                    nd2_image.get_tiff_path(
+                        args.template, channel_id, field_id
+                    ),
                 ),
                 get_field(nd2_image, field_id, channel_id),
                 args.compress,
@@ -230,8 +232,12 @@ def export_channels(
                 inMicrons=True,
                 z_resolution=z_resolution,
                 resolution=(
-                    0 if 0 == nd2_image.xy_resolution else 1 / nd2_image.xy_resolution,
-                    0 if 0 == nd2_image.xy_resolution else 1 / nd2_image.xy_resolution,
+                    0
+                    if 0 == nd2_image.xy_resolution
+                    else 1 / nd2_image.xy_resolution,
+                    0
+                    if nd2_image.xy_resolution == 0
+                    else 1 / nd2_image.xy_resolution,
                     None,
                 ),
             )
@@ -242,7 +248,7 @@ def get_field(nd2_image: ND2Reader2, field_id: int, channel_id: int) -> np.ndarr
     field_of_view = nd2_image[field_id]
     for a in nd2_image.bundle_axes:
         axis_size = field_of_view.shape[nd2_image.bundle_axes.index(a)]
-        if "c" == a:
+        if a == "c":
             assert channel_id < axis_size
             slicing.append(channel_id)
         else:

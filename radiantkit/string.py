@@ -32,7 +32,7 @@ class MultiRange(object):
         self.__extremes_list = []
         for string_range in string_range_list:
             extremes = [int(x) for x in string_range.split("-")]
-            if 1 == len(extremes):
+            if len(extremes) == 1:
                 extremes = [extremes[0], extremes[0]]
             assert 2 == len(extremes), "a range should be specified as A-B"
             assert extremes[1] >= extremes[0]
@@ -111,40 +111,31 @@ class TIFFNameTemplate(Template):
     def can_export_fields(
         self, n_fields: int, selected_fields: Optional[Set[int]] = None
     ) -> bool:
-        if 1 < n_fields:
-            if TIFFNameTemplateFields.SERIES_ID not in self.template:
-                if selected_fields is not None:
-                    if 1 < len(selected_fields):
-                        return False
-                else:
-                    return False
-        return True
+        return (
+            n_fields <= 1
+            or TIFFNameTemplateFields.SERIES_ID in self.template
+            or (selected_fields is None or len(selected_fields) <= 1)
+            and selected_fields is not None
+        )
 
     def can_export_channels(
         self, n_channels: int, selected_channels: Optional[Set[str]]
     ) -> bool:
-        seeds_missing = all(
-            [
-                x not in self.template
-                for x in [
-                    TIFFNameTemplateFields.CHANNEL_ID,
-                    TIFFNameTemplateFields.CHANNEL_NAME,
-                ]
-            ]
+        seeds_missing = all(x not in self.template for x in [
+                        TIFFNameTemplateFields.CHANNEL_ID,
+                        TIFFNameTemplateFields.CHANNEL_NAME,
+                    ])
+        return (
+            n_channels <= 1
+            or not seeds_missing
+            or (selected_channels is None or len(selected_channels) <= 1)
+            and selected_channels is not None
         )
-        if 1 < n_channels and seeds_missing:
-            if selected_channels is not None:
-                if 1 < len(selected_channels):
-                    return False
-            else:
-                return False
-        return True
 
 
 def add_leading_delim(suffix: str, delim: str = ".") -> str:
-    if 0 != len(suffix):
-        if not suffix.startswith(delim):
-            suffix = f"{delim}{suffix}"
+    if len(suffix) != 0 and not suffix.startswith(delim):
+        suffix = f"{delim}{suffix}"
     return suffix
 
 
@@ -153,9 +144,8 @@ def add_leading_dot(suffix: str) -> str:
 
 
 def add_trailing_delim(prefix: str, delim: str = ".") -> str:
-    if 0 != len(prefix):
-        if not prefix.endswith(delim):
-            prefix = f"{prefix}{delim}"
+    if len(prefix) != 0 and not prefix.endswith(delim):
+        prefix = f"{prefix}{delim}"
     return prefix
 
 
