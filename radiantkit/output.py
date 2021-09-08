@@ -26,10 +26,7 @@ class OutputDirectories(object):
         super(OutputDirectories, self).__init__()
         assert os.path.isdir(dirpath)
         self._dirpath = dirpath
-        if subdirs is None:
-            self._subdirs = DEFAULT_SUBDIRS
-        else:
-            self._subdirs = subdirs
+        self._subdirs = DEFAULT_SUBDIRS if subdirs is None else subdirs
         self._is_root = False
 
     @property

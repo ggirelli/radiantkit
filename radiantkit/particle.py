@@ -61,20 +61,21 @@ class ParticleBase(ImageBinary):
         return self._surface
 
     def shape_descriptor(self) -> float:
-        if 2 == len(self.shape):
+        if len(self.shape) == 2:
             convex_size = convex_hull_image(self._pixels).sum()
             return self.total_size / convex_size
-        elif 3 == len(self.shape):
+        elif len(self.shape) == 3:
             sphere_surface = (np.pi * (6.0 * self.total_size) ** 2) ** (1 / 3.0)
             return sphere_surface / self.surface
         else:
             return 0.0
 
     def axis_size(self, axes_to_measure: str) -> int:
-        assert all([axis in self.axes for axis in axes_to_measure])
+        assert all(axis in self.axes for axis in axes_to_measure)
         axes_idxs = tuple(
-            [self.axes.index(a) for a in self.axes if a not in axes_to_measure]
+            self.axes.index(a) for a in self.axes if a not in axes_to_measure
         )
+
         return int(self._pixels.max(axes_idxs).sum())
 
     def offset_class(self, offset: int) -> "ParticleBase":
@@ -225,16 +226,12 @@ class NucleiList(object):
         do_rescale: bool = True,
         threads: int = 1,
     ) -> "NucleiList":
-        if 1 == threads:
-            nuclei = []
-            for rawpath, maskpath in track(masklist):
-                nuclei.append(
-                    NucleiList.from_field_of_view(
+        if threads == 1:
+            nuclei = [NucleiList.from_field_of_view(
                         os.path.join(ipath, maskpath),
                         os.path.join(ipath, rawpath),
                         do_rescale,
-                    )
-                )
+                    ) for rawpath, maskpath in track(masklist)]
         else:
             nuclei = joblib.Parallel(n_jobs=threads, verbose=11)(
                 joblib.delayed(NucleiList.from_field_of_view)(
@@ -322,7 +319,7 @@ class ParticleFinder(object):
 
         boxed_particles: List[Particle] = []
         for particle_label in np.unique(L.pixels):
-            if 0 == particle_label:
+            if particle_label == 0:
                 continue
             binary_pixels = L.pixels == particle_label
             roi = BoundingElement.from_binary_pixels(binary_pixels)

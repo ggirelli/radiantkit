@@ -53,7 +53,7 @@ def run_compress(
     settings.threads = threads
     logging.info(f"Input: {settings.input_paths}")
 
-    if 1 == len(settings.input_paths):
+    if len(settings.input_paths) == 1:
         export_image(*next(settings.iterate_input_output()), True)
     else:
         Parallel(n_jobs=settings.threads)(
@@ -105,7 +105,7 @@ def run_uncompress(
     settings.threads = threads
     logging.info(f"Input: {settings.input_paths}")
 
-    if 1 == len(settings.input_paths):
+    if len(settings.input_paths) == 1:
         export_image(*next(settings.iterate_input_output()), False)
     else:
         Parallel(n_jobs=settings.threads)(

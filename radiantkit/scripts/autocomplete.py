@@ -39,9 +39,9 @@ def __main(shell_type: str, regenerate: bool) -> None:
     if regenerate:
         regenerate_autocompletion_files(shell_type, autocomplete_path)
 
-    if shell_type in ("bash", "zsh"):
+    if shell_type in {"bash", "zsh"}:
         autocomplete_bash_or_zsh(user_home_path, autocomplete_path, shell_type)
-    elif "fish" == shell_type:
+    elif shell_type == "fish":
         autocomplete_fish(user_home_path, autocomplete_path)
 
     print("Done. :thumbs_up: :smiley:")
@@ -70,7 +70,7 @@ def autocomplete_fish(user_home_path: str, autocomplete_path: str) -> None:
 def autocomplete_bash_or_zsh(
     user_home_path: str, autocomplete_path: str, shell_type: str = "bash"
 ) -> None:
-    assert shell_type in ("bash", "zsh")
+    assert shell_type in {"bash", "zsh"}
 
     autocompletion_string = f". {autocomplete_path} # RADIANT-AUTOCOMPLETE\n"
     run_command_path = os.path.join(user_home_path, f".{shell_type}rc")

@@ -79,8 +79,8 @@ class Image(ImageBase):
         assert len(pixels.shape) <= len(self._ALLOWED_AXES)
         if axes is not None:
             assert len(axes) == len(pixels.shape)
-            assert all([c in self._ALLOWED_AXES for c in axes])
-            assert all([1 == axes.count(c) for c in set(axes)])
+            assert all(c in self._ALLOWED_AXES for c in axes)
+            assert all(axes.count(c) == 1 for c in set(axes))
             self._axes_order = axes
         else:
             self._axes_order = self._ALLOWED_AXES[
@@ -93,9 +93,8 @@ class Image(ImageBase):
         self._aspect = self._aspect[
             slice(len(self.aspect) - len(self.shape), len(self.aspect))
         ]
-        if path is not None:
-            if os.path.isfile(path):
-                self._path_to_local = path
+        if path is not None and os.path.isfile(path):
+            self._path_to_local = path
 
     @property
     def shape(self) -> Tuple[int, ...]:
@@ -117,7 +116,7 @@ class Image(ImageBase):
         return self._path_to_local
 
     def __remove_axes(self, new_axes: str) -> None:
-        while any([a not in new_axes for a in self.axes]):
+        while any(a not in new_axes for a in self.axes):
             for c in self.axes:
                 if c not in new_axes:
                     axes_id = self.axes.index(c)
@@ -131,22 +130,21 @@ class Image(ImageBase):
                     break
 
     def __add_axes(self, new_axes: str) -> None:
-        while any([a not in self.axes for a in new_axes]):
+        while any(a not in self.axes for a in new_axes):
             for c in new_axes:
                 if c not in self.axes:
                     self._axes_order = f"{c}{self.axes}"
-                    new_shape = [1]
-                    new_shape.extend(self.pixels.shape)
+                    new_shape = [1, *self.pixels.shape]
                     self.pixels.shape = tuple(new_shape)
                     self._aspect = np.append(1, self._aspect)
                     break
 
     def __reorder_axes(self, new_axes: str) -> None:
         assert len(self.axes) == len(new_axes)
-        assert all([a in self.axes for a in new_axes])
+        assert all(a in self.axes for a in new_axes)
         if new_axes != self.axes:
             assert len(new_axes) == len(self.axes)
-            assert all([c in new_axes for c in self.axes])
+            assert all(c in new_axes for c in self.axes)
             new_axes_order = [new_axes.index(c) for c in self.axes]
             self._pixels = np.moveaxis(
                 self.pixels, range(len(self.axes)), new_axes_order
@@ -161,15 +159,15 @@ class Image(ImageBase):
 
     @axes.setter
     def axes(self, new_axes: str) -> None:
-        assert all([c in self._ALLOWED_AXES for c in new_axes])
-        assert all([1 == c.count(new_axes) for c in set(new_axes)])
+        assert all(c in self._ALLOWED_AXES for c in new_axes)
+        assert all(c.count(new_axes) == 1 for c in set(new_axes))
         self.__remove_axes(new_axes)
         self.__add_axes(new_axes)
         self.__reorder_axes(new_axes)
 
     @property
     def loaded(self):
-        return 0 < self._pixels.shape[0]
+        return self._pixels.shape[0] > 0
 
     @staticmethod
     def from_tiff(path: str) -> "Image":
@@ -207,8 +205,9 @@ class Image(ImageBase):
         projection_type: const.ProjectionType = const.ProjectionType.SUM,
     ) -> "Image":
         axes_to_flatten = tuple(
-            [ai for ai in range(len(self.axes)) if self.axes[ai] not in axes_to_keep]
+            ai for ai in range(len(self.axes)) if self.axes[ai] not in axes_to_keep
         )
+
         if projection_type is const.ProjectionType.SUM:
             pixels = self.pixels.sum(axes_to_flatten, keepdims=True)
         elif projection_type is const.ProjectionType.MAX:
@@ -332,10 +331,11 @@ class ImageLabeled(Image):
         return self.size(lab, "Z")
 
     def size(self, lab: int, axes: str) -> int:
-        assert all([axis in self.axes for axis in axes]), (self.axes, axes)
+        assert all(axis in self.axes for axis in axes), (self.axes, axes)
         axes_ids = tuple(
-            [self.axes.index(axis) for axis in self.axes if axis not in axes]
+            self.axes.index(axis) for axis in self.axes if axis not in axes
         )
+
         return (self.pixels == lab).max(axes_ids).sum()
 
     def __remove_labels_by_size(
@@ -368,7 +368,7 @@ class ImageLabeled(Image):
         self, axes: str, pass_range: Tuple[Union[int, float], Union[int, float]]
     ) -> None:
         labels = np.unique(self.pixels)
-        labels = labels[0 != labels]
+        labels = labels[labels != 0]
         sizes = []
         for current_label in labels:
             logging.debug(f"Calculating {axes} size for label {current_label}")
@@ -545,10 +545,9 @@ class ImageGrayScale(Image):
         do_rescale: bool = False,
         default_axes: str = const.default_axes[1:],
     ) -> "ImageGrayScale":
-        img = ImageGrayScale(
+        return ImageGrayScale(
             read_tiff(path, default_axes=default_axes), path, axes, do_rescale
         )
-        return img
 
     def get_deconvolution_rescaling_factor(self) -> float:
         if self._path_to_local is None:
@@ -642,12 +641,11 @@ def get_bundle_axes_from_metadata(
     metadata_field_list = [x for x in dir(t) if "metadata" in x]
     for metadata_field in metadata_field_list:
         metadata = getattr(t, metadata_field)
-        if metadata is not None:
-            if "axes" in metadata:
-                logging.debug(
-                    f"read axes field from {metadata_field}: {metadata['axes']}"
-                )
-                return metadata["axes"]
+        if metadata is not None and "axes" in metadata:
+            logging.debug(
+                f"read axes field from {metadata_field}: {metadata['axes']}"
+            )
+            return metadata["axes"]
     return bundle_axes[-len(t.asarray().shape) :]
 
 
@@ -712,7 +710,7 @@ def remove_unexpected_axes(
     if expected_axes is None:
         return (img, bundle_axes)
     condition = expected_axes == bundle_axes
-    condition = condition or all([c in expected_axes for c in bundle_axes])
+    condition = condition or all(c in expected_axes for c in bundle_axes)
     if condition:
         return (img, bundle_axes)
     bundle_axes_list = list(bundle_axes.upper())
@@ -805,16 +803,20 @@ def z_project(img: np.ndarray, projection_type: const.ProjectionType) -> np.ndar
 
 
 def offset2(img: np.ndarray, offset: int) -> np.ndarray:
-    if 0 == offset:
+    if offset == 0:
         return img
     if offset < 0:
         offset *= -1
-        return img[tuple([slice(offset, -offset) for a in range(len(img.shape))])]
+        return img[tuple(slice(offset, -offset) for a in range(len(img.shape)))]
     else:
         canvas = np.zeros(np.array(img.shape) + 2 * offset)
         canvas[
-            tuple([slice(offset, img.shape[a] + offset) for a in range(len(img.shape))])
+            tuple(
+                slice(offset, img.shape[a] + offset)
+                for a in range(len(img.shape))
+            )
         ] = img
+
         return canvas
 
 
@@ -855,11 +857,11 @@ def threshold_adaptive(
 
 def fill_holes(mask: np.ndarray) -> np.ndarray:
     mask = ndi.binary_fill_holes(mask)
-    if 3 == len(mask.shape):
+    if len(mask.shape) == 3:
         for slice_id in range(mask.shape[0]):
             logging.debug(f"FILL_HOLES SLICE#({slice_id})")
             mask[slice_id, :, :] = ndi.binary_fill_holes(mask[slice_id, :, :])
-    elif 2 != len(mask.shape):
+    elif len(mask.shape) != 2:
         logging.warning(
             "".join(
                 [
@@ -875,9 +877,9 @@ def fill_holes(mask: np.ndarray) -> np.ndarray:
 def closing2(mask: np.ndarray, block_side: int = 3) -> np.ndarray:
     assert 1 == mask.max()
     if block_side > 1:
-        if 2 == len(mask.shape):
+        if len(mask.shape) == 2:
             mask = closing(mask, square(block_side))
-        elif 3 == len(mask.shape):
+        elif len(mask.shape) == 3:
             mask = closing(mask, cube(block_side))
         else:
             logging.info(
@@ -895,9 +897,9 @@ def closing2(mask: np.ndarray, block_side: int = 3) -> np.ndarray:
 def opening2(mask: np.ndarray, block_side: int = 3) -> np.ndarray:
     assert 1 == mask.max()
     if block_side > 1:
-        if 2 == len(mask.shape):
+        if len(mask.shape) == 2:
             mask = opening(mask, square(block_side))
-        elif 3 == len(mask.shape):
+        elif len(mask.shape) == 3:
             mask = opening(mask, cube(block_side))
         else:
             logging.info(
@@ -915,9 +917,9 @@ def opening2(mask: np.ndarray, block_side: int = 3) -> np.ndarray:
 def dilate(mask: np.ndarray, block_side: int = 3) -> np.ndarray:
     assert 1 == mask.max()
     if block_side > 1:
-        if 2 == len(mask.shape):
+        if len(mask.shape) == 2:
             mask = dilation(mask, square(block_side))
-        elif 3 == len(mask.shape):
+        elif len(mask.shape) == 3:
             mask = dilation(mask, cube(block_side))
         else:
             logging.info(
@@ -935,9 +937,9 @@ def dilate(mask: np.ndarray, block_side: int = 3) -> np.ndarray:
 def erode(mask: np.ndarray, block_side: int = 3) -> np.ndarray:
     assert 1 == mask.max()
     if block_side > 1:
-        if 2 == len(mask.shape):
+        if len(mask.shape) == 2:
             mask = erosion(mask, square(block_side))
-        elif 3 == len(mask.shape):
+        elif len(mask.shape) == 3:
             mask = erosion(mask, cube(block_side))
         else:
             logging.info(
@@ -953,9 +955,9 @@ def erode(mask: np.ndarray, block_side: int = 3) -> np.ndarray:
 
 
 def clear_XY_borders(L: np.ndarray) -> np.ndarray:
-    if 2 == len(L.shape):
+    if len(L.shape) == 2:
         return clear_border(L)
-    elif 3 == len(L.shape):
+    elif len(L.shape) == 3:
         border_labels: List[int] = []
         border_labels.extend(np.unique(L[:, 0, :]).tolist())
         border_labels.extend(np.unique(L[:, -1, :]).tolist())
@@ -977,9 +979,9 @@ def clear_XY_borders(L: np.ndarray) -> np.ndarray:
 
 
 def clear_Z_borders(L: np.ndarray) -> np.ndarray:
-    if 2 == len(L.shape):
+    if len(L.shape) == 2:
         return L
-    elif 3 == len(L.shape):
+    elif len(L.shape) == 3:
         border_labels: List[int] = []
         border_labels.extend(np.unique(L[0, :, :]).tolist())
         border_labels.extend(np.unique(L[-1, :, :]).tolist())
@@ -1002,10 +1004,10 @@ def inherit_labels(
     mask: Union[ImageBinary, ImageLabeled], mask2d: Union[ImageBinary, ImageLabeled]
 ) -> ImageLabeled:
     assert 2 == len(mask2d.shape)
-    if 2 == len(mask.shape):
+    if len(mask.shape) == 2:
         assert mask2d.shape == mask.shape
         return mask2d.pixels[np.logical_and(mask.pixels > 0, mask2d.pixels > 0)]
-    elif 3 == len(mask.shape):
+    elif len(mask.shape) == 3:
         assert mask2d.shape == mask.shape[-2:]
         new_mask = mask.pixels.copy()
         for slice_id in range(mask.shape[0]):
@@ -1029,7 +1031,7 @@ def tile_to(img: np.ndarray, shape: Tuple[int, ...]) -> np.ndarray:
     assert len(shape) == len(img.shape)
     new_shape = list(shape)
     for ai in range(len(img.shape)):
-        if 1 != img.shape[ai]:
+        if img.shape[ai] != 1:
             new_shape[ai] = 1
     return np.tile(img, new_shape)
 

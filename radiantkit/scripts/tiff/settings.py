@@ -38,7 +38,7 @@ class CompressionSettings(object):
                 dir_count += 1
             else:
                 assert False, f"input path not found: {path}"
-        if 0 < dir_count:
+        if dir_count > 0:
             assert 1 == dir_count, "only one directory is allowed per run"
             assert (
                 0 == file_count
