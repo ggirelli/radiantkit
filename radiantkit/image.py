@@ -282,10 +282,7 @@ class Image(ImageBase):
         s = f"{self.nd}D {self.__class__.__name__}: "
         s += f"{'x'.join([str(d) for d in self.shape])} [{self.axes}, "
         s += f"aspect: {'x'.join([str(d) for d in self.aspect])} nm]"
-        if self.loaded:
-            s += " [loaded]"
-        else:
-            s += " [unloaded]"
+        s += " [loaded]" if self.loaded else " [unloaded]"
         if self.is_loadable():
             s += f"; From '{self._path_to_local}'"
         return s
