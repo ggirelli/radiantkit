@@ -54,10 +54,7 @@ class ND2Reader2(ND2Reader):
                 )
             )
             logger.info(f"XY resolution: {self.xy_resolution:.3f} um")
-            logger.info(
-                f"Delta Z (value um, count): {list(self._z_resolution.items())}"
-            )
-            logger.info(f"Delta Z (mode): {self.z_resolution_mode} um")
+            self.log_z_details(logger)
         else:
             logger.info(f"XY size: {self.sizes['x']} x {self.sizes['y']}")
             logger.info(f"XY resolution: {self.xy_resolution} um")
@@ -65,6 +62,13 @@ class ND2Reader2(ND2Reader):
         logger.info(
             f"Format: '{self.dtype}' [{self.pixel_type_tag}:{self.bits_per_pixel}]"
         )
+
+    def log_z_details(self, logger: Logger = getLogger()) -> None:
+        for field_id in range(self.field_count()):
+            z_steps_hist = stat.list_to_hist(self.get_field_resolutionZ(field_id))
+            z_mode = stat.get_hist_mode(z_steps_hist)
+            logger.info(f"\tF#{field_id} - Delta Z (value um, count): {z_steps_hist}")
+            logger.info(f"\tF#{field_id} - Delta Z (mode): {z_mode} um")
 
     @property
     def xy_resolution(self) -> float:
