@@ -57,7 +57,7 @@ class ND2Reader2(ND2Reader):
             logger.info(
                 f"Delta Z (value um, count): {list(self._z_resolution.items())}"
             )
-            logger.info(f"Delta Z (mode): {self.z_resolution_mode}")
+            logger.info(f"Delta Z (mode): {self.z_resolution_mode} um")
         else:
             logger.info(f"XY size: {self.sizes['x']} x {self.sizes['y']}")
             logger.info(f"XY resolution: {self.xy_resolution} um")
