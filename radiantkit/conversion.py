@@ -163,7 +163,7 @@ class ND2Reader2(ND2Reader):
             z_size = parser.metadata["z_levels"].stop
             return stat.get_hist_mode(
                 np.diff(
-                    np.array(parser._raw_metadata["z_coordinates"])[
+                    np.array(parser.metadata["z_coordinates"])[
                         slice(
                             z_size * field_id,
                             z_size * (field_id + 1),
