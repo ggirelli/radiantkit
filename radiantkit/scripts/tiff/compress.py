@@ -21,7 +21,13 @@ Compress TIFF images.
 
 {SCRITPS_INPUT_HELP}""",
 )
-@click.argument("input_paths", metavar="INPUT", nargs=-1, type=click.Path(exists=True))
+@click.argument(
+    "input_paths",
+    metavar="INPUT",
+    nargs=-1,
+    type=click.Path(exists=True),
+    required=True,
+)
 @click.option(
     "--suffix",
     "-S",
