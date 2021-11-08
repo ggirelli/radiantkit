@@ -71,7 +71,7 @@ class ND2Reader2(ND2Reader):
             shakiness = (
                 sum([v for k, v in z_steps_hist if k != z_mode]) / self.sizes["z"]
             )
-            logger.info(f"\t:Shakiness{shakiness}%")
+            logger.info(f"\tShakiness: {shakiness*100:.1f}%")
 
     @property
     def xy_resolution(self) -> float:
