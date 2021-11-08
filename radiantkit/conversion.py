@@ -69,8 +69,7 @@ class ND2Reader2(ND2Reader):
             z_mode = stat.get_hist_mode(z_steps_hist)
             logger.info(f"Delta Z\tF#{field_id}: {z_mode} um; {z_steps_hist}")
             shakiness = (
-                sum([v for k, v in z_steps_hist.items() if k != z_mode])
-                / self.sizes["z"]
+                sum([v for k, v in z_steps_hist if k != z_mode]) / self.sizes["z"]
             )
             logger.info(f"Shakiness\tF#{field_id}: {shakiness}%")
 
