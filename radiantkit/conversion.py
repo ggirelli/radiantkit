@@ -161,16 +161,14 @@ class ND2Reader2(ND2Reader):
         with open(self.filename, "rb") as ND2H:
             parser = ND2Parser(ND2H)
             z_size = parser.metadata["z_levels"].stop
-            return stat.get_hist_mode(
-                np.diff(
-                    np.array(parser.metadata["z_coordinates"])[
-                        slice(
-                            z_size * field_id,
-                            z_size * (field_id + 1),
-                        )
-                    ]
-                )
-            )
+            return np.diff(
+                np.array(parser.metadata["z_coordinates"])[
+                    slice(
+                        z_size * field_id,
+                        z_size * (field_id + 1),
+                    )
+                ]
+            ).tolist()
 
     def select_channels(self, channels: Set[str]) -> Set[str]:
         return {
@@ -228,7 +226,7 @@ class ND2Reader2(ND2Reader):
 
         z_steps = self.get_field_resolutionZ(field_id)
         if len(set(z_steps)) > 1:
-            return self.get_resolution_Z_mode(z_steps, field_id, True)
+            return stat.get_hist_mode(z_steps)
         return z_steps[0]
 
 
