@@ -54,7 +54,10 @@ class ND2Reader2(ND2Reader):
                 )
             )
             logger.info(f"XY resolution: {self.xy_resolution:.3f} um")
-            logger.info(f"Delta Z value(s): {list(self._z_resolution.keys())} um")
+            logger.info(
+                f"Delta Z (value um, count): {list(self._z_resolution.items())}"
+            )
+            logger.info(f"Delta Z (mode): {self.z_resolution_mode}")
         else:
             logger.info(f"XY size: {self.sizes['x']} x {self.sizes['y']}")
             logger.info(f"XY resolution: {self.xy_resolution} um")
@@ -226,7 +229,7 @@ class ND2Reader2(ND2Reader):
 
         z_steps = self.get_field_resolutionZ(field_id)
         if len(set(z_steps)) > 1:
-            return stat.get_hist_mode(z_steps)
+            return stat.get_hist_mode(stat.list_to_hist(z_steps))
         return z_steps[0]
 
 
