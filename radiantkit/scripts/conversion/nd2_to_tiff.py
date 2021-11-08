@@ -113,7 +113,7 @@ def run(
     settings.just_info = info
     settings.just_list = list
 
-    logging.info(f"Input: {settings.input_paths}")
+    logging.info(f"Input file(s): {settings.input_paths}")
     for path in settings.input_paths:
         if isdir(path):
             logging.info(f"Looking into folder: {path}")
@@ -144,7 +144,6 @@ warned. Use the -F and -Z options to convert the skipped field(s).
 def convert_file(
     args: ConversionSettings, path: str, output_dirpath: Optional[str] = None
 ) -> None:
-    logging.info(f"Working on file '{path}'.")
     assert isfile(path), f"input file not found: {path}"
     if args.just_list:
         return
@@ -154,6 +153,8 @@ def convert_file(
         nd2_image.log_details()
         logging.info("")
         return
+    else:
+        logging.info(f"Working on file '{path}'.")
 
     output_dirpath = args.get_output_dirpath_for_single_file(path, output_dirpath)
     if not isdir(output_dirpath):
