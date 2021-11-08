@@ -66,12 +66,10 @@ class ND2Reader2(ND2Reader):
     def log_z_details(self, logger: Logger = getLogger()) -> None:
         for field_id in range(self.field_count()):
             z_steps_hist = stat.list_to_hist(self.get_field_resolutionZ(field_id))
-            if 1 < len(z_steps_hist):
+            if len(z_steps_hist) > 1:
                 z_mode = stat.get_hist_mode(z_steps_hist)
                 logger.info(f"F#{field_id}\tDelta Z: {z_mode} um; {z_steps_hist}")
-                shakiness = (
-                    sum([v for k, v in z_steps_hist if k != z_mode]) / self.sizes["z"]
-                )
+                shakiness = (sum(v for k, v in z_steps_hist if k != z_mode) / self.sizes["z"])
                 logger.info(f"\tShakiness: {shakiness*100:.1f}%")
             else:
                 logger.info(f"F#{field_id}\tDelta Z: {z_steps_hist[0][0]} um")
