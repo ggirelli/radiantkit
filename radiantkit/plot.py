@@ -3,15 +3,17 @@
 @contact: gigi.ga90@gmail.com
 """
 
-from collections import defaultdict
-import numpy as np  # type: ignore
 import os
-import pandas as pd  # type: ignore
-import plotly.graph_objects as go  # type: ignore
-import plotly.express as px  # type: ignore
-from plotly.subplots import make_subplots  # type: ignore
-from radiantkit import distance, report, stat
+from collections import defaultdict
 from typing import Any, DefaultDict, Dict, List, Optional, Tuple
+
+import numpy as np  # type: ignore
+import pandas as pd  # type: ignore
+import plotly.express as px  # type: ignore
+import plotly.graph_objects as go  # type: ignore
+from plotly.subplots import make_subplots  # type: ignore
+
+from radiantkit import distance, report, stat
 
 
 def get_axis_label(axis: str, aid: int) -> str:

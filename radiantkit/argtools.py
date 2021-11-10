@@ -4,13 +4,15 @@
 """
 
 import argparse
-from joblib import cpu_count  # type: ignore
 import logging
 import os
 import pickle as pk
+import sys
+
+from joblib import cpu_count  # type: ignore
+
 import radiantkit as ra
 from radiantkit import const
-import sys
 
 
 def check_axes(axes: str) -> None:

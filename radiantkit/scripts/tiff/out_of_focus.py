@@ -3,10 +3,12 @@
 @contact: gigi.ga90@gmail.com
 """
 
+from typing import Optional
+
 import click  # type: ignore
+
 from radiantkit.const import CONTEXT_SETTINGS, DEFAULT_INPUT_RE
 from radiantkit.scripts.tiff.settings import OutOfFocusSettings
-from typing import Optional
 
 
 @click.command(

@@ -3,11 +3,10 @@
 @contact: gigi.ga90@gmail.com
 """
 
-from radiantkit import const
-from radiantkit import conversion
-
 from importlib.metadata import version
 from typing import List
+
+from radiantkit import const, conversion
 
 try:
     __version__ = version(__name__)

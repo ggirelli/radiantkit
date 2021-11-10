@@ -4,9 +4,10 @@
 """
 
 import logging
-import numpy as np  # type: ignore
 import os
 import sys
+
+import numpy as np  # type: ignore
 
 
 def get_deconvolution_rescaling_factor(path: str, verbose: bool = False) -> float:

@@ -3,12 +3,14 @@
 @contact: gigi.ga90@gmail.com
 """
 
-from radiantkit.scripts.conversion.settings import ConversionSettings
-from os import listdir
-from os.path import isdir, join as join_paths
-from radiantkit.string import TIFFNameTemplateFields as TNTFields
 import re
+from os import listdir
+from os.path import isdir
+from os.path import join as join_paths
 from typing import Callable
+
+from radiantkit.scripts.conversion.settings import ConversionSettings
+from radiantkit.string import TIFFNameTemplateFields as TNTFields
 
 CONVERSION_TEMPLATE_LONG_HELP_STRING = f"""
 # Output file name template

@@ -4,11 +4,13 @@
 """
 
 import logging
-import numpy as np  # type: ignore
 import os
-from radiantkit.image import ImageGrayScale, ImageBinary, ImageLabeled
 import sys
 from typing import Dict, Iterator, List, Optional, Tuple, Union
+
+import numpy as np  # type: ignore
+
+from radiantkit.image import ImageBinary, ImageGrayScale, ImageLabeled
 
 
 class ChannelList(object):

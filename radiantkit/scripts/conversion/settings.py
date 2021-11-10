@@ -4,15 +4,19 @@
 """
 
 import logging
-import numpy as np  # type: ignore
-from os.path import basename, dirname, isdir, isfile, join as join_paths, splitext
-from radiantkit.const import DEFAULT_INPUT_RE
-from radiantkit.conversion import ND2Reader2, CziFile2
-from radiantkit.string import TIFFNameTemplateFields as TNTFields
-from radiantkit.string import TIFFNameTemplate as TNTemplate
-from radiantkit.string import MultiRange
 import sys
+from os.path import basename, dirname, isdir, isfile
+from os.path import join as join_paths
+from os.path import splitext
 from typing import Optional, Set, Union
+
+import numpy as np  # type: ignore
+
+from radiantkit.const import DEFAULT_INPUT_RE
+from radiantkit.conversion import CziFile2, ND2Reader2
+from radiantkit.string import MultiRange
+from radiantkit.string import TIFFNameTemplate as TNTemplate
+from radiantkit.string import TIFFNameTemplateFields as TNTFields
 
 
 class ConversionSettings(object):

@@ -3,20 +3,22 @@
 @contact: gigi.ga90@gmail.com
 """
 
-from collections import defaultdict
-from czifile import CziFile  # type: ignore
 import logging
-from logging import Logger, getLogger
-from nd2reader import ND2Reader  # type: ignore
-from nd2reader.parser import Parser as ND2Parser  # type: ignore
-import numpy as np  # type: ignore
-from radiantkit import stat
-from radiantkit.string import TIFFNameTemplate as TNTemplate
 import re
-import six  # type: ignore
-from typing import DefaultDict, Iterable, List, Optional, Set, Tuple
 import warnings
 import xml.etree.ElementTree as ET
+from collections import defaultdict
+from logging import Logger, getLogger
+from typing import DefaultDict, Iterable, List, Optional, Set, Tuple
+
+import numpy as np  # type: ignore
+import six  # type: ignore
+from czifile import CziFile  # type: ignore
+from nd2reader import ND2Reader  # type: ignore
+from nd2reader.parser import Parser as ND2Parser  # type: ignore
+
+from radiantkit import stat
+from radiantkit.string import TIFFNameTemplate as TNTemplate
 
 
 class ND2Reader2(ND2Reader):

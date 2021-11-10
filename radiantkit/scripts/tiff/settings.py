@@ -3,12 +3,14 @@
 @contact: gigi.ga90@gmail.com
 """
 
+import re
 from os.path import isdir, isfile
+from typing import Iterator, Optional, Set, Tuple
+
 from joblib import cpu_count  # type: ignore
+
 from radiantkit.const import DEFAULT_INPUT_RE
 from radiantkit.path import add_suffix, find_re
-import re
-from typing import Iterator, Optional, Set, Tuple
 
 
 class CompressionSettings(object):

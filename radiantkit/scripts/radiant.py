@@ -3,13 +3,14 @@
 @contact: gigi.ga90@gmail.com
 """
 
+import sys
+import webbrowser
+
 import click  # type: ignore
+
 from radiantkit import __version__
 from radiantkit.const import CONTEXT_SETTINGS
-from radiantkit.scripts import conversion, mask, radial, tiff
-from radiantkit.scripts import report
-import webbrowser
-import sys
+from radiantkit.scripts import conversion, mask, radial, report, tiff
 
 
 @click.group(

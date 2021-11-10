@@ -4,13 +4,15 @@
 """
 
 from enum import Enum
+from typing import Optional, Tuple
+
 import numpy as np  # type: ignore
+from scipy.ndimage import center_of_mass  # type: ignore
+from scipy.ndimage.morphology import distance_transform_edt  # type: ignore
+
+from radiantkit import stat
 from radiantkit.channel import ImageGrayScale
 from radiantkit.image import Image, ImageBinary, offset2
-from radiantkit import stat
-from scipy.ndimage.morphology import distance_transform_edt  # type: ignore
-from scipy.ndimage import center_of_mass  # type: ignore
-from typing import Optional, Tuple
 
 
 class DistanceType(Enum):

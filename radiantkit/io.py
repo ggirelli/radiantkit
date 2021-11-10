@@ -5,11 +5,12 @@
 @contact: gigi.ga90@gmail.com
 """
 
-import os
 import logging
+import os
+from typing import Optional
+
 from rich.console import Console  # type: ignore
 from rich.logging import RichHandler  # type: ignore
-from typing import Optional
 
 
 def add_log_file_handler(path: str, logger_name: Optional[str] = None) -> None:

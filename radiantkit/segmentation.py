@@ -5,11 +5,13 @@
 
 import logging
 from logging import Logger
+from typing import Optional, Union
+
+from skimage.filters import threshold_otsu  # type: ignore
+
 from radiantkit import const
 from radiantkit.channel import ImageGrayScale
 from radiantkit.image import ImageBinary, ImageLabeled
-from skimage.filters import threshold_otsu  # type: ignore
-from typing import Optional, Union
 
 
 class BinarizerSettings(object):

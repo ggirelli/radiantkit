@@ -3,14 +3,15 @@
 @contact: gigi.ga90@gmail.com
 """
 
+import warnings
 from collections import defaultdict
 from enum import Enum
+from typing import Any, Callable, DefaultDict, Dict, List, Optional, Tuple
+
 import numpy as np  # type: ignore
-from numpy.polynomial.polynomial import Polynomial  # type: ignore
 import pandas as pd  # type: ignore
 import scipy as sp  # type: ignore
-from typing import Any, Callable, DefaultDict, Dict, List, Optional, Tuple
-import warnings
+from numpy.polynomial.polynomial import Polynomial  # type: ignore
 
 
 class FitType(Enum):

@@ -3,14 +3,17 @@
 @contact: gigi.ga90@gmail.com
 """
 
-import click  # type: ignore
-from joblib import delayed, Parallel  # type: ignore
 import logging
 from os.path import isdir, isfile
+from typing import List
+
+import click  # type: ignore
+from joblib import Parallel, delayed  # type: ignore
+
 from radiantkit.const import CONTEXT_SETTINGS, DEFAULT_INPUT_RE, SCRITPS_INPUT_HELP
 from radiantkit.image import Image
+from radiantkit.scripts import options
 from radiantkit.scripts.tiff.settings import CompressionSettings
-from typing import List
 
 
 @click.command(
@@ -35,23 +38,8 @@ Compress TIFF images.
     help="Suffix for compressed output files.",
     default=".compressed",
 )
-@click.option(
-    "--input-re",
-    "-R",
-    type=click.STRING,
-    metavar="RE",
-    help=f"""
-    Regexp used to identify input TIFF files.
-    Default: {DEFAULT_INPUT_RE['tiff']}""",
-    default=DEFAULT_INPUT_RE["tiff"],
-)
-@click.option(
-    "--threads",
-    "-T",
-    type=click.INT,
-    help="Number of threads for parallelization.",
-    default=1,
-)
+@options.input_regexp(DEFAULT_INPUT_RE["tiff"])
+@options.threads()
 def run_compress(
     input_paths: List[str], suffix: str, input_re: str, threads: int
 ) -> None:
@@ -93,23 +81,8 @@ Uncompress TIFF images.
     help="Suffix for uncompressed output files.",
     default=".uncompressed",
 )
-@click.option(
-    "--input-re",
-    "-R",
-    type=click.STRING,
-    metavar="RE",
-    help=f"""
-    Regexp used to identify input TIFF files.
-    Default: {DEFAULT_INPUT_RE['tiff']}""",
-    default=DEFAULT_INPUT_RE["tiff"],
-)
-@click.option(
-    "--threads",
-    "-T",
-    type=click.INT,
-    help="Number of threads for parallelization.",
-    default=1,
-)
+@options.input_regexp(DEFAULT_INPUT_RE["tiff"])
+@options.threads()
 def run_uncompress(
     input_paths: List[str], suffix: str, input_re: str, threads: int
 ) -> None:

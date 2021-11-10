@@ -5,10 +5,10 @@
 
 import logging
 import os
-from radiantkit import string
 import re
 from typing import List, Optional, Pattern, Tuple
 
+from radiantkit import string
 
 FileList = List[str]
 RawMaskPair = Tuple[str, str]

@@ -3,17 +3,19 @@
 @contact: gigi.ga90@gmail.com
 """
 
-from abc import abstractmethod
-from collections import defaultdict
-from importlib import import_module
 import inspect
 import logging
 import os
+from abc import abstractmethod
+from collections import defaultdict
+from importlib import import_module
+from typing import Any, DefaultDict, Dict, List, Optional, Tuple
+
 import pandas as pd  # type: ignore
 import plotly.graph_objects as go  # type: ignore
+
 from radiantkit import const, scripts
 from radiantkit.output import Output, OutputDirectories, OutputReader
-from typing import Any, DefaultDict, Dict, List, Optional, Tuple
 
 
 class ReportBase(OutputDirectories):

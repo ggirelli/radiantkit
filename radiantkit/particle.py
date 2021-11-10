@@ -4,21 +4,23 @@
 """
 
 import itertools
-import joblib  # type: ignore
 import logging
-import numpy as np  # type: ignore
 import os
+from typing import Any, Dict, List, Optional, Tuple, Type
+
+import joblib  # type: ignore
+import numpy as np  # type: ignore
 import pandas as pd  # type: ignore
-from radiantkit.distance import RadialDistanceCalculator
-from radiantkit.channel import ImageGrayScale
-from radiantkit.image import Image, ImageBinary, ImageLabeled, offset2
-from radiantkit.selection import BoundingElement
-from radiantkit.stat import cell_cycle_fit, range_from_fit
 from rich.progress import track  # type: ignore
 from skimage.measure import marching_cubes_lewiner  # type: ignore
 from skimage.measure import mesh_surface_area
 from skimage.morphology import convex_hull_image  # type: ignore
-from typing import Any, Dict, List, Optional, Tuple, Type
+
+from radiantkit.channel import ImageGrayScale
+from radiantkit.distance import RadialDistanceCalculator
+from radiantkit.image import Image, ImageBinary, ImageLabeled, offset2
+from radiantkit.selection import BoundingElement
+from radiantkit.stat import cell_cycle_fit, range_from_fit
 
 
 class ParticleBase(ImageBinary):

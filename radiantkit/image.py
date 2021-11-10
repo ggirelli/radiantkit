@@ -3,22 +3,23 @@
 @contact: gigi.ga90@gmail.com
 """
 
-from enum import Enum
 import logging
-import numpy as np  # type: ignore
 import os
+from enum import Enum
+from typing import Any, Dict, List, Optional, Tuple, Union
+
+import numpy as np  # type: ignore
 import pandas as pd  # type: ignore
+import skimage as ski  # type: ignore
+import tifffile as tf  # type: ignore
+from scipy import ndimage as ndi  # type: ignore
+from skimage.morphology import (closing, cube, dilation,  # type: ignore
+                                erosion, opening, square)
+from skimage.segmentation import clear_border  # type: ignore
+
 import radiantkit as ra
 from radiantkit import const, stat
 from radiantkit.deconvolution import get_deconvolution_rescaling_factor
-from scipy import ndimage as ndi  # type: ignore
-import skimage as ski  # type: ignore
-from skimage.morphology import square, cube  # type: ignore
-from skimage.morphology import closing, opening
-from skimage.morphology import dilation, erosion
-from skimage.segmentation import clear_border  # type: ignore
-import tifffile as tf  # type: ignore
-from typing import Any, Dict, List, Optional, Tuple, Union
 
 
 class ImageBase(object):

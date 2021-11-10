@@ -4,6 +4,7 @@
 """
 
 import click  # type: ignore
+
 from radiantkit import __version__
 from radiantkit.const import CONTEXT_SETTINGS
 from radiantkit.scripts.radial import population
