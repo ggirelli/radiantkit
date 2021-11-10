@@ -4,11 +4,13 @@
 """
 
 import logging
-import numpy as np  # type: ignore
 import os
-from radiantkit.image import ImageGrayScale, ImageBinary, ImageLabeled
 import sys
 from typing import Dict, Iterator, List, Optional, Tuple, Union
+
+import numpy as np  # type: ignore
+
+from radiantkit.image import ImageBinary, ImageGrayScale, ImageLabeled
 
 
 class ChannelList(object):
@@ -60,7 +62,7 @@ class ChannelList(object):
         if spacing is None:
             return
         spacing = np.array(spacing)
-        if 0 != len(self):
+        if len(self) != 0:
             for name, channel in self._channels.items():
                 channel.aspect = spacing
             self._aspect = list(self._channels.values())[0].aspect
@@ -73,11 +75,10 @@ class ChannelList(object):
 
     @ground_block_side.setter
     def ground_block_side(self, bs: int) -> None:
-        if 0 != bs % 2:
+        if bs % 2 != 0:
             bs += 1
-        if bs != self._ground_block_side and self.is_masked():
-            if 0 != len(self):
-                self.__update_ground()
+        if bs != self._ground_block_side and self.is_masked() and len(self) != 0:
+            self.__update_ground()
         self._ground_block_side = bs
 
     def __update_ground(self, name: Optional[str] = None):
@@ -121,9 +122,9 @@ class ChannelList(object):
     def mask_is_not_empty(self) -> bool:
         if self._mask is None:
             return False
-        elif 0 == self._mask.pixels.shape[0]:
+        elif self._mask.pixels.shape[0] == 0:
             return False
-        elif 0 == self._mask.pixels.max():
+        elif self._mask.pixels.max() == 0:
             return False
         return True
 
@@ -163,10 +164,7 @@ class ChannelList(object):
     ) -> None:
         assert os.path.isfile(path)
         mask: Union[ImageBinary, ImageLabeled]
-        if labeled:
-            mask = ImageLabeled.from_tiff(path)
-        else:
-            mask = ImageBinary.from_tiff(path)
+        mask = ImageLabeled.from_tiff(path) if labeled else ImageBinary.from_tiff(path)
         if self.aspect is not None:
             mask.aspect = self.aspect
         mask.unload()
@@ -228,10 +226,9 @@ class ChannelList(object):
 
         if self.__current_channel > len(self):
             raise StopIteration
-        else:
-            channel_names = self.names
-            channel_names.sort()
-            return self[channel_names[self.__current_channel - 1]]
+        channel_names = self.names
+        channel_names.sort()
+        return self[channel_names[self.__current_channel - 1]]
 
     def __iter__(self) -> Iterator[Tuple[str, ImageGrayScale]]:
         self.__current_channel = 0

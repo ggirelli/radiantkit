@@ -4,10 +4,12 @@
 """
 
 import os
-import pandas as pd  # type: ignore
 import pickle
-from radiantkit.const import DirectoryPathList
 from typing import Any, Optional, Pattern
+
+import pandas as pd  # type: ignore
+
+from radiantkit.const import DirectoryPathList
 
 DEFAULT_SUBDIRS: DirectoryPathList = ["objects"]
 
@@ -26,10 +28,7 @@ class OutputDirectories(object):
         super(OutputDirectories, self).__init__()
         assert os.path.isdir(dirpath)
         self._dirpath = dirpath
-        if subdirs is None:
-            self._subdirs = DEFAULT_SUBDIRS
-        else:
-            self._subdirs = subdirs
+        self._subdirs = DEFAULT_SUBDIRS if subdirs is None else subdirs
         self._is_root = False
 
     @property

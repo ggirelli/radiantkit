@@ -3,8 +3,9 @@
 @contact: gigi.ga90@gmail.com
 """
 
+from collections import defaultdict
 from enum import Enum
-from typing import Dict, List, Tuple
+from typing import DefaultDict, Dict, List, Tuple
 
 default_inreg = "".join(
     [
@@ -63,3 +64,30 @@ filename = str
 DirectoryPathList = List[str]
 OutputFileDetails = Tuple[filename, required, DirectoryPathList]
 OutputFileDirpath = Dict[stub, OutputFileDetails]
+
+CONTEXT_SETTINGS = dict(help_option_names=["-h", "--help"])
+
+DEFAULT_INPUT_RE: DefaultDict[str, str] = defaultdict(lambda: ".*")
+DEFAULT_INPUT_RE["nd2"] = r"^.*\.nd2$"
+DEFAULT_INPUT_RE["czi"] = r"^.*\.czi$"
+DEFAULT_INPUT_RE["tiff"] = r"^.*\.tiff?$"
+DEFAULT_INPUT_RE["tiff_with_fields"] = "".join(
+    [
+        "^(?P<dw_flag>dw_)?",  # Deconwolf compatible
+        "([^\\.]*\\.)?",  # Prefix
+        "(?P<channel_name>[^/]*)_(?P<series_id>[0-9]+)",  # channel_series block
+        "".join(
+            [
+                "(?P<ext>",  # Extension block
+                "(_cmle)?",  # Huygens-compatible
+                "(\\.[^\\.]*)?",  # Suffix
+                "\\.tiff?)$",  # Extension
+            ]
+        ),
+    ]
+)
+
+SCRITPS_INPUT_HELP = """
+To apply to a single file, provide its path as INPUT. To apply to all files in a folder,
+instead, specify the folder path as INPUT. To convert specific files, specify them one
+after the other as INPUT."""

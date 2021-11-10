@@ -5,11 +5,13 @@
 
 import logging
 from logging import Logger
+from typing import Optional, Union
+
+from skimage.filters import threshold_otsu  # type: ignore
+
 from radiantkit import const
 from radiantkit.channel import ImageGrayScale
 from radiantkit.image import ImageBinary, ImageLabeled
-from skimage.filters import threshold_otsu  # type: ignore
-from typing import Optional, Union
 
 
 class BinarizerSettings(object):
@@ -80,10 +82,10 @@ class Binarizer(BinarizerSettings):
         if self.do_global:
             mask_list.append(self.__do_global_threshold(img))
 
-        if self.do_local and 1 < self.local_side:
+        if self.do_local and self.local_side > 1:
             mask_list.append(self.__do_local_threshold(img))
 
-        while 1 < len(mask_list):
+        while len(mask_list) > 1:
             mask_list[0].logical_and(mask_list[1])
             mask_list.pop(1)
 

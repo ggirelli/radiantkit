@@ -4,9 +4,10 @@
 """
 
 import logging
-import numpy as np  # type: ignore
 import os
 import sys
+
+import numpy as np  # type: ignore
 
 
 def get_deconvolution_rescaling_factor(path: str, verbose: bool = False) -> float:
@@ -22,13 +23,12 @@ def get_deconvolution_rescaling_factor(path: str, verbose: bool = False) -> floa
         else:
             logging.debug(f"Huygens rescaling factor: {huygens_factor}")
             return huygens_factor
+    elif deconwolf_factor != 1:
+        logging.debug(f"Deconwolf rescaling factor: {deconwolf_factor}")
+        return deconwolf_factor
     else:
-        if deconwolf_factor != 1:
-            logging.debug(f"Deconwolf rescaling factor: {deconwolf_factor}")
-            return deconwolf_factor
-        else:
-            logging.debug(f"no rescaling factor found for '{path}'.")
-            return 1.0
+        logging.debug(f"no rescaling factor found for '{path}'.")
+        return 1.0
 
 
 def get_huygens_rescaling_factor(path: str) -> float:
@@ -41,9 +41,9 @@ def get_huygens_rescaling_factor(path: str) -> float:
     with open(path, "r") as log:
         factor = [x for x in log.readlines() if "Stretched to Integer type" in x]
 
-    if 0 == len(factor):
+    if not factor:
         return 1
-    elif 1 == len(factor):
+    elif len(factor) == 1:
         return float(factor[0].strip().split(" ")[-1])
     else:
         return float(np.prod([float(f.strip().split(" ")[-1]) for f in factor]))
@@ -58,9 +58,9 @@ def get_deconwolf_rescaling_factor(path: str) -> float:
     with open(path, "r") as log:
         factor = [x for x in log.readlines() if "scaling: " in x]
 
-    if 0 == len(factor):
+    if not factor:
         return 1
-    elif 1 == len(factor):
+    elif len(factor) == 1:
         return float(factor[0].strip().split(" ")[-1])
     else:
         return float(np.prod([float(f.strip().split(" ")[-1]) for f in factor]))

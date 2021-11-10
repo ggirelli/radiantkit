@@ -5,11 +5,12 @@
 @contact: gigi.ga90@gmail.com
 """
 
-import os
 import logging
+import os
+from typing import Optional
+
 from rich.console import Console  # type: ignore
 from rich.logging import RichHandler  # type: ignore
-from typing import Optional
 
 
 def add_log_file_handler(path: str, logger_name: Optional[str] = None) -> None:
@@ -25,7 +26,7 @@ def add_log_file_handler(path: str, logger_name: Optional[str] = None) -> None:
     """
     assert not os.path.isdir(path)
     log_dir = os.path.dirname(path)
-    assert os.path.isdir(log_dir) or "" == log_dir
+    assert os.path.isdir(log_dir) or log_dir == ""
     fh = RichHandler(console=Console(file=open(path, mode="w+")), markup=True)
     fh.setLevel(logging.INFO)
     logging.getLogger(logger_name).addHandler(fh)

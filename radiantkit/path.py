@@ -5,10 +5,10 @@
 
 import logging
 import os
-from radiantkit import string
 import re
 from typing import List, Optional, Pattern, Tuple
 
+from radiantkit import string
 
 FileList = List[str]
 RawMaskPair = Tuple[str, str]
@@ -29,21 +29,20 @@ def add_extension(path: str, ext: str, delim: str = ".") -> str:
 
 
 def find_re(ipath: str, ireg: Pattern) -> FileList:
-    flist = [
+    return [
         f
         for f in os.listdir(ipath)
         if (os.path.isfile(os.path.join(ipath, f)) and re.match(ireg, f) is not None)
     ]
-    return flist
 
 
 def select_by_prefix_and_suffix(
     dpath: str, ilist: FileList, prefix: str = "", suffix: str = ""
 ) -> Tuple[FileList, FileList]:
     olist = ilist.copy()
-    if 0 != len(suffix):
+    if len(suffix) != 0:
         olist = [f for f in olist if os.path.splitext(f)[0].endswith(suffix)]
-    if 0 != len(prefix):
+    if len(prefix) != 0:
         olist = [f for f in olist if os.path.splitext(f)[0].startswith(prefix)]
     return (olist, [x for x in ilist if x not in olist])
 
@@ -66,8 +65,8 @@ def pair_raw_mask_images(
 
 def get_image_details(path: str, inreg: Pattern) -> Optional[Tuple[int, str]]:
     fmatch = re.match(inreg, os.path.basename(path))
-    if fmatch is not None:
-        finfo = fmatch.groupdict()
-        return (int(finfo["series_id"]), finfo["channel_name"])
-    else:
+    if fmatch is None:
         return None
+
+    finfo = fmatch.groupdict()
+    return (int(finfo["series_id"]), finfo["channel_name"])

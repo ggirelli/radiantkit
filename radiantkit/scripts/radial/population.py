@@ -9,9 +9,9 @@ from radiantkit.const import CONTEXT_SETTINGS
 
 
 @click.command(
-    name="report",
+    name="population",
     context_settings=CONTEXT_SETTINGS,
-    help="""Generate radiant HTML report.""",
+    help="""Generate population averaged radial profiles.""",
 )
 def run() -> None:
     pass

@@ -3,21 +3,21 @@
 @contact: gigi.ga90@gmail.com
 """
 
-import argparse
-from collections import defaultdict
-from czifile import CziFile  # type: ignore
 import logging
-from logging import Logger, getLogger
-from nd2reader import ND2Reader  # type: ignore
-from nd2reader.parser import Parser as ND2Parser  # type: ignore
-import numpy as np  # type: ignore
-from radiantkit import stat
-from radiantkit.string import TIFFNameTemplate as TNTemplate
-import re
-import six  # type: ignore
-from typing import DefaultDict, Iterable, List, Optional, Tuple
 import warnings
 import xml.etree.ElementTree as ET
+from collections import defaultdict
+from logging import Logger, getLogger
+from typing import DefaultDict, Iterable, List, Optional, Set, Tuple
+
+import numpy as np  # type: ignore
+import six  # type: ignore
+from czifile import CziFile  # type: ignore
+from nd2reader import ND2Reader  # type: ignore
+from nd2reader.parser import Parser as ND2Parser  # type: ignore
+
+from radiantkit import stat
+from radiantkit.string import TIFFNameTemplate as TNTemplate
 
 
 class ND2Reader2(ND2Reader):
@@ -55,7 +55,7 @@ class ND2Reader2(ND2Reader):
                 )
             )
             logger.info(f"XY resolution: {self.xy_resolution:.3f} um")
-            logger.info(f"Delta Z value(s): {list(self._z_resolution.keys())} um")
+            self.log_z_details(logger)
         else:
             logger.info(f"XY size: {self.sizes['x']} x {self.sizes['y']}")
             logger.info(f"XY resolution: {self.xy_resolution} um")
@@ -63,6 +63,23 @@ class ND2Reader2(ND2Reader):
         logger.info(
             f"Format: '{self.dtype}' [{self.pixel_type_tag}:{self.bits_per_pixel}]"
         )
+
+    def log_z_details(self, logger: Logger = getLogger()) -> None:
+        for field_id in range(self.field_count()):
+            z_steps_hist = stat.list_to_hist(self.get_field_resolutionZ(field_id))
+            if len(z_steps_hist) > 1:
+                z_mode = stat.get_hist_mode(z_steps_hist)
+                shakiness = np.round(
+                    sum(v for k, v in z_steps_hist if k != z_mode)
+                    / self.sizes["z"]
+                    * 100,
+                    1,
+                )
+                logger.info(
+                    f"F#{field_id+1}\tdZ: {z_mode} um; {z_steps_hist}; {shakiness}%"
+                )
+            else:
+                logger.info(f"F#{field_id+1}\tdZ: {z_steps_hist[0][0]} um")
 
     @property
     def xy_resolution(self) -> float:
@@ -94,7 +111,7 @@ class ND2Reader2(ND2Reader):
 
     def _set_xy_resolution(self):
         self._xy_resolution = self.metadata["pixel_microns"]
-        if 0 == self._xy_resolution:
+        if self._xy_resolution == 0:
             logging.warning("XY resolution set to 0! (possibly incorrect obj. setup)")
 
     def _set_z_resolution(self):
@@ -128,7 +145,7 @@ class ND2Reader2(ND2Reader):
 
     def isLive(self) -> bool:
         if "t" in self.axes:
-            return 1 < self.sizes["t"]
+            return self.sizes["t"] > 1
         return False
 
     def is3D(self) -> bool:
@@ -136,7 +153,7 @@ class ND2Reader2(ND2Reader):
 
     def has_multi_channels(self) -> bool:
         if "c" in self.axes:
-            return 1 < self.channel_count()
+            return self.channel_count() > 1
         return False
 
     def get_channel_names(self) -> Iterable[str]:
@@ -144,12 +161,13 @@ class ND2Reader2(ND2Reader):
             yield channel.lower()
 
     def channel_count(self) -> int:
-        if "c" not in self.sizes:
-            n = 1
-        else:
-            n = self.sizes["c"]
+        n = 1 if "c" not in self.sizes else self.sizes["c"]
         assert len(list(self.get_channel_names())) == n, "channel count mismatch."
         return n
+
+    def set_iter_axes(self, iter_axes: str) -> None:
+        if all(a in self.axes for a in iter_axes):
+            self.iter_axes = iter_axes
 
     def set_axes_for_bundling(self):
         if self.is3D():
@@ -157,43 +175,27 @@ class ND2Reader2(ND2Reader):
         else:
             self.bundle_axes = "yxc" if "c" in self.axes else "yx"
 
-    def get_Z_loop_step(self, parser) -> Tuple[int, float, str]:
-        image_text_info = parser._raw_metadata.image_text_info[
-            six.b("SLxImageTextInfo")
-        ]
-        metadata_fields = [x for x in image_text_info.values() if b"Z Stack Loop" in x]
-        if 0 == len(metadata_fields):
-            return (0, np.nan, "")
-        metadata = metadata_fields[0]
-        parsed = re.search(
-            "Z Stack Loop: ([0-9]+)\r\n- Step: ([0-9,\\.]+) ([^\r\n]*)",
-            metadata.decode(),
-        )
-        if parsed is None:
-            return (0, np.nan, "")
-        parsed_fields = parsed.groups()
-        return (
-            int(parsed_fields[0]),
-            float(parsed_fields[1].replace(",", ".")),
-            parsed_fields[2],
-        )
-
     def get_field_resolutionZ(self, field_id: int) -> List[float]:
         with open(self.filename, "rb") as ND2H:
             parser = ND2Parser(ND2H)
-            z_fields, z_step, z_unit = self.get_Z_loop_step(parser)
-            if 0 != z_fields:
-                return [z_step]
-            Zdata = np.array(parser._raw_metadata.z_data)
-            Zlevels = np.array(parser.metadata["z_levels"]).astype("int")
-            Zlevels = Zlevels + len(Zlevels) * field_id
-            Zdata = Zdata[Zlevels]
-            return np.round(np.diff(Zdata), 3).tolist()
+            z_size = parser.metadata["z_levels"].stop
+            return (
+                np.diff(
+                    np.array(parser.metadata["z_coordinates"])[
+                        slice(
+                            z_size * field_id,
+                            z_size * (field_id + 1),
+                        )
+                    ]
+                )
+                .round(3)
+                .tolist()
+            )
 
-    def select_channels(self, channels: List[str]) -> List[str]:
-        return [
+    def select_channels(self, channels: Set[str]) -> Set[str]:
+        return {
             c.lower() for c in channels if c.lower() in list(self.get_channel_names())
-        ]
+        }
 
     def get_tiff_path(
         self, template: TNTemplate, channel_id: int, field_id: int
@@ -206,6 +208,48 @@ class ND2Reader2(ND2Reader):
             axes_order="".join(self.bundle_axes),
         )
         return f"{template.safe_substitute(d)}.tiff"
+
+    @staticmethod
+    def get_dz_mode(
+        z_steps: List[float], field_id: int, verbose: bool = False
+    ) -> float:
+        z_mode = stat.get_hist_mode(stat.list_to_hist(z_steps))
+        if np.isnan(z_mode):
+            if verbose:
+                logging.error(
+                    " ".join(
+                        [
+                            f"Z resolution is not constant in field #{field_id+1}:",
+                            f"{set(z_steps)}. Cannot automatically identify a delta Z",
+                            f"for field #{field_id+1}. Skipping this field. Please",
+                            "enforce a delta Z manually using the --deltaZ option.",
+                        ]
+                    )
+                )
+            return np.nan
+        if verbose:
+            logging.info(
+                " ".join(
+                    [
+                        f"Z resolution is not constant in field #{field_id+1}:",
+                        f"{set(z_steps)}.",
+                        f"Using a Z resolution of {z_mode} um.",
+                    ]
+                )
+            )
+        return z_mode
+
+    def get_dz(self, field_id: int, enforce: Optional[float] = None) -> float:
+        if not self.is3D():
+            return 0.0
+
+        if enforce is not None:
+            return enforce
+
+        z_steps = self.get_field_resolutionZ(field_id)
+        if len(set(z_steps)) > 1:
+            return stat.get_hist_mode(stat.list_to_hist(z_steps))
+        return z_steps[0]
 
 
 class CziFile2(CziFile):
@@ -254,7 +298,7 @@ class CziFile2(CziFile):
 
     def isLive(self) -> bool:
         if "T" in self.axes:
-            return 1 < self.shape[self.axes.index("T")]
+            return self.shape[self.axes.index("T")] > 1
         return False
 
     def is3D(self) -> bool:
@@ -262,7 +306,7 @@ class CziFile2(CziFile):
 
     def has_multi_channels(self) -> bool:
         if "C" in self.axes:
-            return 1 < self.channel_count()
+            return self.channel_count() > 1
         return False
 
     def get_channel_names(self) -> Iterable[str]:
@@ -273,26 +317,19 @@ class CziFile2(CziFile):
             yield x.text.replace(" ", "").lower()
 
     def channel_count(self) -> int:
-        if "C" not in self.axes:
-            n = 1
-        else:
-            n = self.pixels.shape[self.axes.index("C")]
+        n = 1 if "C" not in self.axes else self.pixels.shape[self.axes.index("C")]
         assert len(list(self.get_channel_names())) == n, "channel count mismatch."
         return n
 
     def get_axis_resolution(self, axis: str) -> float:
         resolution_path = "Metadata/Scaling/Items/Distance"
         for x in ET.fromstring(self.metadata()).findall(resolution_path):
-            if x.attrib["Id"] == axis:
-                if x[0].text is not None:
-                    return float(x[0].text)
+            if x.attrib["Id"] == axis and x[0].text is not None:
+                return float(x[0].text)
         return 1
 
     def get_resolution(self) -> dict:
-        resolution = {}
-        for axis in "XYZ":
-            resolution[axis] = self.get_axis_resolution(axis)
-        return resolution
+        return {axis: self.get_axis_resolution(axis) for axis in "XYZ"}
 
     def squeeze_axes(self, skip: str) -> None:
         axes = list(self.axes)
@@ -310,7 +347,7 @@ class CziFile2(CziFile):
             return
         bundle_axes_list = [a for a in bundle_axes if a in self.axes]
         assert len(bundle_axes_list) == len(self.axes)
-        assert all([axis in self.axes for axis in bundle_axes_list])
+        assert all(axis in self.axes for axis in bundle_axes_list)
         self.__pixels = np.moveaxis(
             self.pixels,
             range(len(self.axes)),
@@ -320,7 +357,7 @@ class CziFile2(CziFile):
         self.axes = "".join(bundle_axes_list)
 
     def get_channel_pixels(
-        self, args: argparse.Namespace, field_id: Optional[int] = None
+        self, field_id: Optional[int] = None
     ) -> Iterable[Tuple[np.ndarray, int]]:
         if field_id is not None:
             field = self.pixels[field_id, :]
@@ -330,10 +367,10 @@ class CziFile2(CziFile):
         for channel_id in range(self.channel_count()):
             yield (field[channel_id], channel_id)
 
-    def select_channels(self, channels: List[str]) -> List[str]:
-        return [
+    def select_channels(self, channels: Set[str]) -> Set[str]:
+        return {
             c.lower() for c in channels if c.lower() in list(self.get_channel_names())
-        ]
+        }
 
     def get_tiff_path(
         self, template: TNTemplate, channel_id: int, field_id: int

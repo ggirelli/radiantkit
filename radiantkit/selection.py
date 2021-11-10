@@ -3,9 +3,11 @@
 @contact: gigi.ga90@gmail.com
 """
 
-import numpy as np  # type: ignore
-from radiantkit.image import Image, ImageBinary, ImageLabeled, are_pixels_binary
 from typing import List, Tuple
+
+import numpy as np  # type: ignore
+
+from radiantkit.image import Image, ImageBinary, ImageLabeled, are_pixels_binary
 
 
 class BoundingElement(object):
@@ -21,7 +23,7 @@ class BoundingElement(object):
 
     @property
     def shape(self) -> Tuple[int, ...]:
-        return tuple([int(r.stop - r.start) for r in self.bounds])
+        return tuple(int(r.stop - r.start) for r in self.bounds)
 
     @staticmethod
     def from_binary_pixels(pixels: np.ndarray) -> "BoundingElement":

@@ -3,14 +3,15 @@
 @contact: gigi.ga90@gmail.com
 """
 
+import warnings
 from collections import defaultdict
 from enum import Enum
+from typing import Any, Callable, DefaultDict, Dict, List, Optional, Tuple
+
 import numpy as np  # type: ignore
-from numpy.polynomial.polynomial import Polynomial  # type: ignore
 import pandas as pd  # type: ignore
 import scipy as sp  # type: ignore
-from typing import Any, Callable, DefaultDict, Dict, List, Optional, Tuple
-import warnings
+from numpy.polynomial.polynomial import Polynomial  # type: ignore
 
 
 class FitType(Enum):
@@ -49,7 +50,7 @@ def gpartial_w(sigma: float) -> int:
     if 0 == w % 2:
         w = w + 1
     w = 2 * w + 1
-    if 1 == sigma:
+    if sigma == 1:
         w = 11
     return w
 
@@ -72,11 +73,11 @@ def gpartial_2D(V: np.ndarray, d: int, sigma: float) -> np.ndarray:
     filter of size sigma. Based on code by Erik Wernersson, PhD."""
     w = gpartial_w(sigma)
     g, dg = gpartial_g_dg(w, sigma)
-    if 1 == d:
+    if d == 1:
         V = sp.signal.convolve(V, dg.reshape([1, w + 1]), "same")
     else:
         V = sp.signal.convolve(V, g.reshape([1, w + 1]), "same")
-    if 2 == d:
+    if d == 2:
         V = sp.signal.convolve(V, dg.reshape([w + 1, 1]), "same")
     else:
         V = sp.signal.convolve(V, g.reshape([w + 1, 1]), "same")
@@ -88,15 +89,15 @@ def gpartial_3D(V: np.ndarray, d: int, sigma: float) -> np.ndarray:
     filter of size sigma. Based on code by Erik Wernersson, PhD."""
     w = gpartial_w(sigma)
     g, dg = gpartial_g_dg(w, sigma)
-    if 1 == d:
+    if d == 1:
         V = sp.signal.convolve(V, dg.reshape([1, 1, w + 1]), "same")
     else:
         V = sp.signal.convolve(V, g.reshape([1, 1, w + 1]), "same")
-    if 2 == d:
+    if d == 2:
         V = sp.signal.convolve(V, dg.reshape([1, w + 1, 1]), "same")
     else:
         V = sp.signal.convolve(V, g.reshape([1, w + 1, 1]), "same")
-    if 3 == d:
+    if d == 3:
         V = sp.signal.convolve(V, dg.reshape([w + 1, 1, 1]), "same")
     else:
         V = sp.signal.convolve(V, g.reshape([w + 1, 1, 1]), "same")
@@ -106,9 +107,9 @@ def gpartial_3D(V: np.ndarray, d: int, sigma: float) -> np.ndarray:
 def gpartial(V: np.ndarray, d: int, sigma: float) -> np.ndarray:
     """Calculate the partial derivative of V along dimension d using a filter
     of size sigma. Based on code by Erik Wernersson, PhD."""
-    if 3 == len(V.shape):
+    if len(V.shape) == 3:
         return gpartial_3D(V, d, sigma)
-    elif 2 == len(V.shape):
+    elif len(V.shape) == 2:
         return gpartial_2D(V, d, sigma)
     return np.array([])
 
@@ -189,8 +190,8 @@ def cell_cycle_fit(data: np.ndarray) -> FitResult:
     fit_data, fit_type = (sog_fit(data), FitType.SOG)
     if fit_data is None:
         fit_data, fit_type = (gaussian_fit(data), FitType.GAUSSIAN)
-        if fit_data is None:
-            fit_data, fit_type = (np.array(fwhm(data)), FitType.FWHM)
+    if fit_data is None:
+        fit_data, fit_type = (np.array(fwhm(data)), FitType.FWHM)
     return (fit_data, fit_type)
 
 
@@ -258,7 +259,7 @@ def radius_interval_to_volume(rInterval: Interval) -> Interval:
 
 
 def radius_interval_to_size(rInterval: Interval, n_axes: int = 3) -> Interval:
-    if 2 == n_axes:
+    if n_axes == 2:
         return radius_interval_to_area(rInterval)
     else:
         return radius_interval_to_volume(rInterval)
@@ -290,16 +291,15 @@ def radial_fit(
 
     x_IDs = list(set(bin_IDs))
     x_mids = bins[x_IDs] + np.diff(bins).min().round(12) / 2
-    yy_stubs = []
-    for bi in x_IDs:
-        yy_stubs.append(
-            np.hstack(
-                [
-                    np.quantile(y[bi == bin_IDs], (0.25, 0.5, 0.75)),
-                    np.mean(y[bi == bin_IDs]),
-                ]
-            )
+    yy_stubs = [
+        np.hstack(
+            [
+                np.quantile(y[bi == bin_IDs], (0.25, 0.5, 0.75)),
+                np.mean(y[bi == bin_IDs]),
+            ]
         )
+        for bi in x_IDs
+    ]
     yy = np.vstack(yy_stubs)
 
     return (
@@ -382,14 +382,14 @@ def get_radial_profile_roots(
         roots_der1 = roots_der1[roots_der1 <= profile.domain[1]]
     else:
         roots_der1 = np.array([roots_der1.min()])
-    if 0 == len(roots_der2):
+    if len(roots_der2) == 0:
         x, y = profile.linspace(npoints)
         roots_der2 = np.array([x[np.argmin(y)]])
         roots_der2 = roots_der2[roots_der2 >= profile.domain[0]]
         roots_der2 = roots_der2[roots_der2 <= profile.domain[1]]
 
-    if 0 == len(roots_der1):
-        roots_der2 = roots_der2[0] if 0 != len(roots_der2) else np.nan
+    if len(roots_der1) == 0:
+        roots_der2 = roots_der2[0] if len(roots_der2) != 0 else np.nan
         return (np.array(np.nan), roots_der2)
 
     if 0 != len(roots_der2) and not all(roots_der2 < roots_der1):
@@ -409,9 +409,9 @@ def get_hist_mode(
     hist: List[Tuple[float, int]], thr: float = 0.5, min_delta: float = 0.1
 ) -> float:
     hist = sorted(hist, key=lambda x: x[1])
-    if 1 == len(hist):
+    if len(hist) == 1:
         return hist[0][0]
-    n = sum([x[1] for x in hist])
+    n = sum(x[1] for x in hist)
     f = [x[1] / n for x in hist]
     if f[-1] < thr:
         return np.nan

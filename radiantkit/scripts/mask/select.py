@@ -9,9 +9,9 @@ from radiantkit.const import CONTEXT_SETTINGS
 
 
 @click.command(
-    name="report",
+    name="select",
     context_settings=CONTEXT_SETTINGS,
-    help="""Generate radiant HTML report.""",
+    help="""Select G1 nuclei.""",
 )
 def run() -> None:
     pass

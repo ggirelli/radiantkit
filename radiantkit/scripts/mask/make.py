@@ -9,9 +9,9 @@ from radiantkit.const import CONTEXT_SETTINGS
 
 
 @click.command(
-    name="report",
+    name="_make",
     context_settings=CONTEXT_SETTINGS,
-    help="""Generate radiant HTML report.""",
+    help="""Segment TIFF images.""",
 )
 def run() -> None:
     pass
