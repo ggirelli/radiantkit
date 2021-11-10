@@ -20,8 +20,7 @@ from radiantkit.channel import ChannelList, ImageGrayScale
 from radiantkit.distance import CenterType, RadialDistanceCalculator
 from radiantkit.image import ImageBinary, ImageLabeled
 from radiantkit.particle import Nucleus, Particle, ParticleFinder
-from radiantkit.path import (find_re, get_image_details,
-                             select_by_prefix_and_suffix)
+from radiantkit.path import find_re, get_image_details, select_by_prefix_and_suffix
 
 ChannelName = str
 DistanceType = str

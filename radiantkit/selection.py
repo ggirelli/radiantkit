@@ -7,8 +7,7 @@ from typing import List, Tuple
 
 import numpy as np  # type: ignore
 
-from radiantkit.image import (Image, ImageBinary, ImageLabeled,
-                              are_pixels_binary)
+from radiantkit.image import Image, ImageBinary, ImageLabeled, are_pixels_binary
 
 
 class BoundingElement(object):

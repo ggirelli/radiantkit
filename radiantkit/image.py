@@ -13,8 +13,14 @@ import pandas as pd  # type: ignore
 import skimage as ski  # type: ignore
 import tifffile as tf  # type: ignore
 from scipy import ndimage as ndi  # type: ignore
-from skimage.morphology import (closing, cube, dilation,  # type: ignore
-                                erosion, opening, square)
+from skimage.morphology import (
+    closing,
+    cube,
+    dilation,  # type: ignore
+    erosion,
+    opening,
+    square,
+)
 from skimage.segmentation import clear_border  # type: ignore
 
 import radiantkit as ra
