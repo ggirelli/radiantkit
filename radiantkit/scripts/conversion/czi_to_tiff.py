@@ -88,7 +88,7 @@ def run(
         print_long_help()
         return
 
-    settings = ConversionSettings(set(input_paths), input_re, template)
+    settings = ConversionSettings(set(input_paths), input_regexp, template)
     settings.output_dirpath = output_dirpath
     settings.set_fields(fields)
     settings.set_channels(channels)
