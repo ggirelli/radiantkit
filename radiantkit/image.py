@@ -13,10 +13,10 @@ import pandas as pd  # type: ignore
 import skimage as ski  # type: ignore
 import tifffile as tf  # type: ignore
 from scipy import ndimage as ndi  # type: ignore
-from skimage.morphology import (
+from skimage.morphology import (  # type: ignore
     closing,
     cube,
-    dilation,  # type: ignore
+    dilation,
     erosion,
     opening,
     square,

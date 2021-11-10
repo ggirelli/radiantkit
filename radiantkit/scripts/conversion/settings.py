@@ -111,8 +111,7 @@ class ConversionSettings(object):
         else:
             if verbose:
                 logging.info(
-                    "Converting only the following fields: "
-                    + f"{[x+1 for x in fields]}"
+                    f"Converting only the following fields: {[x+1 for x in fields]}"
                 )
             return {x for x in fields if x <= image.field_count()}
 
