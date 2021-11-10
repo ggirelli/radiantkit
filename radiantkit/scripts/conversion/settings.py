@@ -71,7 +71,9 @@ class ConversionSettings(object):
         return self._fields
 
     def set_fields(self, fields_str: Optional[str]) -> None:
-        self._fields = set(MultiRange(fields_str)) if fields_str is not None else None
+        self._fields = (
+            {x - 1 for x in MultiRange(fields_str)} if fields_str is not None else None
+        )
 
     @property
     def channels(self) -> Optional[Set[str]]:
@@ -105,9 +107,10 @@ class ConversionSettings(object):
         else:
             if verbose:
                 logging.info(
-                    "Converting only the following fields: " + f"{[x for x in fields]}"
+                    "Converting only the following fields: "
+                    + f"{[x+1 for x in fields]}"
                 )
-            return {x - 1 for x in fields if x <= image.field_count()}
+            return {x for x in fields if x <= image.field_count()}
 
     def check_fields(self, image: Union[ND2Reader2, CziFile2]) -> bool:
         self._fields = self.select_fields(self.fields, image, False)

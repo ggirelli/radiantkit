@@ -68,13 +68,17 @@ class ND2Reader2(ND2Reader):
             z_steps_hist = stat.list_to_hist(self.get_field_resolutionZ(field_id))
             if len(z_steps_hist) > 1:
                 z_mode = stat.get_hist_mode(z_steps_hist)
-                logger.info(f"F#{field_id}\tDelta Z: {z_mode} um; {z_steps_hist}")
-                shakiness = (
-                    sum(v for k, v in z_steps_hist if k != z_mode) / self.sizes["z"]
+                shakiness = np.round(
+                    sum(v for k, v in z_steps_hist if k != z_mode)
+                    / self.sizes["z"]
+                    * 100,
+                    1,
                 )
-                logger.info(f"\tShakiness: {shakiness*100:.1f}%")
+                logger.info(
+                    f"F#{field_id+1}\tdZ: {z_mode} um; {z_steps_hist}; {shakiness}%"
+                )
             else:
-                logger.info(f"F#{field_id}\tDelta Z: {z_steps_hist[0][0]} um")
+                logger.info(f"F#{field_id+1}\tdZ: {z_steps_hist[0][0]} um")
 
     @property
     def xy_resolution(self) -> float:
