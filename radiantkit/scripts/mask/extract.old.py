@@ -4,14 +4,16 @@
 """
 
 import argparse
-from joblib import cpu_count  # type: ignore
 import logging
 import os
-import radiantkit as ra
-from radiantkit import const, particle, series, string
-from radiantkit import argtools as ap
 import re
+
+from joblib import cpu_count  # type: ignore
 from rich.prompt import Confirm  # type: ignore
+
+import radiantkit as ra
+from radiantkit import argtools as ap
+from radiantkit import const, particle, series, string
 
 
 def init_parser(subparsers: argparse._SubParsersAction) -> argparse.ArgumentParser:

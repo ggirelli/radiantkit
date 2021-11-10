@@ -3,22 +3,28 @@
 @contact: gigi.ga90@gmail.com
 """
 
-import click  # type: ignore
 import logging
-import numpy as np  # type: ignore
+import sys
 from os import mkdir
-from os.path import isdir, isfile, join as join_paths
+from os.path import isdir, isfile
+from os.path import join as join_paths
+from typing import List, Optional, Union
+
+import click  # type: ignore
+import numpy as np  # type: ignore
+from rich.progress import track  # type: ignore
+
 from radiantkit.const import CONTEXT_SETTINGS, DEFAULT_INPUT_RE, SCRITPS_INPUT_HELP
 from radiantkit.conversion import ND2Reader2
 from radiantkit.image import save_tiff
 from radiantkit.io import add_log_file_handler
+from radiantkit.scripts import options
+from radiantkit.scripts.conversion.common import (
+    CONVERSION_TEMPLATE_LONG_HELP_STRING,
+    convert_folder,
+)
 from radiantkit.scripts.conversion.settings import ConversionSettings
-from radiantkit.scripts.conversion.common import CONVERSION_TEMPLATE_LONG_HELP_STRING
-from radiantkit.scripts.conversion.common import convert_folder
 from radiantkit.string import TIFFNameTemplateFields as TNTFields
-from rich.progress import track  # type: ignore
-import sys
-from typing import List, Optional, Union
 
 
 @click.command(
@@ -63,16 +69,7 @@ Convert ND2 file(s) into TIFF.
     type=click.FLOAT,
     help="Delta Z in um. Use when the script fails to recognize the correct value.",
 )
-@click.option(
-    "--input-re",
-    "-R",
-    type=click.STRING,
-    metavar="RE",
-    help=f"""
-    Regexp used to identify input ND2 files.
-    Default: {DEFAULT_INPUT_RE['nd2']}""",
-    default=DEFAULT_INPUT_RE["nd2"],
-)
+@options.input_regexp(DEFAULT_INPUT_RE["nd2"])
 @click.option(
     "--template",
     "-T",

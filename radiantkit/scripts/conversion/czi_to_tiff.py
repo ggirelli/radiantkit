@@ -3,21 +3,27 @@
 @contact: gigi.ga90@gmail.com
 """
 
-import click  # type: ignore
 import logging
+import sys
 from os import mkdir
-from os.path import isdir, isfile, join as join_paths
+from os.path import isdir, isfile
+from os.path import join as join_paths
+from typing import List, Optional, Set
+
+import click  # type: ignore
+from rich.progress import track  # type: ignore
+
 from radiantkit.const import CONTEXT_SETTINGS, DEFAULT_INPUT_RE, SCRITPS_INPUT_HELP
+from radiantkit.conversion import CziFile2
 from radiantkit.image import get_dtype, save_tiff
 from radiantkit.io import add_log_file_handler
+from radiantkit.scripts import options
+from radiantkit.scripts.conversion.common import (
+    CONVERSION_TEMPLATE_LONG_HELP_STRING,
+    convert_folder,
+)
 from radiantkit.scripts.conversion.settings import ConversionSettings
-from radiantkit.scripts.conversion.common import CONVERSION_TEMPLATE_LONG_HELP_STRING
-from radiantkit.scripts.conversion.common import convert_folder
 from radiantkit.string import TIFFNameTemplateFields as TNTFields
-from radiantkit.conversion import CziFile2
-from rich.progress import track  # type: ignore
-import sys
-from typing import List, Optional, Set
 
 
 @click.command(
@@ -62,30 +68,9 @@ Convert CZI file(s) into TIFF.
     type=click.FLOAT,
     help="Delta Z in um. Use when the script fails to recognize the correct value.",
 )
-@click.option(
-    "--input-re",
-    "-R",
-    type=click.STRING,
-    metavar="RE",
-    help=f"""
-    Regexp used to identify input CZI files.
-    Default: {DEFAULT_INPUT_RE['czi']}""",
-    default=DEFAULT_INPUT_RE["czi"],
-)
-@click.option(
-    "--template",
-    "-T",
-    type=click.STRING,
-    help=f"""\b
-    Output file name template. See --long-help for more details.
-    Default: '{TNTFields.CHANNEL_NAME}_{TNTFields.SERIES_ID}'""",
-    default=f"{TNTFields.CHANNEL_NAME}_{TNTFields.SERIES_ID}",
-)
-@click.option(
-    "--compress",
-    is_flag=True,
-    help="Compress output TIFF files. Useful with low bit-depth output.",
-)
+@options.input_regexp(DEFAULT_INPUT_RE["czi"])
+@options.filename_template(f"{TNTFields.CHANNEL_NAME}_{TNTFields.SERIES_ID}")
+@options.compress_output("Useful with low bit-depth images.")
 def run(
     input_paths: List[str],
     info: bool,
@@ -95,7 +80,7 @@ def run(
     fields: Optional[str],
     channels: Optional[str],
     dz: Optional[float],
-    input_re: str,
+    input_regexp: str,
     template: str,
     compress: bool,
 ) -> None:
