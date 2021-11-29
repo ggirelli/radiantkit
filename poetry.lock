@@ -355,7 +355,7 @@ numpy = ">=1.13.3"
 
 [[package]]
 name = "rich"
-version = "10.14.0"
+version = "10.15.0"
 description = "Render rich text, tables, progress bars, syntax highlighting, markdown and more to the terminal"
 category = "main"
 optional = false
@@ -797,8 +797,8 @@ pywavelets = [
     {file = "PyWavelets-1.1.1.tar.gz", hash = "sha256:1a64b40f6acb4ffbaccce0545d7fc641744f95351f62e4c6aaa40549326008c9"},
 ]
 rich = [
-    {file = "rich-10.14.0-py3-none-any.whl", hash = "sha256:ab9cbfd7a3802d8c6f0fa91e974630e2a69447972dcbb9dfe9b01016dd95e38e"},
-    {file = "rich-10.14.0.tar.gz", hash = "sha256:8bfe4546d56b4131298d3a9e571a0742de342f1593770bd0d4707299f772a0af"},
+    {file = "rich-10.15.0-py3-none-any.whl", hash = "sha256:11516740a10dddead0c782dc11fdde552b19fd0614dbbba8f78ea7602d940720"},
+    {file = "rich-10.15.0.tar.gz", hash = "sha256:3f7b0851e097ae90e43216375db413c2f910a0f310705614bce1a2ae43c8264e"},
 ]
 scikit-image = [
     {file = "scikit-image-0.18.3.tar.gz", hash = "sha256:ecae99f93f4c5e9b1bf34959f4dc596c41f2f6b2fc407d9d9ddf85aebd3137ca"},
