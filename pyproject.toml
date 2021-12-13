@@ -22,7 +22,7 @@ include = ["CHANGELOG.md", "LICENSE"]
 python = "^3.8"
 czifile = "^2019.7.2"
 joblib = ">=0.16,<1.2"
-memory-profiler = "^0.58.0 "
+memory-profiler = ">=0.58,<0.60"
 nd2reader = {git = "https://github.com/ggirelli/nd2reader"}
 numpy = "^1.19.2"
 pandas = "^1.1.2"
