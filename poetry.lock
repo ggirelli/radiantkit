@@ -103,7 +103,7 @@ python-versions = ">=3.6"
 
 [[package]]
 name = "memory-profiler"
-version = "0.59.0"
+version = "0.60.0"
 description = "A module for monitoring memory usage of a python program"
 category = "main"
 optional = false
@@ -432,7 +432,7 @@ python-versions = ">=2.7, !=3.0.*, !=3.1.*, !=3.2.*, !=3.3.*"
 [metadata]
 lock-version = "1.1"
 python-versions = "^3.8"
-content-hash = "60bb5fc58c159ab5195a06cd4d43e4117541c7a97a7a881d50f1e277c4e92636"
+content-hash = "e1b7b7bbcfc386aabb152fc08e76de967a5f17322b0ec4f2911ac34e4347ce69"
 
 [metadata.files]
 atomicwrites = [
@@ -490,7 +490,7 @@ joblib = [
     {file = "joblib-1.1.0.tar.gz", hash = "sha256:4158fcecd13733f8be669be0683b96ebdbbd38d23559f54dca7205aea1bf1e35"},
 ]
 memory-profiler = [
-    {file = "memory_profiler-0.59.0.tar.gz", hash = "sha256:880b6a92edec62ce7aa634c5f244da6c0395c531aa7e33b1d1312906cf513599"},
+    {file = "memory_profiler-0.60.0.tar.gz", hash = "sha256:6a12869511d6cebcb29b71ba26985675a58e16e06b3c523b49f67c5497a33d1c"},
 ]
 nd2reader = []
 networkx = [
